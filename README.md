@@ -3,6 +3,10 @@
 Retail network, bounded context **Node Topology** (Supporting, logistics tier): the authoritative registry of the network's nodes, their versioned
 operational profiles, lanes, regions and postal service areas.
 
+## Disclaimer
+
+This project is a domain-driven design study. It is not associated with, endorsed by or affiliated with any company, and it uses no company's code, data, logos or trademarks. All names, figures and examples are illustrative or synthetic.
+
 Status: under construction. The design is proposed in
 [retail-network-docs](https://iqvo.github.io/retail-network-docs/contexts/node-topology); `model/model.yaml` there is the single source of truth.
 This repository is a service of the retail network, not of the warehouse-systems fleet; the fleet reaches the network only through the
