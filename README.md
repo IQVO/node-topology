@@ -59,6 +59,18 @@ go run ./cmd/api                       # listens on :8080 (HTTP_ADDR)
 
 All settings, the probes, the shutdown order and the outbox runbook: [docs/runtime.md](docs/runtime.md).
 
+## Deploy
+
+`charts/node-topology/` deploys the api alone (Deployment, Service, ConfigMap, Secret or `database.existingSecret`, ServiceAccount; HPA, HTTPRoute and
+Ingress are off by default). `database.url` or `database.existingSecret`, and `kafka.brokers`, are mandatory: the chart refuses to render without them.
+This service consumes no topic, so there is no consumer group value.
+
+```sh
+helm lint charts/node-topology -f charts/node-topology/ci/default-values.yaml
+helm template node-topology charts/node-topology -f charts/node-topology/ci/default-values.yaml
+bash charts/node-topology/tests/render_test.sh && python3 charts/node-topology/tests/test_service_selectors.py   # needs helm and PyYAML
+```
+
 ## Develop
 
 | Command | What it runs |

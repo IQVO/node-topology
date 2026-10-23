@@ -54,6 +54,17 @@ returns on its own the process exits non-zero so the orchestrator restarts it.
   later events of the same aggregate can overtake it.
 - Idempotency keys older than 24 h are purged on the next keyed write.
 
+## Deployment (Helm)
+
+`charts/node-topology/` renders the api alone. Every `config.*` value is one env var from the table above (`config.httpAddr`, `config.logLevel`,
+`config.outboxRelayInterval`, `config.outboxMaxAttempts`, `config.shutdownDrainDelay`); `kafka.brokers` is `KAFKA_BROKERS`; `DATABASE_URL` and the optional
+`MIGRATIONS_DATABASE_URL` come from a Secret (`database.url` creates one, `database.existingSecret` + `database.existingSecretKey` /
+`database.migrationsExistingSecretKey` reference yours; the migrations key is `optional: true`, the binary falls back to `DATABASE_URL`). The chart
+refuses to render without a database source or brokers, with `terminationGracePeriodSeconds` below 30 or below `config.shutdownDrainDelay` + 20 s
+(drain delay + HTTP drain 10 s + relay 10 s), and with a `*_MODE` or `*_CONSUMER_GROUP` in `extraEnv`: the service consumes no topic. An empty
+`image.tag` resolves to `v<appVersion>`, the tag the `release` job publishes. Chart tests: `charts/node-topology/tests/` (run by `chart-tests`; `helm-lint` runs
+`ct lint` on pull requests).
+
 ## Tests
 
 `make check` (format, vet, build, lint, unit + handler + BDD tests), `make coverage`

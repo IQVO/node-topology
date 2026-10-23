@@ -1,0 +1,186 @@
+# Default values for node-topology.
+#
+# This chart deploys the ONLY runtime the service has: real Postgres and real
+# Kafka. There is no in-memory mode, and this service consumes no topic, so
+# there is no consumer group. A render without a database source or without
+# brokers fails with a message naming the value (templates/_helpers.tpl).
+
+replicaCount: 1
+
+# Published by the `docker-publish` / `release` jobs to GHCR. An empty tag
+# resolves to v<appVersion> (the release tags the image v<version> and
+# packages the chart with that version as appVersion). In a local kind
+# cluster override repository and tag with the side-loaded image and keep
+# `pullPolicy: IfNotPresent`.
+image:
+  repository: ghcr.io/iqvo/node-topology
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+# The service writes nothing to disk (logs go to stdout, the migrations are
+# embedded in the binary), so the root filesystem is read-only.
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: node-topology.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# Additive, disabled-by-default alternative to the ingress: block above
+# (Gateway API HTTPRoute). The Gateway parentRef and the path come from the
+# environment that deploys the chart.
+gatewayApi:
+  enabled: false
+  parentRefs:
+    - name: ""
+      namespace: ""
+      sectionName: "http"
+  hosts:
+    - path: /
+      pathType: PathPrefix
+  stripPath: true
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# HorizontalPodAutoscaler (autoscaling/v2), disabled by default so nothing
+# changes replica behaviour silently. When enabled, the Deployment's
+# replicaCount is omitted so the HPA is the sole owner of .spec.replicas.
+# N>1 is safe for the outbox relay (FOR UPDATE SKIP LOCKED); it has not been
+# load-tested.
+autoscaling:
+  api:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 70
+
+# Environment read by cmd/api (cmd/api/main.go header). Every key maps 1:1 to
+# one env var. There is no *_MODE and no *_CONSUMER_GROUP: the service
+# consumes no topic.
+config:
+  httpAddr: ":8080"                  # HTTP_ADDR
+  logLevel: "info"                   # LOG_LEVEL: debug | info | warn (or warning) | error
+  # OUTBOX_RELAY_INTERVAL: Go duration ("500ms", "2s") or plain seconds.
+  # Empty = not rendered; the binary defaults to 1s.
+  outboxRelayInterval: ""
+  # OUTBOX_MAX_ATTEMPTS: how many times one outbox row may fail before the
+  # relay excludes it from claims, so a poison row cannot block the relay
+  # forever. 0 = unlimited (ADR 0005).
+  outboxMaxAttempts: 20
+  # SHUTDOWN_DRAIN_DELAY: wait after /readyz flips before closing the
+  # listener. Empty = not rendered; the binary defaults to 5s. Raising it
+  # raises the terminationGracePeriodSeconds floor (render fails otherwise).
+  shutdownDrainDelay: ""
+
+# MANDATORY: the chart refuses to render unless database.url or
+# database.existingSecret is set (templates/_helpers.tpl:
+# node-topology.requireDatabase).
+database:
+  url: ""
+  existingSecret: ""
+  existingSecretKey: "DATABASE_URL"
+  # Key, in the same existingSecret, of a DIRECT (non-pooled, session-mode)
+  # Postgres connection string used ONLY for the golang-migrate startup step,
+  # never for the runtime pgxpool, which always uses existingSecretKey /
+  # DATABASE_URL. golang-migrate takes a session-scoped pg_advisory_lock that
+  # PgBouncer's transaction pooling cannot honour. `optional: true` on the
+  # rendered secretKeyRef so a secret without this key still starts the pod:
+  # the binary falls back to DATABASE_URL.
+  migrationsExistingSecretKey: "MIGRATIONS_DATABASE_URL"
+
+# MANDATORY: KAFKA_BROKERS (comma-separated). No default on purpose: the
+# service runs on real Kafka only and the chart refuses to render without
+# brokers. Produced topic: retailnetwork.node-topology.events (nothing is
+# consumed). The service never creates topics through an admin API: the
+# relay's writer auto-creates its own topic on first write, and /readyz does
+# not wait for any topic.
+kafka:
+  brokers: ""
+
+# Extra env vars appended to the api container as a raw list. A *_MODE or
+# *_CONSUMER_GROUP name is refused at render time.
+extraEnv: []
+
+# The Postgres dial (migrations + ping) at boot is wrapped in a bounded retry
+# (5 attempts, 1 + 2 + 4 + 8 s of backoff). periodSeconds * failureThreshold
+# of the startup probe gives a ~60 s window before the kubelet gives up. Once
+# it succeeds, liveness takes over (/healthz is liveness only). Readiness uses
+# /readyz, which checks the drain gate, Postgres AND that a Kafka broker
+# answers a metadata request (verdict cached for 3 s): a Kafka outage takes
+# the pod out of the Service and a shutdown flips it to not-ready first, both
+# by design.
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  periodSeconds: 2
+  failureThreshold: 30
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Room for the binary's graceful shutdown (cmd/api serveUntilSignal), which
+# stops and awaits its parts one after the other: SHUTDOWN_DRAIN_DELAY
+# (default 5s) + HTTP drain (10s) + outbox relay (10s) = 25s in the worst
+# case. The chart refuses anything below 30s, or below the configured drain
+# delay + 20s.
+terminationGracePeriodSeconds: 30
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

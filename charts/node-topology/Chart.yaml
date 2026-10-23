@@ -1,0 +1,12 @@
+apiVersion: v2
+name: node-topology
+description: Node Topology — the physical and logical structure of the retail logistics network (nodes, lanes, service areas, regions) and their operational profiles; publishes node, lane, service-area and region events on retailnetwork.node-topology.events. Consumes no topic.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/IQVO/node-topology
+keywords:
+  - ddd
+  - hexagonal-architecture
+  - logistics
+  - golang

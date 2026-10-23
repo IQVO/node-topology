@@ -1,0 +1,24 @@
+{{- if .Values.autoscaling.api.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "node-topology.fullname" . }}
+  labels:
+    {{- include "node-topology.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "node-topology.fullname" . }}
+  minReplicas: {{ .Values.autoscaling.api.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.api.maxReplicas }}
+  metrics:
+    {{- if .Values.autoscaling.api.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.api.targetCPUUtilizationPercentage }}
+    {{- end }}
+{{- end }}

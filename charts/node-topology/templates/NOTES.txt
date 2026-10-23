@@ -1,0 +1,30 @@
+{{ .Chart.Name }} has been deployed.
+
+Release:   {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+
+Service:   {{ include "node-topology.fullname" . }} ({{ .Values.service.type }}, port {{ .Values.service.port }})
+
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+Ingress:   http://{{ .host }}{{ (index .paths 0).path }}
+{{- end }}
+{{- else if .Values.gatewayApi.enabled }}
+Gateway API HTTPRoute enabled — routed via the parentRefs/hosts configured
+in gatewayApi.*.
+{{- else }}
+To reach it locally:
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "node-topology.fullname" . }} 8080:{{ .Values.service.port }}
+  curl http://localhost:8080/healthz
+{{- end }}
+
+Runtime: real Postgres and real Kafka only. Brokers: {{ .Values.kafka.brokers }}.
+Node, lane, service-area and region events are relayed from the transactional
+outbox onto retailnetwork.node-topology.events.
+
+This service consumes no topic: there is no consumer group to configure.
+
+/readyz answers 503 until Postgres answers and a Kafka broker answers a
+metadata request. Topics are not checked: the relay's writer auto-creates the
+service's own topic on first write (fleet convention) and the service never
+creates topics through an admin API.
