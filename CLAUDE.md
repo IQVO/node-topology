@@ -37,4 +37,4 @@ Aggregates, invariants and assumptions A1-A42 are in docs/adr/0002; outbox/relay
 
 ## Workflow
 GitFlow: feature/* -> PR into develop, CI green before merge, never push develop or main. lefthook: pre-commit fmt/vet/lint, pre-push `make check`. Commit and push after each step.
-Open follow-up: the Helm chart (docs/before-first-release.md rows 5-8).
+Helm chart: charts/node-topology (api only, no consumer group; tests in charts/node-topology/tests, rows 5-9 of docs/before-first-release.md). Open follow-up: repository secrets (row 11).
