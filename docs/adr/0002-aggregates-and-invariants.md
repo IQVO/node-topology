@@ -182,3 +182,47 @@ One state `DEFINED` (initial); no transition.
   (`*region.Region`, `*node.Node`) and translate a missing one to `ErrNotFound`.
 - The three repository-raised errors need the Postgres unique indexes of step 3
   and a repocontract test for each.
+
+## Amendment (step 2, application layer): assumptions A17-A24
+
+Step 2 adds `internal/application/{ports,views,usecases,repository}` and the
+test doubles in `internal/adapters/outbound/memory`. The model and OpenAPI are
+silent on the points below; each is an assumption and is reported as a model gap.
+
+- **A17 Retry on conflict.** ADR 0003 decision 4 says a version mismatch is
+  retried once by reloading. It is implemented in the use cases: when a unit of
+  work fails with `ports.ErrConcurrentUpdate`, the whole attempt (load, domain
+  call, save, outbox append) runs once more on fresh state; a second conflict is
+  returned as `ErrConcurrentUpdate` (409). A create re-mints its id on the retry.
+- **A18 Save contract.** `Save` expects `stored version == aggregate.Version()-1`
+  (a create expects the id to be free). Creating an id that exists, and updating
+  a row that no longer exists, are both `ErrConcurrentUpdate`. The repository
+  raises `ErrVendorNodeCodeTaken`, `ErrDuplicateLane` and `ErrRegionCodeTaken`
+  from its unique indexes after the version check.
+- **A19 Outbox port.** `EventOutbox.Append(ctx, events ...shared.Event)` takes
+  the domain events; the adapter encodes the CloudEvents envelope and mints its
+  `id` at append (step 4). The use case calls it in the same `UnitOfWork.Do` as
+  the aggregate saves, so both commit or roll back together.
+- **A20 Check order in commands.** Unknown node, station or lane ids are
+  `ErrNotFound` first (A16); then the domain's own checks; the cross-aggregate
+  pre-check (vendor code, open lane, region code) runs after them, so an invalid
+  command is never reported as a taken code. An unknown region id on
+  `RegisterNode` or on a station's region is `ErrUnknownRegion` (422), not 404.
+- **A21 Lists.** `ListNodes` and `ListLanes` return every match ordered by id
+  ascending, as an empty list when nothing matches, with no pagination (the
+  model sizes it at about 10^3 nodes and 10^4 lanes). A `type` or `status`
+  filter that is not an enumeration value is `ErrValidation` (422).
+- **A22 Profile revisions.** `NodeRepository.Save` appends the profile revision
+  row (its comment tells an adapter how); `NodeRepository.ProfileRevisions`
+  reads them back, oldest first, so ADR 0003's "earlier revisions stay queryable
+  for audit" is testable by the repository contract. No REST operation exposes
+  it yet.
+- **A23 Regions are write-only over REST.** The OpenAPI has `defineRegion` and no
+  `getRegion` or `listRegions`, so there is no use case for them and a client
+  cannot discover a `regionId` it did not create. Model gap: add the reads, or
+  say that regions are provisioned out of band.
+- **A24 Assignment version below 1.** ADR 0002's table lists `ErrStaleAssignmentVersion`
+  for a first assignment whose version is below 1; the domain raises
+  `ErrValidation` (`assignmentVersion must be between 1 and 2147483647`), and the
+  use case passes it through. The table row is read as "stale" for a
+  reassignment only.
