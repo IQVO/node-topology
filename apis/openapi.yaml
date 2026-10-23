@@ -449,6 +449,7 @@ paths:
       tags: [Regions]
       operationId: getRegion
       summary: Get a region (GetRegion)
+      description: Returns one region by its id, or the problem type not-found when it does not exist.
       parameters:
         - name: regionId
           in: path
