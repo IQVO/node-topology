@@ -265,3 +265,10 @@ silent on the points below; each is an assumption and is reported as a model gap
   truncated to the microsecond, the precision of `timestamptz`, so a stamped
   time reads back unchanged. A U+0000 in free text is rejected at HTTP (step 5);
   the domain does not reject it today, and Postgres refuses it (SQLSTATE 22021).
+- **A33 BDD suite.** `features/` holds the godog runner (`features_test.go`,
+  `package features_test`, `Paths: "."`, `Strict: true`) and six feature files:
+  regions, node registration, operational profile, lanes, service areas,
+  suspension. The scenarios drive the use cases over the in-memory doubles
+  (the same use cases the REST adapter will call), not HTTP; HTTP behaviour is
+  covered by the adapter's own tests in step 5. The steps name refusals by the
+  REST problem slug, so a scenario reads the same as the contract.
