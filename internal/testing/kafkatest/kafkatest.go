@@ -43,6 +43,13 @@ func Brokers(t *testing.T) []string {
 // BrokerList is Brokers joined the way KAFKA_BROKERS is written.
 func BrokerList(t *testing.T) string { return strings.Join(Brokers(t), ",") }
 
+// SetBrokersEnv points the service under test at the shared broker: it sets
+// KAFKA_BROKERS for the duration of the test.
+func SetBrokersEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("KAFKA_BROKERS", BrokerList(t))
+}
+
 // Stop terminates the broker mid-test (the readiness subtest). Shutdown after
 // it is a no-op.
 func Stop(t *testing.T) {
