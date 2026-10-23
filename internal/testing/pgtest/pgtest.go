@@ -29,6 +29,10 @@ const (
 	templateName = "node_topology_template"
 )
 
+// Pool is the pgx pool type, re-exported so integration test files can name it
+// without importing pgx themselves.
+type Pool = pgxpool.Pool
+
 var (
 	once      sync.Once
 	container *tcpostgres.PostgresContainer
@@ -136,13 +140,13 @@ func EmptyURL(t *testing.T) string {
 
 // NewPool returns a pool on a fresh migrated database, closed when the test
 // ends.
-func NewPool(t *testing.T) *pgxpool.Pool {
+func NewPool(t *testing.T) *Pool {
 	t.Helper()
 	return OpenPool(t, URL(t))
 }
 
 // OpenPool returns a pool on url, closed when the test ends.
-func OpenPool(t *testing.T, url string) *pgxpool.Pool {
+func OpenPool(t *testing.T, url string) *Pool {
 	t.Helper()
 	pool, err := postgres.NewPool(context.Background(), url)
 	if err != nil {

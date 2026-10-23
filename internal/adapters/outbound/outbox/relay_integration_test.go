@@ -11,8 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	"github.com/claudioed/node-topology/internal/adapters/kafka/cloudevents"
 	"github.com/claudioed/node-topology/internal/adapters/outbound/clock"
 	"github.com/claudioed/node-topology/internal/adapters/outbound/ids"
@@ -43,7 +41,7 @@ import (
 const eventsTopic = "retailnetwork.node-topology.events"
 
 type bench struct {
-	pool *pgxpool.Pool
+	pool *pgtest.Pool
 	deps usecases.Deps
 }
 
@@ -159,7 +157,7 @@ func assertActivated(t *testing.T, value []byte, id node.ID) {
 	}
 }
 
-func waitAllPublished(t *testing.T, pool *pgxpool.Pool) {
+func waitAllPublished(t *testing.T, pool *pgtest.Pool) {
 	t.Helper()
 	deadline := time.Now().Add(30 * time.Second)
 	for {
