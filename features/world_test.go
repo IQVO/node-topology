@@ -31,6 +31,10 @@ type world struct {
 	outboxBefore  int
 	countsBefore  memory.Counts
 	commandWasRun bool
+
+	// httpw is the REST-level state of the scenario (see steps_http_test.go);
+	// nil until a step first needs the real router.
+	httpw *httpWorld
 }
 
 func newWorld() *world {
@@ -49,6 +53,7 @@ func (w *world) reset() {
 	}
 	w.regions, w.nodes, w.lanes = map[string]region.ID{}, map[string]node.ID{}, map[string]lane.ID{}
 	w.lastErr, w.outboxBefore, w.countsBefore, w.commandWasRun = nil, 0, memory.Counts{}, false
+	w.httpw = nil
 }
 
 func (w *world) ctx() context.Context { return context.Background() }
