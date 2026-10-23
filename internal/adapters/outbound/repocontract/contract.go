@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	"github.com/claudioed/node-topology/internal/application/ports"
+	"github.com/claudioed/node-topology/internal/domain/node"
+	"github.com/claudioed/node-topology/internal/domain/region"
 )
 
 // Fixture is one implementation of every port, over ONE empty database.
@@ -71,4 +73,18 @@ func noErr(t testing.TB, err error) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+}
+
+// SeedRegion stores a region through f and returns it. Adapter-specific tests
+// reuse it to build the rows the contract builds.
+func SeedRegion(t *testing.T, f Fixture, id region.ID, code string) *region.Region {
+	t.Helper()
+	return seedRegion(t, f, id, code)
+}
+
+// SaveActive stores an ACTIVE node through f the way the service does, one
+// saved version per command, and returns it as stored.
+func SaveActive(t *testing.T, f Fixture, reg *region.Region, typ node.Type, id node.ID, code string) *node.Node {
+	t.Helper()
+	return saveActive(t, f, reg, typ, id, code)
 }

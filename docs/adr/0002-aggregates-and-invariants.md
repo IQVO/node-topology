@@ -232,3 +232,36 @@ silent on the points below; each is an assumption and is reported as a model gap
   and the port method `RegionRepository.List` (every region ordered by id
   ascending, an empty list when none, no pagination). A23's gap is closed:
   a client can discover a `regionId` it did not create.
+- **A26 Postgres schema.** Tables: `regions`, `nodes`, `node_profile_revisions`,
+  `lanes`, `service_areas` (migration 0001) and `outbox_events`,
+  `idempotency_keys` (migration 0002). There is no `processed_events` (inbox)
+  table: this context consumes nothing. The model's enumerations are mirrored
+  as `CHECK` constraints, so adding an enumeration value takes a migration.
+  Foreign keys tie nodes to regions and lanes, service areas and revisions to
+  nodes.
+- **A27 Revisions are append-only in the database.** A trigger refuses `UPDATE`
+  and `DELETE` on `node_profile_revisions`, and a deferred composite foreign key
+  makes `nodes.profile_revision` point at a stored revision. `Save` inserts a
+  revision row only when the snapshot's revision is higher than the highest
+  stored one.
+- **A28 Outbox table.** `outbox_events` has the fleet siblings' shape
+  (`event_id`, `topic`, `event_type`, `subject`, `key`, `dataschema`, `value`,
+  `headers`, `created_at`, `published_at`, `attempts`, `last_error`, unique
+  `(event_id, topic)`). `EventOutbox.Append` encodes through an injected
+  `outbox.Encoder` before it writes, so an encoding failure stores no row of
+  the batch. The production encoder and the relay are step 4.
+- **A29 Savepoints.** Every repository write runs in a savepoint of the unit of
+  work's transaction (its own transaction outside a unit). A unique violation
+  therefore rolls back only that write, and the unit can still return a typed
+  error or carry on; the outermost `Do` still owns commit and rollback.
+- **A30 Ordering.** Lists order by id byte-wise (`COLLATE "C"`), the order of
+  the in-memory doubles, not the database locale.
+- **A31 Idempotency table.** `idempotency_keys(route, key)` has
+  `response_status` and `response_body` NULL while the first request is in
+  flight, and an index on `created_at` for the 24 h cleanup. The middleware
+  (step 5) may add columns (for example response headers) in a later migration.
+- **A32 Adapters.** `ids.UUID` mints `node-<uuid v4>`, `lane-<uuid v4>`,
+  `region-<uuid v4>` (valid per `shared.ValidID`); `clock.System` returns UTC
+  truncated to the microsecond, the precision of `timestamptz`, so a stamped
+  time reads back unchanged. A U+0000 in free text is rejected at HTTP (step 5);
+  the domain does not reject it today, and Postgres refuses it (SQLSTATE 22021).

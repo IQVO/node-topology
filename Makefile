@@ -82,7 +82,7 @@ lint:
 		echo "  go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_VERSION)"; \
 		exit 1; \
 	fi
-	$(GOLANGCI_LINT) run ./...
+	$(GOLANGCI_LINT) run --allow-parallel-runners ./...
 
 test:
 	$(GO) test ./... -race
