@@ -289,3 +289,26 @@ silent on the points below; each is an assumption and is reported as a model gap
   `retailnetwork.node-topology.events`; this context publishes nothing to
   `.analytics`. The attempt cap and its ordering trade-off are ADR 0005.
 
+## Amendment (step 7, HTTP and cmd/api): assumptions A37-A42
+
+- **A37 Key conflict is 422.** The same `Idempotency-Key` on the same route with
+  another request fingerprint (method, path, body) is 422 `idempotency-key-reused`,
+  as the fleet siblings do; the OpenAPI lists only 400 for a missing key, so the
+  key problems are documented in ADR 0006, not in the OpenAPI responses.
+- **A38 Refusals are replayed.** A 4xx outcome is stored with the key and replayed
+  (its writes are rolled back); a 5xx is never stored. `idempotency_keys` needed no
+  new column: the replay content type is derived from the status.
+- **A39 Malformed input.** JSON that is invalid, has an unknown field, a wrong
+  type or no body is 400 `malformed-request-body`; an invalid enumeration or a
+  missing required value that reaches the domain is 422 `validation-failed`. A
+  NUL in the path is 404 `not-found`, in the query 400 `malformed-request-query`,
+  in the body 400 `malformed-request-body`.
+- **A40 Lists.** `GET /nodes` and `GET /lanes` answer an envelope (`nodes`,
+  `lanes`) as the OpenAPI pins; `GET /regions` answers a bare array (the OpenAPI
+  `type: array`). No list is paginated (A21, A25).
+- **A41 Probes are outside the business contract.** `/healthz` and `/readyz` are
+  not operations of `apis/openapi.yaml`; they are documented in ADR 0006 and
+  README.
+- **A42 No Location header.** Creates answer 201 with the resource and no
+  `Location` header (the OpenAPI declares none).
+
