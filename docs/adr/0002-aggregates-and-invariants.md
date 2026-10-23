@@ -226,3 +226,9 @@ silent on the points below; each is an assumption and is reported as a model gap
   `ErrValidation` (`assignmentVersion must be between 1 and 2147483647`), and the
   use case passes it through. The table row is read as "stale" for a
   reassignment only.
+- **A25 Region reads (supersedes A23).** The orchestrator's decision D5 added
+  `GET /regions` and `GET /regions/{regionId}` to the model and to
+  `apis/openapi.yaml`. They are the use cases `ListRegions` and `GetRegion`
+  and the port method `RegionRepository.List` (every region ordered by id
+  ascending, an empty list when none, no pagination). A23's gap is closed:
+  a client can discover a `regionId` it did not create.

@@ -430,6 +430,44 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+    get:
+      tags: [Regions]
+      operationId: listRegions
+      summary: List regions (ListRegions)
+      description: Ordered by regionId. Not paginated (single digits of regions).
+      responses:
+        '200':
+          description: The regions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Region'
+  /regions/{regionId}:
+    get:
+      tags: [Regions]
+      operationId: getRegion
+      summary: Get a region (GetRegion)
+      parameters:
+        - name: regionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The region.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Region'
+        '404':
+          description: "not-found (ErrNotFound)."
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
 components:
   parameters:
     IdempotencyKey:

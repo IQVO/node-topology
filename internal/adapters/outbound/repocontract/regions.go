@@ -15,6 +15,9 @@ var regionCases = []named{
 	{"find by code hits and misses", regionFindByCode},
 	{"a second region with the same code is ErrRegionCodeTaken", regionCodeTaken},
 	{"creating an id that exists is ErrConcurrentUpdate", regionDuplicateID},
+	{"list is empty, never nil, on an empty database", regionListEmpty},
+	{"list returns every region ordered by id", regionListOrdered},
+	{"list skips a rejected region", regionListSkipsRejected},
 }
 
 func regionRoundTrip(t *testing.T, f Fixture) {
@@ -59,4 +62,42 @@ func regionDuplicateID(t *testing.T, f Fixture) {
 	ctx := context.Background()
 	noErr(t, f.Regions.Save(ctx, NewRegion(t, "region-1", "SP")))
 	wantErr(t, f.Regions.Save(ctx, NewRegion(t, "region-1", "RJ")), ports.ErrConcurrentUpdate)
+}
+
+func regionListEmpty(t *testing.T, f Fixture) {
+	got, err := f.Regions.List(context.Background())
+	noErr(t, err)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("list = %#v, want a non-nil empty list", got)
+	}
+}
+
+func regionListOrdered(t *testing.T, f Fixture) {
+	ctx := context.Background()
+	noErr(t, f.Regions.Save(ctx, NewRegion(t, "region-b", "RJ")))
+	noErr(t, f.Regions.Save(ctx, NewRegion(t, "region-c", "MG")))
+	noErr(t, f.Regions.Save(ctx, NewRegion(t, "region-a", "SP")))
+	got, err := f.Regions.List(ctx)
+	noErr(t, err)
+	ids := []region.ID{}
+	for _, r := range got {
+		ids = append(ids, r.ID())
+	}
+	if want := []region.ID{"region-a", "region-b", "region-c"}; !reflect.DeepEqual(ids, want) {
+		t.Fatalf("ids = %v, want %v", ids, want)
+	}
+	if got[0].Code() != "SP" || got[0].Name() != "Region SP" {
+		t.Fatalf("first region = %s %q", got[0].Code(), got[0].Name())
+	}
+}
+
+func regionListSkipsRejected(t *testing.T, f Fixture) {
+	ctx := context.Background()
+	noErr(t, f.Regions.Save(ctx, NewRegion(t, "region-1", "SP")))
+	wantErr(t, f.Regions.Save(ctx, NewRegion(t, "region-2", "SP")), region.ErrRegionCodeTaken)
+	got, err := f.Regions.List(ctx)
+	noErr(t, err)
+	if len(got) != 1 || got[0].ID() != "region-1" {
+		t.Fatalf("list holds %d regions, want only region-1", len(got))
+	}
 }

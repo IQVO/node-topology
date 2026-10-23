@@ -81,6 +81,9 @@ type RegionRepository interface {
 	// FindByCode returns the region with that code, or ErrNotFound. It backs
 	// the ErrRegionCodeTaken pre-check.
 	FindByCode(ctx context.Context, code string) (*region.Region, error)
+	// List returns every region ordered by id ascending; none is an empty
+	// list, never an error. Regions are not paginated (single digits).
+	List(ctx context.Context) ([]*region.Region, error)
 	// Save persists the region under the concurrency rule of the package
 	// comment. A second region with the same code is region.ErrRegionCodeTaken
 	// (unique index).

@@ -241,6 +241,20 @@ func (r *RegionRepository) FindByCode(ctx context.Context, code string) (*region
 	return nil, ports.ErrNotFound
 }
 
+// List returns every region by id ascending, an empty list when none exists.
+func (r *RegionRepository) List(ctx context.Context) ([]*region.Region, error) {
+	defer r.s.enter(ctx)()
+	out := []*region.Region{}
+	for _, snap := range sortedValues(r.s.regions) {
+		g, err := region.Restore(snap)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, g)
+	}
+	return out, nil
+}
+
 // Save stores the region; a second region with the same code is
 // region.ErrRegionCodeTaken.
 func (r *RegionRepository) Save(ctx context.Context, g *region.Region) error {

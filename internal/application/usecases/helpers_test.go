@@ -154,9 +154,16 @@ func (f *flakyAreas) Save(ctx context.Context, a *servicearea.ServiceArea) error
 
 type flakyRegions struct {
 	ports.RegionRepository
-	getErr, findErr error
-	saveErrs        []error
-	saves           int
+	getErr, findErr, listErr error
+	saveErrs                 []error
+	saves                    int
+}
+
+func (f *flakyRegions) List(ctx context.Context) ([]*region.Region, error) {
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+	return f.RegionRepository.List(ctx)
 }
 
 func (f *flakyRegions) Get(ctx context.Context, id region.ID) (*region.Region, error) {

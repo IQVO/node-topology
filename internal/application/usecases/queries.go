@@ -64,6 +64,37 @@ func (q *ListNodes) Execute(ctx context.Context, query ListNodesQuery) ([]views.
 	return out, nil
 }
 
+// GetRegion reads one region (Open Host Service).
+type GetRegion struct{ regions ports.RegionRepository }
+
+// NewGetRegion builds the query.
+func NewGetRegion(regions ports.RegionRepository) *GetRegion { return &GetRegion{regions} }
+
+// Execute returns the region, or ports.ErrNotFound.
+func (q *GetRegion) Execute(ctx context.Context, id region.ID) (views.Region, error) {
+	r, err := q.regions.Get(ctx, id)
+	if err != nil {
+		return views.Region{}, err
+	}
+	return views.RegionFrom(r), nil
+}
+
+// ListRegions lists every region (Open Host Service).
+type ListRegions struct{ regions ports.RegionRepository }
+
+// NewListRegions builds the query.
+func NewListRegions(regions ports.RegionRepository) *ListRegions { return &ListRegions{regions} }
+
+// Execute returns every region by id ascending, an empty list when none is
+// defined. Regions are not paginated (single digits of regions).
+func (q *ListRegions) Execute(ctx context.Context) ([]views.Region, error) {
+	regions, err := q.regions.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return views.RegionsFrom(regions), nil
+}
+
 // ListLanesQuery filters ListLanes; an empty field does not filter.
 type ListLanesQuery struct {
 	Origin      node.ID

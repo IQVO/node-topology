@@ -10,6 +10,7 @@ import (
 	"github.com/claudioed/node-topology/internal/application/views"
 	"github.com/claudioed/node-topology/internal/domain/lane"
 	"github.com/claudioed/node-topology/internal/domain/node"
+	"github.com/claudioed/node-topology/internal/domain/region"
 )
 
 // wire marshals v and decodes it into a generic map.
@@ -267,4 +268,16 @@ func TestServiceAreaAndRegionFrom(t *testing.T) {
 		t.Fatalf("region = %+v", r)
 	}
 	requireKeys(t, wire(t, r), "regionId", "code", "name")
+}
+
+func TestRegionsFromKeepsOrderAndIsNeverNil(t *testing.T) {
+	if got := views.RegionsFrom(nil); got == nil || len(got) != 0 {
+		t.Fatalf("RegionsFrom(nil) = %#v, want a non-nil empty slice", got)
+	}
+	sp, rj := repocontract.NewRegion(t, "r-1", "SP"), repocontract.NewRegion(t, "r-2", "RJ")
+	got := views.RegionsFrom([]*region.Region{rj, sp})
+	want := []views.Region{{RegionID: "r-2", Code: "RJ", Name: "Region RJ"}, {RegionID: "r-1", Code: "SP", Name: "Region SP"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("views = %+v, want %+v", got, want)
+	}
 }

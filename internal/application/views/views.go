@@ -206,6 +206,16 @@ func RegionFrom(r *region.Region) Region {
 	return Region{RegionID: string(r.ID()), Code: r.Code(), Name: r.Name()}
 }
 
+// RegionsFrom builds the views of rs, in the given order. The result is never
+// nil, so an empty list marshals as [].
+func RegionsFrom(rs []*region.Region) []Region {
+	out := make([]Region, len(rs))
+	for i, r := range rs {
+		out[i] = RegionFrom(r)
+	}
+	return out
+}
+
 // optTime returns nil for the zero time.
 func optTime(t time.Time) *time.Time {
 	if t.IsZero() {
