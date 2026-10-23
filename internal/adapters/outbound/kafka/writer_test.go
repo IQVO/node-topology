@@ -14,6 +14,9 @@ func TestNewWriterSettings(t *testing.T) {
 	if _, ok := w.Balancer.(*kafkago.Hash); !ok {
 		t.Fatalf("balancer = %T, want *kafka.Hash", w.Balancer)
 	}
+	if w.BatchTimeout != batchTimeout {
+		t.Fatalf("batch timeout = %v, want %v", w.BatchTimeout, batchTimeout)
+	}
 	if w.Topic != "" {
 		t.Fatalf("writer must not fix a topic, got %q", w.Topic)
 	}

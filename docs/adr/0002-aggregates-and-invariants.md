@@ -272,3 +272,20 @@ silent on the points below; each is an assumption and is reported as a model gap
   (the same use cases the REST adapter will call), not HTTP; HTTP behaviour is
   covered by the adapter's own tests in step 5. The steps name refusals by the
   REST problem slug, so a scenario reads the same as the contract.
+
+## Amendment (step 6, outbox relay and encoders): assumptions A34-A36
+
+- **A34 Nullable wire fields.** `subtype`, `vendorId` and `vendorNodeCode` of
+  `NodeRegistered` are always present and `null` when they do not apply, as
+  `apis/asyncapi.yaml` pins them (contracts-delta says optional fields are
+  omitted; these three are the documented exception, see ADR 0004). Every other
+  optional field (`sortDwellMinutes`, a cutoff's `days` and `maxOrders`, a closed
+  weekday) is omitted.
+- **A35 Stable bytes.** `operatingHoursByDay` is written Monday first and
+  `holidays`/`cutoffs` are always arrays, so an event encodes to the same bytes
+  every time. Instants are RFC 3339 UTC, with the fraction only when non-zero
+  (microsecond precision at most, the precision the clock adapter stamps).
+- **A36 One topic.** All nine events are integration events on
+  `retailnetwork.node-topology.events`; this context publishes nothing to
+  `.analytics`. The attempt cap and its ordering trade-off are ADR 0005.
+
