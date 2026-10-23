@@ -1,7 +1,7 @@
 // Command api is node-topology's composition root: it wires the environment
 // into the Postgres and Kafka adapters, the adapters into the use cases and
 // the outbox relay, all on real Postgres and real Kafka. There is no
-// in-memory mode, no log sink and no relay that is off.
+// alternative runtime, no log sink and no relay that is off.
 //
 // Environment:
 //

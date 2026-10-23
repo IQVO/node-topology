@@ -14,7 +14,7 @@ import (
 
 // The environment variables of the service. DATABASE_URL and KAFKA_BROKERS are
 // mandatory: a missing one is a boot error naming it, raised before anything
-// is opened or bound (there is no in-memory mode and no log sink).
+// is opened or bound (there is no alternative runtime and no log sink).
 const (
 	envKafkaBrokers      = "KAFKA_BROKERS"
 	envHTTPAddr          = "HTTP_ADDR"
