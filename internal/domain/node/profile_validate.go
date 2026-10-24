@@ -13,7 +13,7 @@ import (
 // node it belongs to. Errors are plain: callers wrap them.
 func checkShape(p OperationalProfile) error {
 	checks := []func(OperationalProfile) error{
-		checkRevision, checkTimezone, checkHours, checkHolidays, checkScalars, checkCap, checkCutoffShape,
+		checkRevision, checkTimezone, checkHours, checkHolidays, checkScalars, checkCap, checkCutoffShape, checkInbound,
 	}
 	for _, check := range checks {
 		if err := check(p); err != nil {
@@ -107,6 +107,8 @@ func checkScalars(p OperationalProfile) error {
 	}
 	return nil
 }
+
+func checkInbound(p OperationalProfile) error { return p.Inbound.validate() }
 
 func checkCap(p OperationalProfile) error {
 	c := p.ThroughputCap

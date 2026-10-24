@@ -12,3 +12,4 @@ The *Status* column is copied from each ADR's own `## Status` section.
 | [0004](./0004-cloudevents-envelope-and-type-catalogue.md) | CloudEvents envelope and type catalogue | Accepted (2026-10-23) |
 | [0005](./0005-outbox-relay-and-attempt-cap.md) | the outbox relay, its attempt cap and the CloudEvents encoders | Accepted (2026-10-23) |
 | [0006](./0006-http-adapter-idempotency-and-readiness.md) | the HTTP adapter, Idempotency-Key, problem types and readiness | Accepted (2026-10-23) |
+| [0007](./0007-inbound-limits-on-the-operational-profile.md) | inbound limits on the operational profile | Accepted (2026-10-24) |

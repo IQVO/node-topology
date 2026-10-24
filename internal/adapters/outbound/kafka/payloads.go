@@ -52,6 +52,30 @@ type throughputPayload struct {
 	Unit     string `json:"unit"`
 }
 
+type cartonDimsPayload struct {
+	L int `json:"l"`
+	W int `json:"w"`
+	H int `json:"h"`
+}
+
+type inboundPayload struct {
+	MaxCartonWeightG *int               `json:"maxCartonWeightG,omitempty"`
+	MaxCartonDimsMm  *cartonDimsPayload `json:"maxCartonDimsMm,omitempty"`
+	AcceptsPallets   *bool              `json:"acceptsPallets,omitempty"`
+	RequiresSscc     *bool              `json:"requiresSscc,omitempty"`
+}
+
+func inboundData(l *node.InboundLimits) *inboundPayload {
+	if l == nil {
+		return nil
+	}
+	p := &inboundPayload{MaxCartonWeightG: l.MaxCartonWeightG, AcceptsPallets: l.AcceptsPallets, RequiresSscc: l.RequiresSscc}
+	if d := l.MaxCartonDimsMm; d != nil {
+		p.MaxCartonDimsMm = &cartonDimsPayload{L: d.L, W: d.W, H: d.H}
+	}
+	return p
+}
+
 type profileDeclaredPayload struct {
 	NodeID              string                `json:"nodeId"`
 	ProfileRevision     int                   `json:"profileRevision"`
@@ -62,6 +86,7 @@ type profileDeclaredPayload struct {
 	Cutoffs             []cutoffPayload       `json:"cutoffs"`
 	ThroughputCap       throughputPayload     `json:"throughputCap"`
 	SortDwellMinutes    *int                  `json:"sortDwellMinutes,omitempty"`
+	Inbound             *inboundPayload       `json:"inbound,omitempty"`
 	DeclaredBy          string                `json:"declaredBy"`
 }
 
@@ -130,7 +155,7 @@ func profileDeclaredData(e node.NodeOperationalProfileDeclared) profileDeclaredP
 		OperatingHoursByDay: operatingHours(e.OperatingHoursByDay), Holidays: nonNil(e.Holidays),
 		HandlingTimeMinutes: e.HandlingTimeMinutes, Cutoffs: cutoffs(e.Cutoffs),
 		ThroughputCap:    throughputPayload{Value: e.ThroughputCap.Value, TimeUnit: string(e.ThroughputCap.TimeUnit), Unit: e.ThroughputCap.Unit},
-		SortDwellMinutes: e.SortDwellMinutes, DeclaredBy: string(e.DeclaredBy),
+		SortDwellMinutes: e.SortDwellMinutes, Inbound: inboundData(e.Inbound), DeclaredBy: string(e.DeclaredBy),
 	}
 }
 

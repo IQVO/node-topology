@@ -42,7 +42,7 @@ type goldenCase struct {
 
 func goldenCases() []goldenCase {
 	return []goldenCase{
-		registeredVendorCase(), registeredNetworkCase(), profileSortCase(), profileMinimalCase(),
+		registeredVendorCase(), registeredNetworkCase(), profileSortCase(), profileMinimalCase(), profileInboundCase(), profilePartialInboundCase(),
 		{
 			"NodeActivated", node.NodeActivated{Header: header, NodeID: "node-1", ActivatedAt: later},
 			"node", "node-1", `{"nodeId":"node-1","activatedAt":"2026-10-08T12:30:15.123456Z"}`,
@@ -142,6 +142,52 @@ func profileMinimalCase() goldenCase {
 			`"thursday":{"start":"09:00","end":"17:00"},"saturday":{"start":"09:00","end":"13:00"}},` +
 			`"holidays":[],"handlingTimeMinutes":0,"cutoffs":[{"localTime":"15:00"}],` +
 			`"throughputCap":{"value":10,"timeUnit":"DAY","unit":"ORDER"},"declaredBy":"VENDOR"}`,
+	}
+}
+
+func profileInboundCase() goldenCase {
+	weight, yes, no := 25000, true, false
+	return goldenCase{
+		"NodeOperationalProfileDeclared with every inbound limit",
+		node.NodeOperationalProfileDeclared{
+			Header: header, NodeID: "node-3", ProfileRevision: 3, Timezone: "America/Sao_Paulo",
+			OperatingHoursByDay: node.OperatingHours{node.Monday: {Start: "06:00", End: "22:00"}},
+			HandlingTimeMinutes: 60, Cutoffs: []node.CutoffSlot{{LocalTime: "12:00"}},
+			ThroughputCap: node.ThroughputCap{Value: 50, TimeUnit: node.TimeUnitHour, Unit: node.UnitOrder},
+			Inbound: &node.InboundLimits{
+				MaxCartonWeightG: &weight, MaxCartonDimsMm: &node.CartonDims{L: 600, W: 400, H: 300},
+				AcceptsPallets: &yes, RequiresSscc: &no,
+			},
+			DeclaredBy: node.DeclaredByVendor,
+		},
+		"node", "node-3",
+		`{"nodeId":"node-3","profileRevision":3,"timezone":"America/Sao_Paulo",` +
+			`"operatingHoursByDay":{"monday":{"start":"06:00","end":"22:00"}},` +
+			`"holidays":[],"handlingTimeMinutes":60,"cutoffs":[{"localTime":"12:00"}],` +
+			`"throughputCap":{"value":50,"timeUnit":"HOUR","unit":"ORDER"},` +
+			`"inbound":{"maxCartonWeightG":25000,"maxCartonDimsMm":{"l":600,"w":400,"h":300},"acceptsPallets":true,"requiresSscc":false},` +
+			`"declaredBy":"VENDOR"}`,
+	}
+}
+
+func profilePartialInboundCase() goldenCase {
+	no := false
+	return goldenCase{
+		"NodeOperationalProfileDeclared with a partial inbound declaration",
+		node.NodeOperationalProfileDeclared{
+			Header: header, NodeID: "node-4", ProfileRevision: 1, Timezone: "America/Sao_Paulo",
+			OperatingHoursByDay: node.OperatingHours{node.Monday: {Start: "06:00", End: "22:00"}},
+			HandlingTimeMinutes: 60, Cutoffs: []node.CutoffSlot{{LocalTime: "12:00"}},
+			ThroughputCap: node.ThroughputCap{Value: 50, TimeUnit: node.TimeUnitHour, Unit: node.UnitOrder},
+			Inbound:       &node.InboundLimits{AcceptsPallets: &no},
+			DeclaredBy:    node.DeclaredByNetworkOps,
+		},
+		"node", "node-4",
+		`{"nodeId":"node-4","profileRevision":1,"timezone":"America/Sao_Paulo",` +
+			`"operatingHoursByDay":{"monday":{"start":"06:00","end":"22:00"}},` +
+			`"holidays":[],"handlingTimeMinutes":60,"cutoffs":[{"localTime":"12:00"}],` +
+			`"throughputCap":{"value":50,"timeUnit":"HOUR","unit":"ORDER"},` +
+			`"inbound":{"acceptsPallets":false},"declaredBy":"NETWORK_OPS"}`,
 	}
 }
 

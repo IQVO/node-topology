@@ -14,7 +14,8 @@ This repository is a service of the retail network, not of the warehouse-systems
 ## What it does
 
 - **Nodes**: register a node (fulfillment centre, cross-dock, returns centre, sortation centre, delivery station, air hub), declare its operational
-  profile (a new immutable revision each time), activate, suspend and retire it.
+  profile (a new immutable revision each time; optionally with the inbound limits the node accepts: carton weight in grams, carton size in
+  millimetres, pallets, SSCC, [ADR 0007](docs/adr/0007-inbound-limits-on-the-operational-profile.md)), activate, suspend and retire it.
 - **Lanes**: open and close directed GROUND / AIR connections between ACTIVE nodes.
 - **Service areas**: assign a postal prefix to an ACTIVE delivery station.
 - **Regions**: define and read the partitions of the network.

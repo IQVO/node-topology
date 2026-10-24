@@ -132,7 +132,10 @@ paths:
         must fall inside the operating hours of that day, and a revision of an
         ACTIVE FULFILLMENT_CENTER keeps at least one cutoff and a handlingTime
         above zero. sortDwellMinutes is accepted only for SORTATION_CENTER and
-        AIR_HUB nodes. Publishes NodeOperationalProfileDeclared.
+        AIR_HUB nodes. The optional inbound limits (maxCartonWeightG,
+        maxCartonDimsMm, acceptsPallets, requiresSscc) are declared per
+        revision; a revision without inbound declares none, and consumers
+        then treat inbound limits as unchecked. Publishes NodeOperationalProfileDeclared.
       parameters:
         - $ref: '#/components/parameters/NodeId'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -142,6 +145,37 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/OperationalProfileDeclaration'
+            examples:
+              withInboundLimits:
+                summary: A revision that declares inbound limits (all optional).
+                value:
+                  profileRevision: 4
+                  timezone: America/Sao_Paulo
+                  operatingHoursByDay:
+                    monday: { start: '06:00', end: '22:00' }
+                  holidays: []
+                  handlingTimeMinutes: 240
+                  cutoffs:
+                    - { localTime: '11:00' }
+                  throughputCap: { value: 400, timeUnit: HOUR, unit: ORDER }
+                  inbound:
+                    maxCartonWeightG: 25000
+                    maxCartonDimsMm: { l: 600, w: 400, h: 300 }
+                    acceptsPallets: true
+                    requiresSscc: false
+                  declaredBy: VENDOR
+              withoutInboundLimits:
+                summary: No inbound key at all means no inbound limits are declared.
+                value:
+                  profileRevision: 5
+                  timezone: America/Sao_Paulo
+                  operatingHoursByDay:
+                    monday: { start: '06:00', end: '22:00' }
+                  handlingTimeMinutes: 240
+                  cutoffs:
+                    - { localTime: '11:00' }
+                  throughputCap: { value: 400, timeUnit: HOUR, unit: ORDER }
+                  declaredBy: VENDOR
       responses:
         '200':
           description: Profile revision stored; the node with its current profile.
@@ -661,6 +695,53 @@ components:
         unit:
           type: string
           enum: [ORDER]
+    CartonDimsMm:
+      type: object
+      description: The largest carton a node accepts, in millimetres. The three edges are declared together.
+      required: [l, w, h]
+      additionalProperties: false
+      properties:
+        l:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+          example: 600
+        w:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+          example: 400
+        h:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+          example: 300
+    InboundLimits:
+      type: object
+      description: >-
+        What the node declares about the inbound goods it receives. Every field
+        is optional and an absent field means "not declared", which a consumer
+        treats as unchecked; at least one field is set. Weight is in grams and
+        dimensions in millimetres, both integers.
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        maxCartonWeightG:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+          description: The heaviest carton the node accepts, in grams.
+          example: 25000
+        maxCartonDimsMm:
+          $ref: '#/components/schemas/CartonDimsMm'
+        acceptsPallets:
+          type: boolean
+          description: Whether the node receives pallets.
+          example: true
+        requiresSscc:
+          type: boolean
+          description: Whether every inbound carton must carry an SSCC.
+          example: false
     OperationalProfileDeclaration:
       type: object
       required: [profileRevision, timezone, operatingHoursByDay, handlingTimeMinutes, cutoffs, throughputCap, declaredBy]
@@ -693,6 +774,8 @@ components:
           type: integer
           minimum: 0
           description: Declared only by SORTATION_CENTER and AIR_HUB nodes.
+        inbound:
+          $ref: '#/components/schemas/InboundLimits'
         declaredBy:
           type: string
           enum: [VENDOR, NETWORK_OPS]

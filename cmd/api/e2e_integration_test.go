@@ -186,7 +186,7 @@ func restFlow(t *testing.T, s *service) world {
 	}
 
 	s.write(http.MethodPut, "/nodes/"+w.fc+"/operational-profile", fmt.Sprintf(profile, "VENDOR", ""), http.StatusOK)
-	s.write(http.MethodPut, "/nodes/"+w.sc+"/operational-profile", fmt.Sprintf(profile, "NETWORK_OPS", `,"sortDwellMinutes":25`), http.StatusOK)
+	s.write(http.MethodPut, "/nodes/"+w.sc+"/operational-profile", fmt.Sprintf(profile, "NETWORK_OPS", `,"sortDwellMinutes":25,"inbound":{"maxCartonWeightG":25000,"maxCartonDimsMm":{"l":600,"w":400,"h":300},"acceptsPallets":true}`), http.StatusOK)
 	s.write(http.MethodPut, "/nodes/"+w.station+"/operational-profile", fmt.Sprintf(profile, "NETWORK_OPS", ""), http.StatusOK)
 	for _, id := range []string{w.fc, w.sc, w.station} {
 		if n := s.write(http.MethodPost, "/nodes/"+id+":activate", "", http.StatusOK); str(n, "status") != "ACTIVE" {
@@ -371,6 +371,17 @@ func assertPayloads(t *testing.T, got []kafkatest.Message, w world) {
 	prof := dataOf(t, got[5])
 	if prof["sortDwellMinutes"] != float64(25) || prof["profileRevision"] != float64(1) || str(prof, "declaredBy") != "NETWORK_OPS" || prof["handlingTimeMinutes"] != float64(45) {
 		t.Errorf("sort centre NodeOperationalProfileDeclared data = %v", prof)
+	}
+	in, _ := prof["inbound"].(map[string]any)
+	dims, _ := in["maxCartonDimsMm"].(map[string]any)
+	if in["maxCartonWeightG"] != float64(25000) || in["acceptsPallets"] != true || dims["l"] != float64(600) || dims["w"] != float64(400) || dims["h"] != float64(300) {
+		t.Errorf("sort centre NodeOperationalProfileDeclared inbound = %v", prof["inbound"])
+	}
+	if _, present := in["requiresSscc"]; present {
+		t.Error("an undeclared requiresSscc must be omitted from the inbound limits")
+	}
+	if _, present := dataOf(t, got[4])["inbound"]; present {
+		t.Error("the FC profile event carries inbound limits it never declared")
 	}
 	if _, dwell := dataOf(t, got[4])["sortDwellMinutes"]; dwell {
 		t.Error("the FC profile event carries a sortDwellMinutes")

@@ -21,6 +21,7 @@ var nodeCases = []named{
 	{"update with the next version is stored", nodeUpdate},
 	{"stale and phantom saves are ErrConcurrentUpdate", nodeConcurrency},
 	{"every profile revision is its own row, oldest first", nodeProfileRevisions},
+	{"inbound limits are kept per revision and absent ones stay absent", nodeInboundLimitsPerRevision},
 	{"saving without a new revision adds no row", nodeNoRevisionNoRow},
 	{"profile revisions of an unknown node are ErrNotFound", nodeProfileRevisionsMiss},
 	{"list filters by type, region and status ordered by id", nodeList},
@@ -183,6 +184,43 @@ func nodeProfileRevisions(t *testing.T, f Fixture) {
 	noErr(t, err)
 	if p, _ := got.Profile(); p.Revision != 2 || p.HandlingTimeMinutes != 45 {
 		t.Fatalf("current profile = %+v, want revision 2", p)
+	}
+}
+
+func nodeInboundLimitsPerRevision(t *testing.T, f Fixture) {
+	ctx := context.Background()
+	reg := seedRegion(t, f, "region-1", "SP")
+	n := saveActive(t, f, reg, node.FulfillmentCenter, "node-1", "FC-1") // revision 1: no inbound limits
+	weight, yes, no := 25000, true, false
+	second := Declaration(2)
+	second.Inbound = &node.InboundLimits{
+		MaxCartonWeightG: &weight, MaxCartonDimsMm: &node.CartonDims{L: 600, W: 400, H: 300}, AcceptsPallets: &yes, RequiresSscc: &no,
+	}
+	_, err := n.DeclareProfile(second, Now)
+	noErr(t, err)
+	noErr(t, f.Nodes.Save(ctx, n))
+	third := Declaration(3)
+	third.Inbound = &node.InboundLimits{RequiresSscc: &yes}
+	_, err = n.DeclareProfile(third, Now)
+	noErr(t, err)
+	noErr(t, f.Nodes.Save(ctx, n))
+	fourth := Declaration(4) // declares none again
+	_, err = n.DeclareProfile(fourth, Now)
+	noErr(t, err)
+	noErr(t, f.Nodes.Save(ctx, n))
+
+	rows, err := f.Nodes.ProfileRevisions(ctx, "node-1")
+	noErr(t, err)
+	if len(rows) != 4 || rows[0].Inbound != nil || rows[3].Inbound != nil {
+		t.Fatalf("revisions 1 and 4 declare no inbound limits: %+v", rows)
+	}
+	if !reflect.DeepEqual(rows[1].Inbound, second.Inbound) || !reflect.DeepEqual(rows[2].Inbound, third.Inbound) {
+		t.Fatalf("inbound limits changed in storage: rev 2 %+v, rev 3 %+v", rows[1].Inbound, rows[2].Inbound)
+	}
+	got, err := f.Nodes.Get(ctx, "node-1")
+	noErr(t, err)
+	if p, _ := got.Profile(); p.Inbound != nil {
+		t.Fatalf("the current revision declares no inbound limits: %+v", p.Inbound)
 	}
 }
 
