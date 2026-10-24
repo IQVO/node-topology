@@ -184,3 +184,71 @@ terminationGracePeriodSeconds: 30
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
+# The read-only MCP server (ADR 0008): cmd/mcp over Streamable HTTP at /mcp
+# with an open /healthz, exposing the same read use cases as the REST adapter
+# (get_node, list_nodes, list_lanes, resolve_service_area, get_region,
+# list_regions). It reads the service database, runs the boot migrations like
+# the api and NEVER dials Kafka, so it needs database.* but no brokers. OFF by
+# default: the api alone is the default runtime.
+mcp:
+  enabled: false
+  replicaCount: 1
+  httpAddr: ":8090"                  # MCP_ADDR
+  serviceVersion: "dev"              # SERVICE_VERSION (logged at boot)
+  environment: "dev"                 # ENVIRONMENT (logged at boot)
+  service:
+    type: ClusterIP
+    port: 8090
+    targetPort: 8090
+  # Gateway exposure: /api/mcp/node-topology -> Service :8090, prefix
+  # rewritten to /mcp. Needs the Gateway parentRef from the environment that
+  # deploys the chart. No auth plugin anywhere (fleet-wide revert).
+  route:
+    enabled: false
+    path: "/api/mcp/node-topology"
+    parentRefs:
+      - name: ""
+        namespace: ""
+        sectionName: "http"
+  extraEnv: []
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# The web remote (ADR 0009): web/, the node_topology_mfe Module Federation
+# remote served as static files by its own nginx-unprivileged pod. It talks to
+# the api through the gateway at runtime (apiOrigin from /config.json) and
+# needs NO database and NO Kafka here. OFF by default; never routed by this
+# chart (the web gateway owns /mfes/node-topology/).
+frontend:
+  enabled: false
+  replicaCount: 1
+  image:
+    repository: ghcr.io/iqvo/node-topology-frontend
+    pullPolicy: IfNotPresent
+    tag: ""
+  service:
+    port: 80
+    targetPort: 8080
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 101
+    runAsGroup: 101
+    fsGroup: 101
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+  resources:
+    limits:
+      cpu: 200m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi

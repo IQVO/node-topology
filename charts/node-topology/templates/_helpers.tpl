@@ -147,3 +147,12 @@ does not exist.
 {{- end -}}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Fully qualified name of the optional MCP server workload (ADR 0008). Its own
+Deployment + Service pair, pinned by app.kubernetes.io/component=mcp
+(tests/test_service_selectors.py), so the api Service never selects it.
+*/}}
+{{- define "node-topology.mcpFullname" -}}
+{{- include "node-topology.fullname" . }}-mcp
+{{- end }}
