@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 	"time"
 
@@ -39,6 +40,10 @@ func rowFor(d node.ProfileDeclaration, at time.Time) (*profileRow, error) {
 	if err != nil {
 		return nil, err
 	}
+	inbound, err := encodeInbound(d.Inbound)
+	if err != nil {
+		return nil, err
+	}
 	rev, handling, value := d.Revision, d.HandlingTimeMinutes, d.ThroughputCap.Value
 	unitOf, unit := d.ThroughputCap.TimeUnit, d.ThroughputCap.Unit
 	tz, by := d.Timezone, string(d.DeclaredBy)
@@ -46,7 +51,7 @@ func rowFor(d node.ProfileDeclaration, at time.Time) (*profileRow, error) {
 	return &profileRow{
 		Revision: &rev, Timezone: &tz, OperatingHours: hours, Holidays: holidays, HandlingTime: &handling,
 		Cutoffs: cutoffs, ThroughputValue: &value, ThroughputUnitOf: (*string)(&unitOf), ThroughputUnit: &unit,
-		SortDwell: d.SortDwellMinutes, DeclaredBy: &by, DeclaredAt: &declaredAt,
+		SortDwell: d.SortDwellMinutes, Inbound: inbound, DeclaredBy: &by, DeclaredAt: &declaredAt,
 	}, nil
 }
 
@@ -101,6 +106,10 @@ func TestProfileRowRejectsCorruptRows(t *testing.T) {
 		{"operating hours are the wrong shape", func(r *profileRow) { r.OperatingHours = []byte(`[1,2]`) }},
 		{"cutoffs are not JSON", func(r *profileRow) { r.Cutoffs = []byte("not json") }},
 		{"holidays are not JSON", func(r *profileRow) { r.Holidays = []byte("not json") }},
+		{"inbound is not JSON", func(r *profileRow) { r.Inbound = []byte("not json") }},
+		{"inbound is the wrong shape", func(r *profileRow) { r.Inbound = []byte(`[1]`) }},
+		{"inbound declares a zero weight", func(r *profileRow) { r.Inbound = []byte(`{"maxCartonWeightG":0}`) }},
+		{"inbound declares nothing", func(r *profileRow) { r.Inbound = []byte(`{}`) }},
 		{"the timezone is not a shaped IANA name", func(r *profileRow) { tz := "123/Zone"; r.Timezone = &tz }},
 	}
 	for _, tc := range tests {
@@ -119,8 +128,8 @@ func TestProfileRowRejectsCorruptRows(t *testing.T) {
 
 func TestProfileRowDestMatchesColumns(t *testing.T) {
 	row := &profileRow{}
-	if got := len(row.dest()); got != 12 {
-		t.Fatalf("dest() has %d targets, want 12 (one per column of profileColumns)", got)
+	if got := len(row.dest()); got != 13 {
+		t.Fatalf("dest() has %d targets, want 13 (one per column of profileColumns)", got)
 	}
 }
 
@@ -253,5 +262,45 @@ func TestDerefHelpers(t *testing.T) {
 	}
 	if v := 7; derefInt(&v) != 7 {
 		t.Fatal("derefInt(&7) != 7")
+	}
+}
+
+func TestProfileRowInboundRoundTrip(t *testing.T) {
+	at := time.Date(2026, 10, 23, 12, 0, 0, 0, time.UTC)
+	weight, yes, no := 25000, true, false
+	tests := []struct {
+		name string
+		in   *node.InboundLimits
+		raw  string
+	}{
+		{"no limits is SQL NULL", nil, ""},
+		{"weight only", &node.InboundLimits{MaxCartonWeightG: &weight}, `{"maxCartonWeightG":25000}`},
+		{"every limit", &node.InboundLimits{
+			MaxCartonWeightG: &weight, MaxCartonDimsMm: &node.CartonDims{L: 600, W: 400, H: 300},
+			AcceptsPallets: &yes, RequiresSscc: &no,
+		}, `{"maxCartonWeightG":25000,"maxCartonDimsMm":{"l":600,"w":400,"h":300},"acceptsPallets":true,"requiresSscc":false}`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			d := rowDeclaration(1)
+			d.Inbound = tc.in
+			row, err := rowFor(d, at)
+			if err != nil {
+				t.Fatalf("build row: %v", err)
+			}
+			if tc.raw == "" && row.Inbound != nil {
+				t.Fatalf("stored %s, want SQL NULL", row.Inbound)
+			}
+			if tc.raw != "" && string(row.Inbound) != tc.raw {
+				t.Fatalf("stored %s, want %s", row.Inbound, tc.raw)
+			}
+			got, ok, err := row.profile()
+			if err != nil || !ok {
+				t.Fatalf("profile() = ok %v, err %v", ok, err)
+			}
+			if !reflect.DeepEqual(got.Inbound, tc.in) {
+				t.Fatalf("inbound = %+v, want %+v", got.Inbound, tc.in)
+			}
+		})
 	}
 }

@@ -64,6 +64,32 @@ type throughputBody struct {
 	Unit     string `json:"unit"`
 }
 
+// cartonDimsBody: a missing edge decodes to 0, which the domain refuses, so
+// the three edges are declared together or not at all.
+type cartonDimsBody struct {
+	L int `json:"l"`
+	W int `json:"w"`
+	H int `json:"h"`
+}
+
+type inboundBody struct {
+	MaxCartonWeightG *int            `json:"maxCartonWeightG"`
+	MaxCartonDimsMm  *cartonDimsBody `json:"maxCartonDimsMm"`
+	AcceptsPallets   *bool           `json:"acceptsPallets"`
+	RequiresSscc     *bool           `json:"requiresSscc"`
+}
+
+func (b *inboundBody) limits() *node.InboundLimits {
+	if b == nil {
+		return nil
+	}
+	l := &node.InboundLimits{MaxCartonWeightG: b.MaxCartonWeightG, AcceptsPallets: b.AcceptsPallets, RequiresSscc: b.RequiresSscc}
+	if d := b.MaxCartonDimsMm; d != nil {
+		l.MaxCartonDimsMm = &node.CartonDims{L: d.L, W: d.W, H: d.H}
+	}
+	return l
+}
+
 type profileBody struct {
 	ProfileRevision     int                     `json:"profileRevision"`
 	Timezone            string                  `json:"timezone"`
@@ -73,6 +99,7 @@ type profileBody struct {
 	Cutoffs             []cutoffBody            `json:"cutoffs"`
 	ThroughputCap       throughputBody          `json:"throughputCap"`
 	SortDwellMinutes    *int                    `json:"sortDwellMinutes"`
+	Inbound             *inboundBody            `json:"inbound"`
 	DeclaredBy          string                  `json:"declaredBy"`
 }
 
@@ -92,7 +119,7 @@ func (b profileBody) declaration() node.ProfileDeclaration {
 		Revision: b.ProfileRevision, Timezone: b.Timezone, OperatingHours: hours, Holidays: b.Holidays,
 		HandlingTimeMinutes: b.HandlingTimeMinutes, Cutoffs: cutoffs,
 		ThroughputCap:    node.ThroughputCap{Value: b.ThroughputCap.Value, TimeUnit: node.TimeUnit(b.ThroughputCap.TimeUnit), Unit: b.ThroughputCap.Unit},
-		SortDwellMinutes: b.SortDwellMinutes, DeclaredBy: node.DeclaredBy(b.DeclaredBy),
+		SortDwellMinutes: b.SortDwellMinutes, Inbound: b.Inbound.limits(), DeclaredBy: node.DeclaredBy(b.DeclaredBy),
 	}
 }
 

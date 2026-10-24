@@ -281,3 +281,43 @@ func TestRegionsFromKeepsOrderAndIsNeverNil(t *testing.T) {
 		t.Fatalf("views = %+v, want %+v", got, want)
 	}
 }
+
+func TestProfileFromInbound(t *testing.T) {
+	d := repocontract.Declaration(1)
+	weight, yes := 25000, true
+	d.Inbound = &node.InboundLimits{
+		MaxCartonWeightG: &weight, MaxCartonDimsMm: &node.CartonDims{L: 600, W: 400, H: 300}, AcceptsPallets: &yes,
+	}
+	p, err := node.NewOperationalProfile(d, repocontract.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v := views.ProfileFrom(p)
+	in := v.Inbound
+	if in == nil || *in.MaxCartonWeightG != 25000 || *in.MaxCartonDimsMm != (views.CartonDims{L: 600, W: 400, H: 300}) ||
+		!*in.AcceptsPallets || in.RequiresSscc != nil {
+		t.Fatalf("inbound = %+v", in)
+	}
+	got := wire(t, v)["inbound"].(map[string]any)
+	requireKeys(t, got, "maxCartonWeightG", "maxCartonDimsMm", "acceptsPallets")
+	forbidKeys(t, got, "requiresSscc")
+	requireKeys(t, got["maxCartonDimsMm"].(map[string]any), "l", "w", "h")
+	// the view does not alias the stored profile
+	*in.MaxCartonWeightG = 1
+	*in.AcceptsPallets = false
+	if *p.Inbound.MaxCartonWeightG != 25000 || !*p.Inbound.AcceptsPallets {
+		t.Fatal("the view aliases the profile's inbound limits")
+	}
+}
+
+func TestProfileFromWithoutInboundOmitsIt(t *testing.T) {
+	p, err := node.NewOperationalProfile(repocontract.Declaration(1), repocontract.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v := views.ProfileFrom(p)
+	if v.Inbound != nil {
+		t.Fatalf("inbound = %+v", v.Inbound)
+	}
+	forbidKeys(t, wire(t, v), "inbound")
+}

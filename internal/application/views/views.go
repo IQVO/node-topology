@@ -57,6 +57,22 @@ type ThroughputCap struct {
 	Unit     string `json:"unit"`
 }
 
+// CartonDims is the largest carton a node accepts, in millimetres.
+type CartonDims struct {
+	L int `json:"l"`
+	W int `json:"w"`
+	H int `json:"h"`
+}
+
+// InboundLimits are the optional inbound limits of a node; absent fields are
+// not declared.
+type InboundLimits struct {
+	MaxCartonWeightG *int        `json:"maxCartonWeightG,omitempty"`
+	MaxCartonDimsMm  *CartonDims `json:"maxCartonDimsMm,omitempty"`
+	AcceptsPallets   *bool       `json:"acceptsPallets,omitempty"`
+	RequiresSscc     *bool       `json:"requiresSscc,omitempty"`
+}
+
 // OperationalProfile is one revision of a node's declared profile.
 type OperationalProfile struct {
 	ProfileRevision     int                 `json:"profileRevision"`
@@ -67,6 +83,7 @@ type OperationalProfile struct {
 	Cutoffs             []CutoffSlot        `json:"cutoffs"`
 	ThroughputCap       ThroughputCap       `json:"throughputCap"`
 	SortDwellMinutes    *int                `json:"sortDwellMinutes,omitempty"`
+	Inbound             *InboundLimits      `json:"inbound,omitempty"`
 	DeclaredBy          string              `json:"declaredBy"`
 	DeclaredAt          time.Time           `json:"declaredAt"`
 }
@@ -173,9 +190,29 @@ func ProfileFrom(p node.OperationalProfile) OperationalProfile {
 			Value: p.ThroughputCap.Value, TimeUnit: string(p.ThroughputCap.TimeUnit), Unit: p.ThroughputCap.Unit,
 		},
 		SortDwellMinutes: copyInt(p.SortDwellMinutes),
+		Inbound:          inboundFrom(p.Inbound),
 		DeclaredBy:       string(p.DeclaredBy),
 		DeclaredAt:       p.DeclaredAt,
 	}
+}
+
+func inboundFrom(l *node.InboundLimits) *InboundLimits {
+	if l == nil {
+		return nil
+	}
+	v := &InboundLimits{MaxCartonWeightG: copyInt(l.MaxCartonWeightG), AcceptsPallets: copyBool(l.AcceptsPallets), RequiresSscc: copyBool(l.RequiresSscc)}
+	if d := l.MaxCartonDimsMm; d != nil {
+		v.MaxCartonDimsMm = &CartonDims{L: d.L, W: d.W, H: d.H}
+	}
+	return v
+}
+
+func copyBool(p *bool) *bool {
+	if p == nil {
+		return nil
+	}
+	v := *p
+	return &v
 }
 
 // LaneFrom builds the view of l.
