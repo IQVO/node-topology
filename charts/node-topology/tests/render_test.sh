@@ -13,10 +13,9 @@ release=node-topology
 # Dummy values, no password: the chart refuses to render without a database
 # source and without Kafka brokers.
 base=(--set database.url=postgres://u@example.invalid:5432/db --set kafka.brokers=kafka.example.invalid:9092)
-# Every optional value set (ct lint's values file), so every env var the
-# binary can read is rendered.
-everything=(-f "$chart_dir/ci/default-values.yaml" \
-  --set config.outboxRelayInterval=7s --set config.shutdownDrainDelay=3s)
+# Every optional value and component set (ct lint's all-components values
+# file), so every env var the binaries can read is rendered.
+everything=(-f "$chart_dir/ci/all-components-values.yaml")
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
@@ -186,13 +185,63 @@ expect_refusal "a *_CONSUMER_GROUP through extraEnv" "consumes no topic" "${base
 render_only deployment.yaml "${base[@]}" --set config.shutdownDrainDelay=30s --set terminationGracePeriodSeconds=50 >/dev/null \
   || fail "a 30s drain delay with a 50s grace period must render"
 
-# --- the chart is the api alone ---------------------------------------------------
+# --- optional components (ADR 0008 mcp, ADR 0009 web remote) -------------------
+# Every optional component is OFF by default: a default render is the api alone.
+default_render="$(render "${base[@]}")"
 for c in mcp analytics frontend projector reports; do
-  if grep -q "app.kubernetes.io/component: $c\$" <<<"$all_docs"; then fail "unexpected $c component"; fi
+  if grep -q "app.kubernetes.io/component: $c\$" <<<"$default_render"; then
+    fail "the $c component must not render while its enabled flag is false"
+  fi
 done
-grep -q 'app.kubernetes.io/component: api' <<<"$all_docs" || fail "the api component is missing"
-if grep -qE 'kind: (HorizontalPodAutoscaler|Ingress|HTTPRoute)' <<<"$all_docs"; then
+grep -q 'app.kubernetes.io/component: api' <<<"$default_render" || fail "the api component is missing"
+if grep -qE 'kind: (HorizontalPodAutoscaler|Ingress|HTTPRoute)' <<<"$default_render"; then
   fail "HPA, Ingress and HTTPRoute must be off by default"
+fi
+
+# binary_env_of <main.go...>: the env literals one binary reads.
+binary_env_of() {
+  local f
+  for f in "$@"; do
+    grep -hoE '[Gg]etenv\("[A-Z][A-Z0-9_]*"' "$f" || true
+  done | sed -E 's/.*"([A-Z0-9_]+)".*/\1/' | sort -u
+}
+# assert_env_rendered <rendered> <label> <vars...>
+assert_env_rendered() {
+  local rendered="$1" label="$2"; shift 2
+  local var
+  for var in "$@"; do
+    grep -q "name: $var\$" <<<"$rendered" || fail "$label does not render $var, which its binary reads"
+  done
+}
+
+# mcp: its own env, never the api ConfigMap, never Kafka (ADR 0008).
+mcp_dep="$(render_only mcp-deployment.yaml "${base[@]}" --set mcp.enabled=true)"
+grep -q 'app.kubernetes.io/component: mcp' <<<"$mcp_dep" || fail "the mcp Deployment was not rendered with mcp.enabled=true"
+grep -q 'command: \["/app/mcp"\]' <<<"$mcp_dep" || fail "the mcp Deployment must run /app/mcp"
+if grep -q 'configMapRef:' <<<"$mcp_dep"; then fail "mcp-deployment.yaml must not mount the api ConfigMap"; fi
+if grep -Eq 'name: (KAFKA_BROKERS|OUTBOX_[A-Z_]+|[A-Z]+_CONSUMER_GROUP)$' <<<"$mcp_dep"; then
+  fail "the mcp Deployment must not get Kafka/relay/consumer env (read-only, never dials Kafka)"
+fi
+# shellcheck disable=SC2207
+mcp_vars=($(binary_env_of "$repo_dir/cmd/mcp/main.go"))
+(( ${#mcp_vars[@]} >= 3 )) || fail "found only ${#mcp_vars[@]} env literals in cmd/mcp/main.go; the scan is looking in the wrong place"
+assert_env_rendered "$mcp_dep" "the mcp Deployment" "${mcp_vars[@]}" DATABASE_URL MIGRATIONS_DATABASE_URL
+
+# The web remote: its own nginx Deployment + ClusterIP Service, no DB/Kafka
+# env, and no route in this chart (the web gateway owns /mfes/node-topology/).
+frontend_dep="$(render_only frontend-deployment.yaml "${base[@]}" --set frontend.enabled=true)"
+frontend_svc="$(render_only frontend-service.yaml "${base[@]}" --set frontend.enabled=true)"
+grep -q 'app.kubernetes.io/component: frontend' <<<"$frontend_dep" || fail "the frontend Deployment was not rendered with frontend.enabled=true"
+grep -q 'type: ClusterIP' <<<"$frontend_svc" || fail "the frontend Service must stay ClusterIP"
+if grep -Eq 'name: (DATABASE_URL|KAFKA_BROKERS)$' <<<"$frontend_dep"; then fail "the frontend Deployment must not get database/Kafka env"; fi
+
+# ALL optional components render TOGETHER (ct lint's all-components file).
+together="$(render "${everything[@]}")"
+for component in api mcp frontend; do
+  grep -q "app.kubernetes.io/component: $component\$" <<<"$together" || fail "the full render lacks the $component component"
+done
+if grep -E 'kind: (Ingress|HTTPRoute)' <<<"$together" | grep -q frontend; then
+  fail "frontend routing must not live in this chart"
 fi
 
 echo "PASS: node-topology chart render assertions"
