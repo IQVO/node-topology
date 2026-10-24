@@ -3,7 +3,7 @@
 harness-template: v4
 
 Retail network, bounded context Node Topology (Supporting, logistics tier). Owns Node, Lane, ServiceArea and Region and publishes them; consumes no Kafka topic and calls no sibling.
-Design source of truth: IQVO/retail-network-docs `model/model.yaml` (context node-topology). This service belongs to the retail network, not the warehouse-systems fleet.
+Design source of truth: IQVO/warehouse-docs `network/model/model.yaml` (context node-topology). This service belongs to the retail network, not the warehouse-systems fleet.
 This project is a domain-driven design study, not associated with any company: never name a real company, brand or product in code, comments, ADRs, specs, tests or fixtures (README `## Disclaimer`).
 
 ## Commands
