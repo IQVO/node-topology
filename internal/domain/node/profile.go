@@ -126,7 +126,10 @@ type ProfileDeclaration struct {
 	ThroughputCap       ThroughputCap
 	// SortDwellMinutes is declared only by SORTATION_CENTER and AIR_HUB nodes.
 	SortDwellMinutes *int
-	DeclaredBy       DeclaredBy
+	// Inbound is the optional inbound limits of the node; nil declares none
+	// (ADR 0007).
+	Inbound    *InboundLimits
+	DeclaredBy DeclaredBy
 }
 
 // OperationalProfile is one immutable, versioned revision of a node's
@@ -156,6 +159,7 @@ func (p OperationalProfile) clone() OperationalProfile {
 		v := *p.SortDwellMinutes
 		c.SortDwellMinutes = &v
 	}
+	c.Inbound = p.Inbound.clone()
 	return c
 }
 

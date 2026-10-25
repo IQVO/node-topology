@@ -159,7 +159,7 @@ components:
       name: NodeOperationalProfileDeclared
       title: Node operational profile declared
       summary: A new operational profile revision was stored for a node.
-      description: "`type` = `com.retailnetwork.logistics.node-topology.node.NodeOperationalProfileDeclared`; subject and key = the nodeId. Raised by DeclareOperationalProfile. `profileRevision` strictly increases per node; consumers keep the highest. Local times are `HH:mm` in `timezone`; a weekday missing from `operatingHoursByDay` is closed; `holidays` are ISO dates closed all day. A cutoff without `days` applies to every operating day. `sortDwellMinutes` is present only for SORTATION_CENTER and AIR_HUB nodes."
+      description: "`type` = `com.retailnetwork.logistics.node-topology.node.NodeOperationalProfileDeclared`; subject and key = the nodeId. Raised by DeclareOperationalProfile. `profileRevision` strictly increases per node; consumers keep the highest. Local times are `HH:mm` in `timezone`; a weekday missing from `operatingHoursByDay` is closed; `holidays` are ISO dates closed all day. A cutoff without `days` applies to every operating day. `sortDwellMinutes` is present only for SORTATION_CENTER and AIR_HUB nodes. `inbound` is present only when the revision declares inbound limits (absent = none declared, consumers treat them as unchecked); every limit inside it is optional, weight is in grams and dimensions in millimetres."
       contentType: application/cloudevents+json
       tags:
         - name: node
@@ -194,6 +194,34 @@ components:
                 - { localTime: "11:00" }
                 - { localTime: "18:00", days: [monday, tuesday, wednesday, thursday, friday], maxOrders: 1200 }
               throughputCap: { value: 400, timeUnit: HOUR, unit: ORDER }
+              declaredBy: VENDOR
+        - name: nodeOperationalProfileDeclaredWithInbound
+          summary: A revision that declares inbound limits; seller-side consumers keep them as a local view.
+          payload:
+            specversion: "1.0"
+            id: "3f6c2a9e-8b1d-4c7a-9e55-0d2f6b7a1c46"
+            source: "/retailnetwork/node-topology"
+            type: "com.retailnetwork.logistics.node-topology.node.NodeOperationalProfileDeclared"
+            subject: "node-0f3a91"
+            time: "2026-10-22T14:20:00Z"
+            datacontenttype: "application/json"
+            dataschema: "urn:retailnetwork:node-topology:events:NodeOperationalProfileDeclared:v1"
+            data:
+              nodeId: "node-0f3a91"
+              profileRevision: 4
+              timezone: "America/Sao_Paulo"
+              operatingHoursByDay:
+                monday: { start: "06:00", end: "22:00" }
+              holidays: []
+              handlingTimeMinutes: 240
+              cutoffs:
+                - { localTime: "11:00" }
+              throughputCap: { value: 400, timeUnit: HOUR, unit: ORDER }
+              inbound:
+                maxCartonWeightG: 25000
+                maxCartonDimsMm: { l: 600, w: 400, h: 300 }
+                acceptsPallets: true
+                requiresSscc: false
               declaredBy: VENDOR
 
     NodeActivated:
@@ -484,6 +512,23 @@ components:
                 postalCode: { type: string }
                 countryCode: { type: string, description: ISO 3166-1 alpha-2. }
 
+    InboundLimits:
+      type: object
+      description: Optional inbound limits of the node. Present only when declared; every field is optional, at least one is set.
+      minProperties: 1
+      properties:
+        maxCartonWeightG: { type: integer, minimum: 1, description: The heaviest carton the node accepts, in grams. }
+        maxCartonDimsMm:
+          type: object
+          description: The largest carton the node accepts, in millimetres; the three edges are always together.
+          required: [l, w, h]
+          properties:
+            l: { type: integer, minimum: 1 }
+            w: { type: integer, minimum: 1 }
+            h: { type: integer, minimum: 1 }
+        acceptsPallets: { type: boolean, description: Whether the node receives pallets. }
+        requiresSscc: { type: boolean, description: Whether every inbound carton must carry an SSCC. }
+
     NodeOperationalProfileDeclaredEvent:
       allOf:
         - $ref: "#/components/schemas/CloudEventEnvelope"
@@ -507,6 +552,7 @@ components:
                   items: { $ref: "#/components/schemas/CutoffSlot" }
                 throughputCap: { $ref: "#/components/schemas/ThroughputCap" }
                 sortDwellMinutes: { type: integer, minimum: 0, description: Omitted unless the node is a SORTATION_CENTER or an AIR_HUB. }
+                inbound: { $ref: "#/components/schemas/InboundLimits" }
                 declaredBy: { type: string, enum: [VENDOR, NETWORK_OPS] }
 
     NodeActivatedEvent:

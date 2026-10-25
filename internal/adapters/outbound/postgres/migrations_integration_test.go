@@ -4,10 +4,12 @@ package postgres_test
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"testing"
 
 	"github.com/golang-migrate/migrate/v4"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/claudioed/node-topology/internal/adapters/outbound/postgres"
@@ -20,7 +22,8 @@ var allTables = []string{
 	"idempotency_keys", "lanes", "node_profile_revisions", "nodes", "outbox_events", "regions", "service_areas",
 }
 
-// coreTables are the tables of migration 0001; 0002 adds the other two.
+// coreTables are the tables of migration 0001; 0002 adds the other two and 0003
+// adds a column to node_profile_revisions only.
 var coreTables = []string{"lanes", "node_profile_revisions", "nodes", "regions", "service_areas"}
 
 func tables(t *testing.T, pool *pgxpool.Pool) []string {
@@ -78,7 +81,7 @@ func TestMigrationsGoUpDownUp(t *testing.T) {
 	if err := m.Up(); err != nil {
 		t.Fatalf("up: %v", err)
 	}
-	wantVersion(t, m, 2)
+	wantVersion(t, m, 3)
 	wantTables(t, pool, allTables)
 
 	if err := m.Down(); err != nil {
@@ -90,7 +93,7 @@ func TestMigrationsGoUpDownUp(t *testing.T) {
 	if err := m.Up(); err != nil {
 		t.Fatalf("up again: %v", err)
 	}
-	wantVersion(t, m, 2)
+	wantVersion(t, m, 3)
 	wantTables(t, pool, allTables)
 }
 
@@ -115,11 +118,48 @@ func TestMigrationsStepDownOneRemovesOnlyTheInfrastructureTables(t *testing.T) {
 	if err := m.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.Steps(-1); err != nil {
+	if err := m.Steps(-2); err != nil {
 		t.Fatalf("step down: %v", err)
 	}
 	wantVersion(t, m, 1)
 	wantTables(t, pool, coreTables)
+}
+
+// inboundColumn reports whether node_profile_revisions has the nullable JSONB
+// inbound column of migration 0003.
+func inboundColumn(t *testing.T, pool *pgxpool.Pool) (present, nullable bool, dataType string) {
+	t.Helper()
+	var isNullable string
+	err := pool.QueryRow(context.Background(), `
+		SELECT is_nullable, data_type FROM information_schema.columns
+		WHERE table_schema = 'public' AND table_name = 'node_profile_revisions' AND column_name = 'inbound'`).Scan(&isNullable, &dataType)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, false, ""
+	}
+	if err != nil {
+		t.Fatalf("inspect column: %v", err)
+	}
+	return true, isNullable == "YES", dataType
+}
+
+func TestMigration0003AddsAndDropsOnlyTheInboundColumn(t *testing.T) {
+	url := emptyURL(t)
+	pool := openPool(t, url)
+	m := migrator(t, url)
+	if err := m.Up(); err != nil {
+		t.Fatal(err)
+	}
+	if present, nullable, typ := inboundColumn(t, pool); !present || !nullable || typ != "jsonb" {
+		t.Fatalf("inbound column = present %v nullable %v type %q, want a nullable jsonb column", present, nullable, typ)
+	}
+	if err := m.Steps(-1); err != nil {
+		t.Fatalf("step down: %v", err)
+	}
+	wantVersion(t, m, 2)
+	wantTables(t, pool, allTables)
+	if present, _, _ := inboundColumn(t, pool); present {
+		t.Fatal("the down migration left the inbound column behind")
+	}
 }
 
 func TestRunMigrationsIsIdempotent(t *testing.T) {

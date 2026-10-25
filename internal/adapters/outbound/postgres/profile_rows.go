@@ -23,6 +23,21 @@ type cutoffDoc struct {
 	MaxOrders int      `json:"maxOrders"`
 }
 
+// inboundDoc is the inbound column: a JSONB object with only the declared
+// limits; a revision without inbound limits stores SQL NULL.
+type inboundDoc struct {
+	MaxCartonWeightG *int           `json:"maxCartonWeightG,omitempty"`
+	MaxCartonDimsMm  *cartonDimsDoc `json:"maxCartonDimsMm,omitempty"`
+	AcceptsPallets   *bool          `json:"acceptsPallets,omitempty"`
+	RequiresSscc     *bool          `json:"requiresSscc,omitempty"`
+}
+
+type cartonDimsDoc struct {
+	L int `json:"l"`
+	W int `json:"w"`
+	H int `json:"h"`
+}
+
 // profileRow holds the columns of one node_profile_revisions row. Every column
 // is a pointer or a raw document because the same shape is read through a LEFT
 // JOIN, where a node without a profile yields all NULLs (Revision == nil).
@@ -37,6 +52,7 @@ type profileRow struct {
 	ThroughputUnitOf *string
 	ThroughputUnit   *string
 	SortDwell        *int
+	Inbound          []byte
 	DeclaredBy       *string
 	DeclaredAt       *time.Time
 }
@@ -44,13 +60,13 @@ type profileRow struct {
 // profileColumns lists the columns of node_profile_revisions under the alias
 // p, in the order dest scans them.
 const profileColumns = `p.revision, p.timezone, p.operating_hours, p.holidays, p.handling_time_minutes, p.cutoffs,
-	p.throughput_value, p.throughput_time_unit, p.throughput_unit, p.sort_dwell_minutes, p.declared_by, p.declared_at`
+	p.throughput_value, p.throughput_time_unit, p.throughput_unit, p.sort_dwell_minutes, p.inbound, p.declared_by, p.declared_at`
 
 // dest returns the scan targets matching profileColumns.
 func (p *profileRow) dest() []any {
 	return []any{
 		&p.Revision, &p.Timezone, &p.OperatingHours, &p.Holidays, &p.HandlingTime, &p.Cutoffs,
-		&p.ThroughputValue, &p.ThroughputUnitOf, &p.ThroughputUnit, &p.SortDwell, &p.DeclaredBy, &p.DeclaredAt,
+		&p.ThroughputValue, &p.ThroughputUnitOf, &p.ThroughputUnit, &p.SortDwell, &p.Inbound, &p.DeclaredBy, &p.DeclaredAt,
 	}
 }
 
@@ -73,6 +89,10 @@ func (p *profileRow) profile() (_ node.OperationalProfile, ok bool, _ error) {
 	if err := json.Unmarshal(p.Holidays, &holidays); err != nil {
 		return node.OperationalProfile{}, false, fmt.Errorf("decode holidays: %w", err)
 	}
+	inbound, err := decodeInbound(p.Inbound)
+	if err != nil {
+		return node.OperationalProfile{}, false, err
+	}
 	decl := node.ProfileDeclaration{
 		Revision:            *p.Revision,
 		Timezone:            deref(p.Timezone),
@@ -84,6 +104,7 @@ func (p *profileRow) profile() (_ node.OperationalProfile, ok bool, _ error) {
 			Value: derefInt(p.ThroughputValue), TimeUnit: node.TimeUnit(deref(p.ThroughputUnitOf)), Unit: deref(p.ThroughputUnit),
 		},
 		SortDwellMinutes: p.SortDwell,
+		Inbound:          inbound,
 		DeclaredBy:       node.DeclaredBy(deref(p.DeclaredBy)),
 	}
 	prof, err := node.NewOperationalProfile(decl, timeOrZero(p.DeclaredAt))
@@ -162,6 +183,35 @@ func encodeCutoffs(cs []node.CutoffSlot) ([]byte, error) {
 				doc[i].Days[j] = string(d)
 			}
 		}
+	}
+	return json.Marshal(doc)
+}
+
+// decodeInbound reads the nullable inbound column: SQL NULL (nil bytes) is no
+// limits declared.
+func decodeInbound(raw []byte) (*node.InboundLimits, error) {
+	if raw == nil {
+		return nil, nil
+	}
+	var doc inboundDoc
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		return nil, fmt.Errorf("decode inbound limits: %w", err)
+	}
+	l := &node.InboundLimits{MaxCartonWeightG: doc.MaxCartonWeightG, AcceptsPallets: doc.AcceptsPallets, RequiresSscc: doc.RequiresSscc}
+	if d := doc.MaxCartonDimsMm; d != nil {
+		l.MaxCartonDimsMm = &node.CartonDims{L: d.L, W: d.W, H: d.H}
+	}
+	return l, nil
+}
+
+// encodeInbound returns the JSONB document, or nil for SQL NULL.
+func encodeInbound(l *node.InboundLimits) ([]byte, error) {
+	if l == nil {
+		return nil, nil
+	}
+	doc := inboundDoc{MaxCartonWeightG: l.MaxCartonWeightG, AcceptsPallets: l.AcceptsPallets, RequiresSscc: l.RequiresSscc}
+	if d := l.MaxCartonDimsMm; d != nil {
+		doc.MaxCartonDimsMm = &cartonDimsDoc{L: d.L, W: d.W, H: d.H}
 	}
 	return json.Marshal(doc)
 }

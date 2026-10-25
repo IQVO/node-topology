@@ -229,3 +229,56 @@ func TestDomainRefusalsMapToTheirProblems(t *testing.T) {
 		})
 	}
 }
+
+func TestOperationalProfileInboundLimits(t *testing.T) {
+	w := newWorld(t)
+	const path = "/operational-profile"
+	good := `,"inbound":{"maxCartonWeightG":25000,"maxCartonDimsMm":{"l":600,"w":400,"h":300},"acceptsPallets":true,"requiresSscc":false}`
+	r := w.a.keyed(http.MethodPut, "/nodes/"+w.origin+path, revision2(profileWith(good)))
+	if r.status != http.StatusOK {
+		t.Fatalf("declare with inbound: %d %s", r.status, r.raw)
+	}
+	in := r.decoded.(map[string]any)["operationalProfile"].(map[string]any)["inbound"].(map[string]any)
+	if in["maxCartonWeightG"] != float64(25000) || in["acceptsPallets"] != true || in["requiresSscc"] != false ||
+		in["maxCartonDimsMm"].(map[string]any)["h"] != float64(300) {
+		t.Fatalf("inbound echoed as %v", in)
+	}
+	got := w.a.get("/nodes/" + w.origin)
+	if got.decoded.(map[string]any)["operationalProfile"].(map[string]any)["inbound"] == nil {
+		t.Fatalf("GET lacks the stored inbound limits: %s", got.raw)
+	}
+	// a later revision without inbound declares none: omitted, never null
+	r = w.a.keyed(http.MethodPut, "/nodes/"+w.origin+path, strings.Replace(profileWith(""), `"profileRevision":1`, `"profileRevision":3`, 1))
+	if r.status != http.StatusOK {
+		t.Fatalf("declare without inbound: %d %s", r.status, r.raw)
+	}
+	if _, present := r.decoded.(map[string]any)["operationalProfile"].(map[string]any)["inbound"]; present {
+		t.Fatalf("inbound must be omitted when none is declared: %s", r.raw)
+	}
+}
+
+func TestOperationalProfileInboundRefusals(t *testing.T) {
+	w := newWorld(t)
+	tests := []struct {
+		name, inbound string
+		status        int
+		slug          string
+	}{
+		{"zero weight", `{"maxCartonWeightG":0}`, 422, "validation-failed"},
+		{"negative weight", `{"maxCartonWeightG":-5}`, 422, "validation-failed"},
+		{"zero edge", `{"maxCartonDimsMm":{"l":600,"w":0,"h":300}}`, 422, "validation-failed"},
+		{"missing edge", `{"maxCartonDimsMm":{"l":600,"w":400}}`, 422, "validation-failed"},
+		{"empty dims", `{"maxCartonDimsMm":{}}`, 422, "validation-failed"},
+		{"empty inbound", `{}`, 422, "validation-failed"},
+		{"unknown inbound field", `{"maxCartonWeightKg":2}`, 400, "malformed-request-body"},
+		{"fractional weight", `{"maxCartonWeightG":2.5}`, 400, "malformed-request-body"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			r := w.a.keyed(http.MethodPut, "/nodes/"+w.origin+"/operational-profile", revision2(profileWith(`,"inbound":`+tc.inbound)))
+			if r.status != tc.status || r.slug() != tc.slug || !r.isProblem() {
+				t.Fatalf("= %d %s (%s), want %d %s", r.status, r.slug(), r.raw, tc.status, tc.slug)
+			}
+		})
+	}
+}

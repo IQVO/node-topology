@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Assert this chart's Service selectors isolate its one component, and that
-the api carries exactly the environment its binary reads.
+"""Assert this chart's Service selectors isolate each component, and that
+every component carries exactly the environment its binary reads.
 
 Why the selector check exists (fleet-wide): `app.kubernetes.io/name` +
 `instance` are identical on every pod a release creates. A Service that
 selects on those two alone selects ALL components. Every Deployment here
 carries `app.kubernetes.io/component` in selector.matchLabels and its pod
 labels, and every Service selects on it, so each Service selects EXACTLY ONE
-Deployment. This chart has one component: api (Deployment, Service, ConfigMap,
-Secret, ServiceAccount, optional HPA / HTTPRoute / Ingress, all off by
-default). The service consumes no topic, so there is no consumer group.
+Deployment. Components: api (always), mcp (ADR 0008, default off) and
+frontend (the nginx pod serving the node_topology_mfe remote, ADR 0009,
+default off), all rendered TOGETHER here. The frontend is never routed by
+this chart. The service consumes no topic, so there is no consumer group.
 
 Run: python3 charts/node-topology/tests/test_service_selectors.py
 Needs: helm, PyYAML.
@@ -36,6 +37,8 @@ ENABLE_EVERYTHING = BASE + [
     "--set", "config.shutdownDrainDelay=5s",
     "--set", "gatewayApi.enabled=true",
     "--set", "ingress.enabled=true",
+    "--set", "mcp.enabled=true",
+    "--set", "frontend.enabled=true",
 ]
 
 # Every env var cmd/api reads.
@@ -43,6 +46,8 @@ API_ENV = (
     "HTTP_ADDR", "LOG_LEVEL", "DATABASE_URL", "MIGRATIONS_DATABASE_URL", "KAFKA_BROKERS",
     "OUTBOX_RELAY_INTERVAL", "OUTBOX_MAX_ATTEMPTS", "SHUTDOWN_DRAIN_DELAY",
 )
+# The MCP server is read-only: no Kafka, no outbox relay, no consumers.
+MCP_STRAY = {"KAFKA_BROKERS", "OUTBOX_RELAY_INTERVAL", "OUTBOX_MAX_ATTEMPTS"}
 # Never rendered: the service consumes no topic and reads no mode.
 FORBIDDEN_SUFFIXES = ("_MODE", "_CONSUMER_GROUP")
 
@@ -90,17 +95,61 @@ def env_value(dep: dict, name: str) -> str | None:
     return next((e.get("value") for e in env_of(dep) if e["name"] == name), None)
 
 
+def command_of(dep: dict) -> list[str] | None:
+    return dep["spec"]["template"]["spec"]["containers"][0].get("command")
+
+
+def pins(svc: dict | None, component: str) -> bool:
+    return svc is not None and selector_of(svc).get("app.kubernetes.io/component") == component
+
+
+def check_mcp(deployments: dict, services: dict, failures: list[str]) -> None:
+    name = f"{RELEASE}-mcp"
+    if not pins(services.get(name), "mcp"):
+        failures.append("the MCP Service must exist and pin component=mcp")
+    if name not in deployments:
+        failures.append("the MCP Deployment was not rendered with mcp.enabled=true")
+        return
+    if command_of(deployments[name]) != ["/app/mcp"]:
+        failures.append("the MCP Deployment must run /app/mcp")
+    env = set(env_names(deployments[name]))
+    stray = MCP_STRAY & env
+    if stray:
+        failures.append(f"the MCP Deployment must not get Kafka/relay env (it is read-only and never dials Kafka): {sorted(stray)}")
+    for want in ("DATABASE_URL", "MIGRATIONS_DATABASE_URL", "MCP_ADDR", "LOG_LEVEL", "SERVICE_VERSION", "ENVIRONMENT"):
+        if want not in env:
+            failures.append(f"the MCP Deployment does not render {want}")
+
+
+def check_frontend(docs: list[dict], deployments: dict, services: dict, failures: list[str]) -> None:
+    name = f"{RELEASE}-frontend"
+    if not pins(services.get(name), "frontend"):
+        failures.append("the frontend Service must exist and pin component=frontend")
+    elif services[name]["spec"].get("type") != "ClusterIP":
+        failures.append("the frontend Service must be ClusterIP")
+    if name not in deployments:
+        failures.append("the frontend Deployment was not rendered with frontend.enabled=true")
+    elif {"DATABASE_URL", "KAFKA_BROKERS"} & set(env_names(deployments[name])):
+        failures.append("the frontend Deployment must not get database/Kafka env (it serves static bytes)")
+    for d in docs:
+        if d.get("kind") in {"Ingress", "HTTPRoute"} and "frontend" in d["metadata"]["name"]:
+            failures.append(f"{d['kind']} {d['metadata']['name']}: frontend routing must not live in this chart")
+
+
 def check_selectors(docs: list[dict], failures: list[str]) -> None:
     services = {d["metadata"]["name"]: d for d in docs if d.get("kind") == "Service"}
     deployments = {d["metadata"]["name"]: d for d in docs if d.get("kind") == "Deployment"}
 
-    if sorted(deployments) != [RELEASE]:
-        failures.append(f"expected the single Deployment {[RELEASE]}, got {sorted(deployments)}")
-    if sorted(services) != [RELEASE]:
-        failures.append(f"expected the single Service {[RELEASE]}, got {sorted(services)}")
-    svc = services.get(RELEASE)
-    if svc is None or selector_of(svc).get("app.kubernetes.io/component") != "api":
+    want = sorted([RELEASE] + [f"{RELEASE}-{c}" for c in ("mcp", "frontend")])
+    if sorted(deployments) != want:
+        failures.append(f"expected the Deployments {want}, got {sorted(deployments)}")
+    if sorted(services) != want:
+        failures.append(f"expected the Services {want}, got {sorted(services)}")
+    if not pins(services.get(RELEASE), "api"):
         failures.append("the api Service selector must pin component=api")
+
+    check_mcp(deployments, services, failures)
+    check_frontend(docs, deployments, services, failures)
 
     # Every Deployment's own selector must pin a component too, and be
     # satisfied by its pod labels.
@@ -228,10 +277,11 @@ def main() -> int:
             print(f"FAIL: {f}")
         return 1
 
-    print("PASS: the api Service selects exactly one Deployment (the chart has the api component only); "
-          "HPA, HTTPRoute and Ingress are off by default; every cmd/api env var has a dedicated value, "
-          "no *_MODE or *_CONSUMER_GROUP is rendered; the chart refuses to render without a database "
-          "source, without brokers, with a short grace period, or with a *_MODE / consumer group in extraEnv")
+    print("PASS: every Service selects exactly one Deployment (api, mcp and frontend rendered together, "
+          "each pinned by component); HPA, HTTPRoute, Ingress, mcp and frontend are off by default; every "
+          "cmd/api env var has a dedicated value, the mcp Deployment gets no Kafka/relay env and the frontend "
+          "none at all; no *_MODE or *_CONSUMER_GROUP is rendered; the chart refuses to render without a "
+          "database source, without brokers, with a short grace period, or with a *_MODE / consumer group in extraEnv")
     return 0
 
 

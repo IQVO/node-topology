@@ -155,9 +155,22 @@ func TestRealWiring(t *testing.T) {
 	s := boot(t)
 
 	t.Run("ready while the output topic does not exist", func(t *testing.T) {
-		r := s.get("/readyz")
-		if r.status != http.StatusOK || strings.TrimSpace(string(r.body)) != `{"status":"ready"}` {
-			t.Fatalf("/readyz = %d %s, want 200 ready", r.status, r.body)
+		// A freshly started testcontainers broker answers metadata before its
+		// single partition's leadership settles, so the readiness probe can
+		// report 503 ("Not Leader For Partition") for a few seconds. Readiness
+		// is eventually true here, not true on the first probe: await it with
+		// a bound instead of asserting the first response (CI flake,
+		// 2026-10-25, run 40119555517).
+		deadline := time.Now().Add(15 * time.Second)
+		for {
+			r := s.get("/readyz")
+			if r.status == http.StatusOK && strings.TrimSpace(string(r.body)) == `{"status":"ready"}` {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("/readyz never became ready: %d %s", r.status, r.body)
+			}
+			time.Sleep(250 * time.Millisecond)
 		}
 		if n := kafkatest.Count(t, eventsTopic); n != 0 {
 			t.Fatalf("the topic already holds %d messages before the first write", n)
@@ -186,7 +199,7 @@ func restFlow(t *testing.T, s *service) world {
 	}
 
 	s.write(http.MethodPut, "/nodes/"+w.fc+"/operational-profile", fmt.Sprintf(profile, "VENDOR", ""), http.StatusOK)
-	s.write(http.MethodPut, "/nodes/"+w.sc+"/operational-profile", fmt.Sprintf(profile, "NETWORK_OPS", `,"sortDwellMinutes":25`), http.StatusOK)
+	s.write(http.MethodPut, "/nodes/"+w.sc+"/operational-profile", fmt.Sprintf(profile, "NETWORK_OPS", `,"sortDwellMinutes":25,"inbound":{"maxCartonWeightG":25000,"maxCartonDimsMm":{"l":600,"w":400,"h":300},"acceptsPallets":true}`), http.StatusOK)
 	s.write(http.MethodPut, "/nodes/"+w.station+"/operational-profile", fmt.Sprintf(profile, "NETWORK_OPS", ""), http.StatusOK)
 	for _, id := range []string{w.fc, w.sc, w.station} {
 		if n := s.write(http.MethodPost, "/nodes/"+id+":activate", "", http.StatusOK); str(n, "status") != "ACTIVE" {
@@ -371,6 +384,17 @@ func assertPayloads(t *testing.T, got []kafkatest.Message, w world) {
 	prof := dataOf(t, got[5])
 	if prof["sortDwellMinutes"] != float64(25) || prof["profileRevision"] != float64(1) || str(prof, "declaredBy") != "NETWORK_OPS" || prof["handlingTimeMinutes"] != float64(45) {
 		t.Errorf("sort centre NodeOperationalProfileDeclared data = %v", prof)
+	}
+	in, _ := prof["inbound"].(map[string]any)
+	dims, _ := in["maxCartonDimsMm"].(map[string]any)
+	if in["maxCartonWeightG"] != float64(25000) || in["acceptsPallets"] != true || dims["l"] != float64(600) || dims["w"] != float64(400) || dims["h"] != float64(300) {
+		t.Errorf("sort centre NodeOperationalProfileDeclared inbound = %v", prof["inbound"])
+	}
+	if _, present := in["requiresSscc"]; present {
+		t.Error("an undeclared requiresSscc must be omitted from the inbound limits")
+	}
+	if _, present := dataOf(t, got[4])["inbound"]; present {
+		t.Error("the FC profile event carries inbound limits it never declared")
 	}
 	if _, dwell := dataOf(t, got[4])["sortDwellMinutes"]; dwell {
 		t.Error("the FC profile event carries a sortDwellMinutes")

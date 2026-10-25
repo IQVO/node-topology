@@ -50,14 +50,16 @@ type NodeOperationalProfileDeclared struct {
 	Cutoffs             []CutoffSlot
 	ThroughputCap       ThroughputCap
 	SortDwellMinutes    *int
-	DeclaredBy          DeclaredBy
+	// Inbound is nil unless the revision declares inbound limits.
+	Inbound    *InboundLimits
+	DeclaredBy DeclaredBy
 }
 
 func profileDeclared(h shared.Header, id ID, p OperationalProfile) NodeOperationalProfileDeclared {
 	return NodeOperationalProfileDeclared{
 		Header: h, NodeID: id, ProfileRevision: p.Revision, Timezone: p.Timezone,
 		OperatingHoursByDay: p.OperatingHours, Holidays: p.Holidays, HandlingTimeMinutes: p.HandlingTimeMinutes,
-		Cutoffs: p.Cutoffs, ThroughputCap: p.ThroughputCap, SortDwellMinutes: p.SortDwellMinutes, DeclaredBy: p.DeclaredBy,
+		Cutoffs: p.Cutoffs, ThroughputCap: p.ThroughputCap, SortDwellMinutes: p.SortDwellMinutes, Inbound: p.Inbound, DeclaredBy: p.DeclaredBy,
 	}
 }
 
