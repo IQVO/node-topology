@@ -32,7 +32,7 @@ func TestRunRefusesMissingBrokers(t *testing.T) {
 }
 
 func TestBuildServerWiresEveryRouteDependency(t *testing.T) {
-	s := buildServer(adapters{deps: usecases.Deps{}}, newReadiness(func(context.Context) error { return nil }, "127.0.0.1:1"), quiet())
+	s := buildServer(adapters{deps: usecases.Deps{}}, newReadiness(func(context.Context) error { return nil }, "127.0.0.1:1"), quiet(), defaultServiceName)
 	v := reflect.ValueOf(*s)
 	for i := 0; i < v.NumField(); i++ {
 		if v.Field(i).IsZero() {
