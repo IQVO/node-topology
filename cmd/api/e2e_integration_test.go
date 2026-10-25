@@ -155,9 +155,22 @@ func TestRealWiring(t *testing.T) {
 	s := boot(t)
 
 	t.Run("ready while the output topic does not exist", func(t *testing.T) {
-		r := s.get("/readyz")
-		if r.status != http.StatusOK || strings.TrimSpace(string(r.body)) != `{"status":"ready"}` {
-			t.Fatalf("/readyz = %d %s, want 200 ready", r.status, r.body)
+		// A freshly started testcontainers broker answers metadata before its
+		// single partition's leadership settles, so the readiness probe can
+		// report 503 ("Not Leader For Partition") for a few seconds. Readiness
+		// is eventually true here, not true on the first probe: await it with
+		// a bound instead of asserting the first response (CI flake,
+		// 2026-10-25, run 40119555517).
+		deadline := time.Now().Add(15 * time.Second)
+		for {
+			r := s.get("/readyz")
+			if r.status == http.StatusOK && strings.TrimSpace(string(r.body)) == `{"status":"ready"}` {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("/readyz never became ready: %d %s", r.status, r.body)
+			}
+			time.Sleep(250 * time.Millisecond)
 		}
 		if n := kafkatest.Count(t, eventsTopic); n != 0 {
 			t.Fatalf("the topic already holds %d messages before the first write", n)
