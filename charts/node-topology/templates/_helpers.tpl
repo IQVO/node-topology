@@ -138,7 +138,11 @@ nothing in the binary reads one, and a stray one would suggest a runtime that
 does not exist.
 */}}
 {{- define "node-topology.requireNoModeEnv" -}}
+{{- $owned := list "ENVIRONMENT" "SERVICE_VERSION" "OTEL_SERVICE_NAME" "OTEL_EXPORTER_OTLP_ENDPOINT" -}}
 {{- range .Values.extraEnv -}}
+{{- if has (toString .name) $owned -}}
+{{- fail (printf "extraEnv sets %s — the chart renders it itself (otel.*, environment, image.tag); set the value instead." .name) -}}
+{{- end -}}
 {{- if hasSuffix "_MODE" (toString .name) -}}
 {{- fail (printf "extraEnv sets %s — the *_MODE variables do not exist: the only runtime is Postgres + Kafka and the binary reads no mode." .name) -}}
 {{- end -}}
