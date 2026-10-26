@@ -20,6 +20,7 @@ import (
 	outboxrelay "github.com/claudioed/node-topology/internal/adapters/outbound/outbox"
 	"github.com/claudioed/node-topology/internal/adapters/outbound/postgres"
 	"github.com/claudioed/node-topology/internal/adapters/outbound/postgres/pgtx"
+	"github.com/claudioed/node-topology/internal/adapters/outbound/telemetry"
 	"github.com/claudioed/node-topology/internal/application/usecases"
 	"github.com/claudioed/node-topology/internal/bootretry"
 )
@@ -52,6 +53,12 @@ func run(ctx context.Context) error {
 		return err
 	}
 	defer closeAdapters()
+	// After Setup, so the counter binds to the real MeterProvider.
+	nodeMetrics, err := telemetry.NewNodeMetrics()
+	if err != nil {
+		return err
+	}
+	ad.deps.Metrics = nodeMetrics
 
 	readiness := newReadiness(ad.pool.Ping, cfg.brokers)
 	handler, err := inboundhttp.NewRouter(buildServer(ad, readiness, logger, tel.serviceName))

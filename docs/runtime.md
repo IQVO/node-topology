@@ -15,6 +15,9 @@ no alternative runtime and no log sink.
 | `OUTBOX_MAX_ATTEMPTS` | `20` | Failures before the relay excludes a row; `0` = unlimited (ADR 0005). |
 | `SHUTDOWN_DRAIN_DELAY` | `5s` | Wait between flipping `/readyz` to 503 and closing the listener; `0` disables. |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error`. |
+| `OTEL_SERVICE_NAME` | `node-topology` | `service.name` of spans and metrics (ADR 0010; `node-topology-mcp` for cmd/mcp). |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `localhost:4317` | Collector OTLP/gRPC, `host:port` or URL; export never blocks. |
+| `SERVICE_VERSION` / `ENVIRONMENT` | `dev` / `local` | `service.version` / `deployment.environment.name`. |
 
 Configuration errors are raised before anything is opened or bound.
 
@@ -61,7 +64,9 @@ returns on its own the process exits non-zero so the orchestrator restarts it.
 `MIGRATIONS_DATABASE_URL` come from a Secret (`database.url` creates one, `database.existingSecret` + `database.existingSecretKey` /
 `database.migrationsExistingSecretKey` reference yours; the migrations key is `optional: true`, the binary falls back to `DATABASE_URL`). The chart
 refuses to render without a database source or brokers, with `terminationGracePeriodSeconds` below 30 or below `config.shutdownDrainDelay` + 20 s
-(drain delay + HTTP drain 10 s + relay 10 s), and with a `*_MODE` or `*_CONSUMER_GROUP` in `extraEnv`: the service consumes no topic. An empty
+(drain delay + HTTP drain 10 s + relay 10 s), and with a `*_MODE` or `*_CONSUMER_GROUP` in `extraEnv`: the service consumes no topic. The
+`otel.*` values and `environment` render `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME` (`<name>-mcp` for the mcp component), `SERVICE_VERSION` (image tag or
+appVersion) and `ENVIRONMENT`; `extraEnv` may not set them. An empty
 `image.tag` resolves to `v<appVersion>`, the tag the `release` job publishes. Chart tests: `charts/node-topology/tests/` (run by `chart-tests`; `helm-lint` runs
 `ct lint` on pull requests).
 

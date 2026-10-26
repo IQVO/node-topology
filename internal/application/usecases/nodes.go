@@ -33,6 +33,12 @@ func NewRegisterNode(d Deps) *RegisterNode { return &RegisterNode{writer{d}} }
 // NodeRegistered. The domain's value checks come first, so an invalid command
 // is never reported as a taken code.
 func (uc *RegisterNode) Execute(ctx context.Context, cmd RegisterNodeCommand) (views.Node, error) {
+	v, err := uc.register(ctx, cmd)
+	uc.recordOutcome(ctx, err)
+	return v, err
+}
+
+func (uc *RegisterNode) register(ctx context.Context, cmd RegisterNodeCommand) (views.Node, error) {
 	return transact(ctx, uc.UoW, func(ctx context.Context) (views.Node, error) {
 		reg, err := optionalRegion(ctx, uc.Regions, cmd.RegionID)
 		if err != nil {

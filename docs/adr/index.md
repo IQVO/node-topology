@@ -15,3 +15,4 @@ The *Status* column is copied from each ADR's own `## Status` section.
 | [0007](./0007-inbound-limits-on-the-operational-profile.md) | inbound limits on the operational profile | Accepted (2026-10-24) |
 | [0008](./0008-mcp-server-adoption.md) | a read-only MCP server | Accepted (2026-10-24) |
 | [0009](./0009-console-remote.md) | a web console remote (node_topology_mfe) | Accepted (2026-10-24) |
+| [0010](./0010-fleet-observability-standard.md) | Adopt the fleet observability standard (logs, metrics, traces) | Accepted (2026-10-26) |
