@@ -242,8 +242,8 @@ func TestAPanicIsA500ProblemAndTheServerKeepsServing(t *testing.T) {
 	if !strings.Contains(logs.String(), "status=500") || !strings.Contains(logs.String(), "level=ERROR") {
 		t.Fatalf("the 500 was not logged at ERROR: %s", logs.String())
 	}
-	if !strings.Contains(logs.String(), "level=DEBUG") {
-		t.Fatalf("probes should be logged at DEBUG: %s", logs.String())
+	if strings.Contains(logs.String(), "healthz") {
+		t.Fatalf("probes must not be logged (ADR 0010): %s", logs.String())
 	}
 }
 

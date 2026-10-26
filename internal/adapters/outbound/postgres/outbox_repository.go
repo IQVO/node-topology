@@ -72,6 +72,7 @@ func (r *OutboxRepo) Append(ctx context.Context, events ...shared.Event) error {
 		if err != nil {
 			return fmt.Errorf("encode %s: %w", ev.EventName(), err)
 		}
+		msg = withTraceHeaders(ctx, msg)
 		headers, err := marshalHeaders(msg.Headers)
 		if err != nil {
 			return fmt.Errorf("marshal outbox headers for %s: %w", msg.EventType, err)

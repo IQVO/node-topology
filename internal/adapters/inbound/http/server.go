@@ -5,11 +5,13 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/riandyrn/otelchi"
+	otelchimetric "github.com/riandyrn/otelchi/metric"
 
+	"github.com/claudioed/node-topology/internal/adapters/inbound/requestlog"
 	"github.com/claudioed/node-topology/internal/application/usecases"
 	"github.com/claudioed/node-topology/internal/application/views"
 	"github.com/claudioed/node-topology/internal/domain/lane"
@@ -87,24 +89,44 @@ type Server struct {
 	Idempotency Idempotency
 	// Readiness backs /readyz; the zero gate is ready with no dependency.
 	Readiness *Readiness
-	// Logger receives the access log; slog.Default when nil.
+	// Logger receives the request log; slog.Default when nil.
 	Logger *slog.Logger
+	// ServiceName names the server spans and the HTTP metrics; empty means
+	// DefaultServiceName.
+	ServiceName string
 }
+
+// DefaultServiceName names the server spans and the HTTP metrics when the
+// composition root passes no service name.
+const DefaultServiceName = "node-topology"
 
 // ErrNoIdempotency is returned by NewRouter when the Server has no
 // Idempotency middleware: there is no unkeyed mode.
 var ErrNoIdempotency = errors.New("http server: Idempotency is required (every state-changing route takes an Idempotency-Key)")
 
-// NewRouter builds the chi router. Order of the middleware, outermost first:
-// access log, recover (a panic is a 500 problem the log still sees), rejectNUL
-// (before anything is recorded), then the route; on a state-changing route the Idempotency-Key
-// middleware wraps the handler.
+// NewRouter builds the chi router. Order of the middleware, outermost first, is
+// the fleet observability standard (ADR 0010): RequestID, otelchi (the server
+// span, named after the chi route pattern, so one span name per route and not
+// per node id), the request-duration histogram, RequestLogger (it runs inside
+// the span, so its record carries trace_id and span_id), then the recoverer (a
+// panic is a 500 problem the log still sees), then rejectNUL (before anything
+// is recorded), then the route; on a state-changing route the Idempotency-Key
+// middleware wraps the handler. telemetry.Setup must have run before this
+// call: otelchimetric binds the global MeterProvider when it is constructed.
 func NewRouter(s *Server) (http.Handler, error) {
 	if s.Idempotency == nil {
 		return nil, ErrNoIdempotency
 	}
+	serviceName := s.ServiceName
+	if serviceName == "" {
+		serviceName = DefaultServiceName
+	}
 	r := chi.NewRouter()
-	r.Use(accessLog(s.Logger), recoverer, rejectNUL)
+	r.Use(middleware.RequestID)
+	r.Use(otelchi.Middleware(serviceName, otelchi.WithChiRoutes(r)))
+	r.Use(otelchimetric.NewServerRequestDuration(otelchimetric.NewBaseConfig(serviceName)))
+	r.Use(requestlog.RequestLogger(s.Logger))
+	r.Use(recoverer, rejectNUL)
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		writeProblem(w, r, routeNotFound, "no route matches "+r.Method+" "+r.URL.EscapedPath())
 	})
@@ -142,37 +164,4 @@ func recoverer(next http.Handler) http.Handler {
 		}()
 		next.ServeHTTP(w, r)
 	})
-}
-
-// accessLog logs one line per request with its status and duration.
-func accessLog(logger *slog.Logger) func(http.Handler) http.Handler {
-	if logger == nil {
-		logger = slog.Default()
-	}
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
-			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
-			next.ServeHTTP(ww, r)
-			status := ww.Status()
-			if status == 0 {
-				status = http.StatusOK
-			}
-			logger.LogAttrs(r.Context(), levelFor(r.URL.Path, status), "request",
-				slog.String("method", r.Method), slog.String("path", r.URL.EscapedPath()),
-				slog.Int("status", status), slog.Duration("duration", time.Since(start)))
-		})
-	}
-}
-
-// levelFor keeps the probes quiet and flags server failures.
-func levelFor(path string, status int) slog.Level {
-	switch {
-	case status >= http.StatusInternalServerError:
-		return slog.LevelError
-	case path == "/healthz" || path == "/readyz":
-		return slog.LevelDebug
-	default:
-		return slog.LevelInfo
-	}
 }

@@ -20,6 +20,7 @@ import (
 	outboxrelay "github.com/claudioed/node-topology/internal/adapters/outbound/outbox"
 	"github.com/claudioed/node-topology/internal/adapters/outbound/postgres"
 	"github.com/claudioed/node-topology/internal/adapters/outbound/postgres/pgtx"
+	"github.com/claudioed/node-topology/internal/adapters/outbound/telemetry"
 	"github.com/claudioed/node-topology/internal/application/usecases"
 	"github.com/claudioed/node-topology/internal/bootretry"
 )
@@ -27,7 +28,7 @@ import (
 // run boots the service and serves until SIGINT/SIGTERM or until ctx is
 // cancelled (the integration test stops the real entry point that way).
 func run(ctx context.Context) error {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: newLogLevel(os.Getenv(envLogLevel))}))
+	logger := newLogger(os.Getenv(envLogLevel))
 	slog.SetDefault(logger)
 
 	// Misconfiguration is refused before anything is opened or bound.
@@ -35,6 +36,16 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	// Telemetry comes up before the router is built (otelchimetric binds the
+	// global MeterProvider at construction) and is flushed LAST: deferred before
+	// everything below, so the final spans of the drain still leave the process.
+	tel := loadTelemetryEnv(os.Getenv)
+	flushTelemetry, err := startTelemetry(logger, tel)
+	if err != nil {
+		return err
+	}
+	defer flushTelemetry()
+
 	// closeAdapters (pool.Close) is deferred FIRST so it runs LAST, after the
 	// HTTP drain and the relay have stopped.
 	ad, closeAdapters, err := buildAdapters(ctx, cfg, logger)
@@ -42,9 +53,15 @@ func run(ctx context.Context) error {
 		return err
 	}
 	defer closeAdapters()
+	// After Setup, so the counter binds to the real MeterProvider.
+	nodeMetrics, err := telemetry.NewNodeMetrics()
+	if err != nil {
+		return err
+	}
+	ad.deps.Metrics = nodeMetrics
 
 	readiness := newReadiness(ad.pool.Ping, cfg.brokers)
-	handler, err := inboundhttp.NewRouter(buildServer(ad, readiness, logger))
+	handler, err := inboundhttp.NewRouter(buildServer(ad, readiness, logger, tel.serviceName))
 	if err != nil {
 		return err
 	}
@@ -104,8 +121,9 @@ func postgresAdapters(pool *pgxpool.Pool) adapters {
 	}}
 }
 
-// buildServer wires every use case into the REST server.
-func buildServer(ad adapters, readiness *inboundhttp.Readiness, logger *slog.Logger) *inboundhttp.Server {
+// buildServer wires every use case into the REST server; serviceName names its
+// server spans and HTTP metrics.
+func buildServer(ad adapters, readiness *inboundhttp.Readiness, logger *slog.Logger, serviceName string) *inboundhttp.Server {
 	d := ad.deps
 	return &inboundhttp.Server{
 		RegisterNode:       usecases.NewRegisterNode(d),
@@ -126,6 +144,7 @@ func buildServer(ad adapters, readiness *inboundhttp.Readiness, logger *slog.Log
 		Idempotency:        inboundhttp.RequireIdempotencyKey(ad.pool, pgtx.With),
 		Readiness:          readiness,
 		Logger:             logger,
+		ServiceName:        serviceName,
 	}
 }
 

@@ -126,3 +126,18 @@ type IDGenerator interface {
 	NewLaneID() lane.ID
 	NewRegionID() region.ID
 }
+
+// NodeMetrics records the business outcome of every node registration (Tier 2
+// of the fleet metrics convention, ADR 0010). RegisterNode calls it once per
+// attempt: NodeRegistered when the node was stored, NodeRejected otherwise,
+// with the problem slug that says why (the `type` suffix the REST adapter
+// answers with: "vendor-node-code-taken", "validation-failed", ...). The
+// implementation lives in internal/adapters/outbound/telemetry; a nil
+// usecases.Deps.Metrics records nothing.
+type NodeMetrics interface {
+	// NodeRegistered counts a node that was registered.
+	NodeRegistered(ctx context.Context)
+	// NodeRejected counts a registration that stored no node; reason is a
+	// stable, low-cardinality slug.
+	NodeRejected(ctx context.Context, reason string)
+}

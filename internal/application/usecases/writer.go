@@ -29,7 +29,24 @@ type Deps struct {
 	UoW          ports.UnitOfWork
 	Clock        ports.Clock
 	IDs          ports.IDGenerator
+	// Metrics records the business outcome of each node registration; nil
+	// records nothing, so unit tests need no wiring.
+	Metrics ports.NodeMetrics
 }
+
+// metrics returns the configured NodeMetrics or a no-op.
+func (d Deps) metrics() ports.NodeMetrics {
+	if d.Metrics != nil {
+		return d.Metrics
+	}
+	return noMetrics{}
+}
+
+// noMetrics is the NodeMetrics of a Deps without one.
+type noMetrics struct{}
+
+func (noMetrics) NodeRegistered(context.Context)       {}
+func (noMetrics) NodeRejected(context.Context, string) {}
 
 // writer is what every command embeds.
 type writer struct{ Deps }

@@ -252,7 +252,7 @@ func toRegion(r views.Region) regionView {
 func (d Deps) getNode(ctx context.Context, in nodeIDInput) (nodeView, error) {
 	n, err := d.GetNode.Execute(ctx, node.ID(in.NodeID))
 	if err != nil {
-		return nodeView{}, mapError(err)
+		return nodeView{}, mapError(ctx, err)
 	}
 	return toNode(n), nil
 }
@@ -262,7 +262,7 @@ func (d Deps) listNodes(ctx context.Context, in listNodesInput) (nodeListView, e
 		Type: node.Type(in.Type), RegionID: region.ID(in.RegionID), Status: node.Status(in.Status),
 	})
 	if err != nil {
-		return nodeListView{}, mapError(err)
+		return nodeListView{}, mapError(ctx, err)
 	}
 	out := make([]nodeView, 0, len(nodes))
 	for _, n := range nodes {
@@ -276,7 +276,7 @@ func (d Deps) listLanes(ctx context.Context, in listLanesInput) (laneListView, e
 		Origin: node.ID(in.Origin), Destination: node.ID(in.Destination),
 	})
 	if err != nil {
-		return laneListView{}, mapError(err)
+		return laneListView{}, mapError(ctx, err)
 	}
 	out := make([]laneView, 0, len(lanes))
 	for _, l := range lanes {
@@ -288,7 +288,7 @@ func (d Deps) listLanes(ctx context.Context, in listLanesInput) (laneListView, e
 func (d Deps) resolveServiceArea(ctx context.Context, in postalPrefixInput) (serviceAreaView, error) {
 	area, err := d.ResolveServiceArea.Execute(ctx, servicearea.PostalPrefix(in.PostalPrefix))
 	if err != nil {
-		return serviceAreaView{}, mapError(err)
+		return serviceAreaView{}, mapError(ctx, err)
 	}
 	return toServiceArea(area), nil
 }
@@ -296,7 +296,7 @@ func (d Deps) resolveServiceArea(ctx context.Context, in postalPrefixInput) (ser
 func (d Deps) getRegion(ctx context.Context, in regionIDInput) (regionView, error) {
 	r, err := d.GetRegion.Execute(ctx, region.ID(in.RegionID))
 	if err != nil {
-		return regionView{}, mapError(err)
+		return regionView{}, mapError(ctx, err)
 	}
 	return toRegion(r), nil
 }
@@ -304,7 +304,7 @@ func (d Deps) getRegion(ctx context.Context, in regionIDInput) (regionView, erro
 func (d Deps) listRegions(ctx context.Context, _ struct{}) (regionsListView, error) {
 	regions, err := d.ListRegions.Execute(ctx)
 	if err != nil {
-		return regionsListView{}, mapError(err)
+		return regionsListView{}, mapError(ctx, err)
 	}
 	out := make([]regionView, 0, len(regions))
 	for _, r := range regions {

@@ -131,7 +131,8 @@ grep -q 'image: "ghcr.io/iqvo/node-topology:local"' <<<"$pinned" || fail "an exp
 # literal, so a new variable fails this test until the chart renders it.
 binary_env() {
   local f
-  for f in "$repo_dir"/cmd/api/*.go "$repo_dir"/internal/adapters/outbound/postgres/config.go; do
+  for f in "$repo_dir"/cmd/api/*.go "$repo_dir"/internal/adapters/outbound/postgres/config.go \
+    "$repo_dir"/internal/adapters/outbound/telemetry/telemetry.go; do
     case "$f" in *_test.go) continue ;; esac
     grep -hoE '^[[:space:]]*[Ee]nv[A-Za-z]*[[:space:]]*=[[:space:]]*"[A-Z][A-Z0-9_]*"' "$f" || true
     grep -hoE '[Gg]etenv\("[A-Z][A-Z0-9_]*"' "$f" || true
@@ -155,6 +156,34 @@ done < <(awk '/^data:/ {d=1; next} d && /^  [A-Z]/ {sub(/:.*/, ""); sub(/^  /, "
 while read -r key; do
   [[ "$known" == *" $key "* ]] || fail "Deployment env $key is read by no binary"
 done < <(grep -E '^            - name: [A-Z]' <<<"$full_deployment" | sed -E 's/.*name: //')
+
+# --- observability (ADR 0010, fleet standard item 7) --------------------------------
+# The api renders the fleet pipeline's env: the Collector endpoint, the service
+# name, the version (image tag, appVersion when empty) and the environment.
+otel_endpoint="otel-collector.observability.svc.cluster.local:4317"
+app_version="$(awk '/^appVersion:/ {gsub(/"/, "", $2); print $2}' "$chart_dir/Chart.yaml")"
+[[ "$(env_value "$deployment" OTEL_EXPORTER_OTLP_ENDPOINT)" == "$otel_endpoint" ]] \
+  || fail "the api Deployment does not render OTEL_EXPORTER_OTLP_ENDPOINT from otel.endpoint"
+[[ "$(env_value "$deployment" OTEL_SERVICE_NAME)" == "node-topology" ]] \
+  || fail "the api Deployment does not render OTEL_SERVICE_NAME=node-topology from otel.serviceName"
+[[ "$(env_value "$deployment" SERVICE_VERSION)" == "$app_version" ]] || fail "SERVICE_VERSION must default to the chart appVersion"
+[[ "$(env_value "$deployment" ENVIRONMENT)" == "production" ]] || fail "ENVIRONMENT must come from environment"
+tagged="$(render_only deployment.yaml "${base[@]}" --set image.tag=v9.9.9 --set otel.serviceName=topology \
+  --set otel.endpoint=http://collector:4317 --set environment=staging)"
+[[ "$(env_value "$tagged" SERVICE_VERSION)" == "v9.9.9" ]] || fail "SERVICE_VERSION must follow image.tag"
+[[ "$(env_value "$tagged" OTEL_SERVICE_NAME)" == "topology" ]] || fail "OTEL_SERVICE_NAME must follow otel.serviceName"
+[[ "$(env_value "$tagged" OTEL_EXPORTER_OTLP_ENDPOINT)" == "http://collector:4317" ]] || fail "OTEL_EXPORTER_OTLP_ENDPOINT must follow otel.endpoint"
+[[ "$(env_value "$tagged" ENVIRONMENT)" == "staging" ]] || fail "ENVIRONMENT must follow environment"
+# otel.enabled=false renders no OTEL_* env (SERVICE_VERSION stays: it also labels the logs' build).
+otel_off="$(render "${base[@]}" --set otel.enabled=false --set mcp.enabled=true)"
+if grep -q 'name: OTEL_' <<<"$otel_off"; then fail "otel.enabled=false must render no OTEL_* env in any component"; fi
+grep -q 'name: SERVICE_VERSION$' <<<"$otel_off" || fail "SERVICE_VERSION must still render with otel.enabled=false"
+# The values are chart-owned: extraEnv may not set them a second time.
+for owned in OTEL_SERVICE_NAME OTEL_EXPORTER_OTLP_ENDPOINT SERVICE_VERSION ENVIRONMENT; do
+  err="$(render "${base[@]}" --set "extraEnv[0].name=$owned" --set 'extraEnv[0].value=x' 2>&1)" \
+    && fail "extraEnv must not be able to set $owned"
+  grep -qF "extraEnv sets $owned" <<<"$err" || fail "the refusal for extraEnv $owned does not name it: $err"
+done
 
 # --- the Secret ----------------------------------------------------------------
 secret="$(render_only secret.yaml "${base[@]}")"
@@ -202,7 +231,7 @@ fi
 binary_env_of() {
   local f
   for f in "$@"; do
-    grep -hoE '[Gg]etenv\("[A-Z][A-Z0-9_]*"' "$f" || true
+    grep -hoE '([Gg]etenv|env)\("[A-Z][A-Z0-9_]*"' "$f" || true
   done | sed -E 's/.*"([A-Z0-9_]+)".*/\1/' | sort -u
 }
 # assert_env_rendered <rendered> <label> <vars...>
@@ -223,9 +252,18 @@ if grep -Eq 'name: (KAFKA_BROKERS|OUTBOX_[A-Z_]+|[A-Z]+_CONSUMER_GROUP)$' <<<"$m
   fail "the mcp Deployment must not get Kafka/relay/consumer env (read-only, never dials Kafka)"
 fi
 # shellcheck disable=SC2207
-mcp_vars=($(binary_env_of "$repo_dir/cmd/mcp/main.go"))
+mcp_vars=($(binary_env_of "$repo_dir/cmd/mcp/main.go" "$repo_dir/cmd/mcp/telemetry.go"))
 (( ${#mcp_vars[@]} >= 3 )) || fail "found only ${#mcp_vars[@]} env literals in cmd/mcp/main.go; the scan is looking in the wrong place"
-assert_env_rendered "$mcp_dep" "the mcp Deployment" "${mcp_vars[@]}" DATABASE_URL MIGRATIONS_DATABASE_URL
+assert_env_rendered "$mcp_dep" "the mcp Deployment" "${mcp_vars[@]}" DATABASE_URL MIGRATIONS_DATABASE_URL \
+  OTEL_SERVICE_NAME OTEL_EXPORTER_OTLP_ENDPOINT SERVICE_VERSION ENVIRONMENT
+mcp_versioned="$(render_only mcp-deployment.yaml "${base[@]}" --set mcp.enabled=true --set mcp.serviceVersion=dev)"
+[[ "$(env_value "$mcp_versioned" SERVICE_VERSION)" == "dev" ]] || fail "SERVICE_VERSION must come from mcp.serviceVersion"
+[[ "$(env_value "$mcp_dep" SERVICE_VERSION)" == "$app_version" ]] || fail "the mcp SERVICE_VERSION must default to the image tag / appVersion, like the api"
+[[ "$(env_value "$mcp_dep" OTEL_SERVICE_NAME)" == "node-topology-mcp" ]] || fail "the mcp component must export as <otel.serviceName>-mcp"
+[[ "$(env_value "$mcp_dep" OTEL_EXPORTER_OTLP_ENDPOINT)" == "$otel_endpoint" ]] || fail "the mcp component must export to otel.endpoint"
+mcp_named="$(render_only mcp-deployment.yaml "${base[@]}" --set mcp.enabled=true --set otel.serviceName=topology)"
+[[ "$(env_value "$mcp_named" OTEL_SERVICE_NAME)" == "topology-mcp" ]] || fail "the mcp service name must follow otel.serviceName"
+[[ "$(env_value "$mcp_dep" ENVIRONMENT)" == "dev" ]] || fail "ENVIRONMENT must come from mcp.environment"
 
 # The web remote: its own nginx Deployment + ClusterIP Service, no DB/Kafka
 # env, and no route in this chart (the web gateway owns /mfes/node-topology/).
