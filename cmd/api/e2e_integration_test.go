@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -331,6 +332,8 @@ func assertTopic(t *testing.T, s *service, w world) {
 	assertPayloads(t, got, w)
 }
 
+var traceparentRE = regexp.MustCompile(`^00-[0-9a-f]{32}-[0-9a-f]{16}-0[01]$`)
+
 func assertMessage(t *testing.T, msg kafkatest.Message, row outboxRow, wantType string) {
 	t.Helper()
 	e, err := cloudevents.Decode(msg.Value)
@@ -346,7 +349,8 @@ func assertMessage(t *testing.T, msg kafkatest.Message, row outboxRow, wantType 
 	case e.Source() != "/retailnetwork/node-topology" || e.DataContentType() != "application/json" ||
 		e.DataSchema() != "urn:retailnetwork:node-topology:events:"+name+":v1" || e.SpecVersion() != "1.0":
 		t.Errorf("%s: attributes source %q dct %q dataschema %q spec %q", wantType, e.Source(), e.DataContentType(), e.DataSchema(), e.SpecVersion())
-	case len(msg.Headers) != 1 || msg.Headers["content-type"] != cloudevents.MediaType:
+	case len(msg.Headers) != 2 || msg.Headers["content-type"] != cloudevents.MediaType || !traceparentRE.MatchString(msg.Headers["traceparent"]):
+		// content-type plus the W3C traceparent stamped at the outbox write (ADR 0010).
 		t.Errorf("%s: headers %v", wantType, msg.Headers)
 	case e.Time().IsZero() || e.Time().Location() != time.UTC:
 		t.Errorf("%s: time %v is not a UTC instant", wantType, e.Time())
