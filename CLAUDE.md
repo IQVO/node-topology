@@ -38,3 +38,5 @@ Aggregates, invariants and assumptions A1-A42 are in docs/adr/0002; outbox/relay
 ## Workflow
 GitFlow: feature/* -> PR into develop, CI green before merge, never push develop or main. lefthook: pre-commit fmt/vet/lint, pre-push `make check`. Commit and push after each step.
 Helm chart: charts/node-topology (api only, no consumer group; tests in charts/node-topology/tests, rows 5-9 of docs/before-first-release.md). Open follow-up: repository secrets (row 11).
+
+A2A: `cmd/a2a` (port 8093) is this context's read-only Agent2Agent agent, skills `serving_station` (read), `find_nodes` (read), decided in `docs/adr/0011-a2a-inbound-adapter.md`; delegation only (facts stay CloudEvents on Kafka), unauthenticated like REST and MCP; rules in `.claude/rules/fleet/a2a.md`.
