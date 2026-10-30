@@ -160,3 +160,11 @@ Deployment + Service pair, pinned by app.kubernetes.io/component=mcp
 {{- define "node-topology.mcpFullname" -}}
 {{- include "node-topology.fullname" . }}-mcp
 {{- end }}
+
+{{/*
+Fully qualified name of the A2A agent Deployment/Service (<release>-a2a,
+docs/adr/0011). Both are pinned by app.kubernetes.io/component=a2a.
+*/}}
+{{- define "node-topology.a2aFullname" -}}
+{{- include "node-topology.fullname" . }}-a2a
+{{- end }}

@@ -7,8 +7,8 @@ Why the selector check exists (fleet-wide): `app.kubernetes.io/name` +
 selects on those two alone selects ALL components. Every Deployment here
 carries `app.kubernetes.io/component` in selector.matchLabels and its pod
 labels, and every Service selects on it, so each Service selects EXACTLY ONE
-Deployment. Components: api (always), mcp (ADR 0008, default off) and
-frontend (the nginx pod serving the node_topology_mfe remote, ADR 0009,
+Deployment. Components: api (always), mcp (ADR 0008, default off), a2a (ADR 0011,
+default off) and frontend (the nginx pod serving the node_topology_mfe remote, ADR 0009,
 default off), all rendered TOGETHER here. The frontend is never routed by
 this chart. The service consumes no topic, so there is no consumer group.
 
@@ -38,6 +38,7 @@ ENABLE_EVERYTHING = BASE + [
     "--set", "gatewayApi.enabled=true",
     "--set", "ingress.enabled=true",
     "--set", "mcp.enabled=true",
+    "--set", "a2a.enabled=true",
     "--set", "frontend.enabled=true",
 ]
 
@@ -46,8 +47,11 @@ API_ENV = (
     "HTTP_ADDR", "LOG_LEVEL", "DATABASE_URL", "MIGRATIONS_DATABASE_URL", "KAFKA_BROKERS",
     "OUTBOX_RELAY_INTERVAL", "OUTBOX_MAX_ATTEMPTS", "SHUTDOWN_DRAIN_DELAY",
 )
-# The MCP server is read-only: no Kafka, no outbox relay, no consumers.
+# The MCP server is read-only: no Kafka, no outbox relay, no consumers. The A2A
+# agent is read-only too (no write skill, ADR 0011): same strays, plus the
+# publisher selector that a writing binary would carry.
 MCP_STRAY = {"KAFKA_BROKERS", "OUTBOX_RELAY_INTERVAL", "OUTBOX_MAX_ATTEMPTS"}
+A2A_STRAY = MCP_STRAY | {"EVENT_PUBLISHER"}
 # Never rendered: the service consumes no topic and reads no mode.
 FORBIDDEN_SUFFIXES = ("_MODE", "_CONSUMER_GROUP")
 
@@ -121,6 +125,26 @@ def check_mcp(deployments: dict, services: dict, failures: list[str]) -> None:
             failures.append(f"the MCP Deployment does not render {want}")
 
 
+def check_a2a(deployments: dict, services: dict, failures: list[str]) -> None:
+    name = f"{RELEASE}-a2a"
+    if not pins(services.get(name), "a2a"):
+        failures.append("the A2A Service must exist and pin component=a2a")
+    if name not in deployments:
+        failures.append("the A2A Deployment was not rendered with a2a.enabled=true")
+        return
+    if command_of(deployments[name]) != ["/app/a2a"]:
+        failures.append("the A2A Deployment must run /app/a2a")
+    env = set(env_names(deployments[name]))
+    stray = A2A_STRAY & env
+    if stray:
+        failures.append(f"the A2A Deployment must not get Kafka/relay/publisher env (it is read-only and never dials Kafka): {sorted(stray)}")
+    for want in ("DATABASE_URL", "MIGRATIONS_DATABASE_URL", "A2A_ADDR", "A2A_AGENT_URL", "LOG_LEVEL", "SERVICE_VERSION", "ENVIRONMENT"):
+        if want not in env:
+            failures.append(f"the A2A Deployment does not render {want}")
+    if env_value(deployments[name], "A2A_ADDR") != ":8093":
+        failures.append("the A2A Deployment must listen on :8093")
+
+
 def check_frontend(docs: list[dict], deployments: dict, services: dict, failures: list[str]) -> None:
     name = f"{RELEASE}-frontend"
     if not pins(services.get(name), "frontend"):
@@ -140,7 +164,7 @@ def check_selectors(docs: list[dict], failures: list[str]) -> None:
     services = {d["metadata"]["name"]: d for d in docs if d.get("kind") == "Service"}
     deployments = {d["metadata"]["name"]: d for d in docs if d.get("kind") == "Deployment"}
 
-    want = sorted([RELEASE] + [f"{RELEASE}-{c}" for c in ("mcp", "frontend")])
+    want = sorted([RELEASE] + [f"{RELEASE}-{c}" for c in ("mcp", "a2a", "frontend")])
     if sorted(deployments) != want:
         failures.append(f"expected the Deployments {want}, got {sorted(deployments)}")
     if sorted(services) != want:
@@ -149,6 +173,7 @@ def check_selectors(docs: list[dict], failures: list[str]) -> None:
         failures.append("the api Service selector must pin component=api")
 
     check_mcp(deployments, services, failures)
+    check_a2a(deployments, services, failures)
     check_frontend(docs, deployments, services, failures)
 
     # Every Deployment's own selector must pin a component too, and be
@@ -277,9 +302,9 @@ def main() -> int:
             print(f"FAIL: {f}")
         return 1
 
-    print("PASS: every Service selects exactly one Deployment (api, mcp and frontend rendered together, "
-          "each pinned by component); HPA, HTTPRoute, Ingress, mcp and frontend are off by default; every "
-          "cmd/api env var has a dedicated value, the mcp Deployment gets no Kafka/relay env and the frontend "
+    print("PASS: every Service selects exactly one Deployment (api, mcp, a2a and frontend rendered together, "
+          "each pinned by component); HPA, HTTPRoute, Ingress, mcp, a2a and frontend are off by default; every "
+          "cmd/api env var has a dedicated value, the mcp and a2a Deployments get no Kafka/relay env and the frontend "
           "none at all; no *_MODE or *_CONSUMER_GROUP is rendered; the chart refuses to render without a "
           "database source, without brokers, with a short grace period, or with a *_MODE / consumer group in extraEnv")
     return 0

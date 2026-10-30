@@ -1,6 +1,6 @@
 # Used by `helm lint` / `ct lint`: every optional value and component set at
-# once (api + mcp + frontend, plus the optional gateway route, HPA and mcp
-# host route). Dummy values, no password.
+# once (api + mcp + a2a + frontend, plus the optional gateway route, HPA and the
+# mcp and a2a host routes). Dummy values, no password.
 database:
   existingSecret: "node-topology-db"
 kafka:
@@ -23,6 +23,14 @@ autoscaling:
   api:
     enabled: true
 mcp:
+  enabled: true
+  route:
+    enabled: true
+    parentRefs:
+      - name: warehouse-gateway
+        namespace: kong
+        sectionName: http
+a2a:
   enabled: true
   route:
     enabled: true

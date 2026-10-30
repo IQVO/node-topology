@@ -51,6 +51,22 @@ export DATABASE_URL=postgres://user:***@localhost:5432/node_topology?sslmode=dis
 go run ./cmd/mcp                     # listens on :8090 (MCP_ADDR)
 ```
 
+## A2A server
+
+[ADR 0011](docs/adr/0011-a2a-inbound-adapter.md). `cmd/a2a` is a third, read-only deployable over the SAME read use cases as REST and MCP: an Agent2Agent
+(JSON-RPC over HTTP, official Go SDK) message-only agent with the Agent Card at `/.well-known/agent-card.json`, JSON-RPC at `/` and `/a2a`, and an open `/healthz`.
+A2A carries the DELEGATION of a goal, never data sync (facts stay CloudEvents on Kafka). No auth (fleet decision), no Kafka, no outbox, no outbound A2A client — it can
+never write (the MCP charter is read-only, so there is no write skill). Two skills, sent as `{"skill": "<id>", "arguments": {...}}`: `serving_station(postalPrefix)`
+(the delivery station serving a prefix, with its node and current operational profile) and `find_nodes(type?, regionId?, status?)`. Rejections are answered in the
+message as RFC 9457-shaped problems with the REST status classification (`not-found` 404, `validation-failed` 422, `malformed-skill-request` / `unknown-skill` /
+`invalid-argument` 400, `internal-error` 500), never as JSON-RPC errors.
+
+```sh
+export DATABASE_URL=postgres://user:***@localhost:5432/node_topology?sslmode=disable
+export A2A_AGENT_URL=http://localhost:8093/   # mandatory: the absolute URL advertised on the card
+go run ./cmd/a2a                              # listens on :8093 (A2A_ADDR)
+```
+
 ## Events
 
 Contract: [`apis/asyncapi.yaml`](apis/asyncapi.yaml), catalogue in [ADR 0004](docs/adr/0004-cloudevents-envelope-and-type-catalogue.md).
@@ -85,13 +101,13 @@ bash charts/node-topology/tests/render_test.sh && python3 charts/node-topology/t
 ```
 
 `mcp.enabled=true` adds the read-only MCP Deployment + Service (and `mcp.route.enabled=true` the gateway route `/api/mcp/node-topology` -> `:8090`); it needs
-`database.*` but no brokers. `frontend.enabled=true` adds the web remote's nginx Deployment + ClusterIP Service; it needs no database and no Kafka, and this
+`database.*` but no brokers. `a2a.enabled=true` adds the read-only A2A Deployment + Service (and `a2a.route.enabled=true` the gateway route `/api/a2a/node-topology` -> `:8093`, prefix rewritten to `/`); `A2A_AGENT_URL` defaults to the in-cluster Service DNS (`a2a.agentUrl` overrides it), it needs `database.*` but no brokers. `frontend.enabled=true` adds the web remote's nginx Deployment + ClusterIP Service; it needs no database and no Kafka, and this
 chart never routes it (the web gateway owns `/mfes/node-topology/`).
 
 ## Observability
 
 Logs, metrics and traces follow the fleet standard ([ADR 0010](docs/adr/0010-fleet-observability-standard.md)): JSON logs on stdout carry `trace_id`/`span_id`
-and a `request_id`; `cmd/api` and `cmd/mcp` export OTLP/gRPC to the Collector (`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`, `SERVICE_VERSION`, `ENVIRONMENT`;
+and a `request_id`; `cmd/api`, `cmd/mcp` and `cmd/a2a` export OTLP/gRPC to the Collector (`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`, `SERVICE_VERSION`, `ENVIRONMENT`;
 export never blocks, so no Collector costs telemetry, nothing else) with HTTP request duration, Go runtime metrics and the business counter
 `topology.nodes.registered` (`outcome`, `reason`); the trace continues across Kafka in the `traceparent` header of each published event. The chart's `otel.*`
 values render the env.
@@ -120,7 +136,7 @@ cd web && npm ci && npm run lint && npx tsc -b && npm test && npm run build
 | `make vuln` | govulncheck |
 
 Layout: `internal/domain/{shared,node,lane,servicearea,region}` (pure Go), `internal/application/{ports,views,usecases,repository,outbox}`,
-`internal/adapters/inbound/{http,mcp}` (chi; MCP Go SDK), `internal/adapters/outbound/{postgres,kafka,outbox,clock,ids,memory,repocontract}`, `cmd/{api,mcp}`, `web/` (the node_topology_mfe Module Federation remote),
+`internal/adapters/inbound/{http,mcp,a2a}` (chi; MCP Go SDK; A2A Go SDK), `internal/adapters/outbound/{postgres,kafka,outbox,clock,ids,memory,repocontract}`, `cmd/{api,mcp,a2a}`, `web/` (the node_topology_mfe Module Federation remote),
 `features/` (godog BDD). The `memory` and `repocontract` packages are test doubles; `cmd/**` never imports them.
 
 Decisions: [docs/adr/](docs/adr/index.md). Packaging checklist: [docs/before-first-release.md](docs/before-first-release.md).
