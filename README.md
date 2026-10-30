@@ -1,5 +1,7 @@
 # Node Topology
 
+[![CI](https://github.com/IQVO/node-topology/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/IQVO/node-topology/actions/workflows/ci.yml?query=branch%3Adevelop) [![coverage gate](https://img.shields.io/badge/coverage%20gate-90%25-brightgreen)](https://github.com/IQVO/node-topology/blob/develop/Makefile) [![Go](https://img.shields.io/badge/go-1.27.3-00ADD8?logo=go&logoColor=white)](https://github.com/IQVO/node-topology/blob/develop/go.mod) [![release](https://img.shields.io/github/v/release/IQVO/node-topology?sort=semver)](https://github.com/IQVO/node-topology/releases) [![docs](https://img.shields.io/badge/docs-iqvo.github.io-blue)](https://iqvo.github.io/node-topology/) [![license](https://img.shields.io/badge/license-MIT-blue)](https://github.com/IQVO/node-topology/blob/develop/LICENSE)
+
 Retail network, bounded context **Node Topology** (Supporting Subdomain,
 logistics tier): the authoritative registry of the network's nodes, their
 versioned operational profiles, lanes, regions and postal service areas. It
