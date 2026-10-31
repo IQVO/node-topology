@@ -1,0 +1,70 @@
+---
+id: declare-operational-profile
+title: "Declare a new operational profile revision (DeclareOperationalProfile)"
+description: "Appends a profile revision; earlier revisions are never edited. Called by vendor-connectivity (declaredBy VENDOR) and by the network-ops planner (declaredBy NETWORK_OPS). Every day of a cutoff must fall inside the operating hours of that day, and a revision of an ACTIVE FULFILLMENT_CENTER keeps at least one cutoff and a handlingTime above zero. sortDwellMinutes is accepted only for SORTATION_CENTER and AIR_HUB nodes. The optional inbound limits (maxCartonWeightG, maxCartonDimsMm, acceptsPallets, requiresSscc) are declared per revision; a revision without inbound declares none, and consumers then treat inbound limits as unchecked. Publishes NodeOperationalProfileDeclared."
+sidebar_label: "Declare a new operational profile revision (DeclareOperationalProfile)"
+hide_title: true
+hide_table_of_contents: true
+api: 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
+sidebar_class_name: "put api-method"
+info_path: docs/api-reference/rest/node-topology-api
+custom_edit_url: null
+hide_send_button: true
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+import Translate from "@docusaurus/Translate";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Declare a new operational profile revision (DeclareOperationalProfile)"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"put"}
+  path={"/nodes/{nodeId}/operational-profile"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Appends a profile revision; earlier revisions are never edited. Called by vendor-connectivity (declaredBy VENDOR) and by the network-ops planner (declaredBy NETWORK_OPS). Every day of a cutoff must fall inside the operating hours of that day, and a revision of an ACTIVE FULFILLMENT_CENTER keeps at least one cutoff and a handlingTime above zero. sortDwellMinutes is accepted only for SORTATION_CENTER and AIR_HUB nodes. The optional inbound limits (maxCartonWeightG, maxCartonDimsMm, acceptsPallets, requiresSscc) are declared per revision; a revision without inbound declares none, and consumers then treat inbound limits as unchecked. Publishes NodeOperationalProfileDeclared.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+>
+  <Translate id="theme.openapi.request.title">Request</Translate>
+</Heading>
+
+<ParamsDetails
+  {...require("./declare-operational-profile.ParamsDetails.json")}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  {...require("./declare-operational-profile.RequestSchema.json")}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  {...require("./declare-operational-profile.StatusCodes.json")}
+>
+  
+</StatusCodes>
+
+
+      

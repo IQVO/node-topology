@@ -1,0 +1,1 @@
+{"responses":{"200":{"description":"The regions.","content":{"application/json":{"schema":{"type":"array","items":{"type":"object","required":["regionId","code","name"],"properties":{"regionId":{"type":"string"},"code":{"type":"string"},"name":{"type":"string"}},"title":"Region"}}}}}}}
