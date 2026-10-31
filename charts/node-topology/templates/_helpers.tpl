@@ -138,7 +138,11 @@ nothing in the binary reads one, and a stray one would suggest a runtime that
 does not exist.
 */}}
 {{- define "node-topology.requireNoModeEnv" -}}
+{{- $owned := list "ENVIRONMENT" "SERVICE_VERSION" "OTEL_SERVICE_NAME" "OTEL_EXPORTER_OTLP_ENDPOINT" -}}
 {{- range .Values.extraEnv -}}
+{{- if has (toString .name) $owned -}}
+{{- fail (printf "extraEnv sets %s — the chart renders it itself (otel.*, environment, image.tag); set the value instead." .name) -}}
+{{- end -}}
 {{- if hasSuffix "_MODE" (toString .name) -}}
 {{- fail (printf "extraEnv sets %s — the *_MODE variables do not exist: the only runtime is Postgres + Kafka and the binary reads no mode." .name) -}}
 {{- end -}}
@@ -155,4 +159,12 @@ Deployment + Service pair, pinned by app.kubernetes.io/component=mcp
 */}}
 {{- define "node-topology.mcpFullname" -}}
 {{- include "node-topology.fullname" . }}-mcp
+{{- end }}
+
+{{/*
+Fully qualified name of the A2A agent Deployment/Service (<release>-a2a,
+docs/adr/0011). Both are pinned by app.kubernetes.io/component=a2a.
+*/}}
+{{- define "node-topology.a2aFullname" -}}
+{{- include "node-topology.fullname" . }}-a2a
 {{- end }}
