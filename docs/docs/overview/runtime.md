@@ -1,9 +1,20 @@
+---
+id: runtime
+title: Runtime
+sidebar_label: Runtime
+description: "How Node Topology boots, serves probes, shuts down and runs its outbox relay."
+---
+
 # Runtime: configuration, probes, shutdown and the outbox
 
-`cmd/api` is the only binary. It runs on real PostgreSQL and real Kafka; there is
-no alternative runtime and no log sink.
+`cmd/api` is the main binary: REST, migrations and the outbox relay. It runs on real
+PostgreSQL and real Kafka; there is no alternative runtime and no log sink. Two more
+read-only binaries share its database and use cases: `cmd/mcp` (MCP, port 8090) and
+`cmd/a2a` (A2A, port 8093). They run the same embedded migrations, never start the
+relay and never dial Kafka. This page describes `cmd/api`; the variables of all three
+are in [Configuration](/docs/operations/configuration).
 
-## Environment
+## Environment (`cmd/api`)
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
@@ -17,9 +28,10 @@ no alternative runtime and no log sink.
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error`. |
 | `OTEL_SERVICE_NAME` | `node-topology` | `service.name` of spans and metrics (ADR 0010; `node-topology-mcp` for cmd/mcp, `node-topology-a2a` for cmd/a2a). |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `localhost:4317` | Collector OTLP/gRPC, `host:port` or URL; export never blocks. |
-| `SERVICE_VERSION` / `ENVIRONMENT` | `dev` / `local` | `service.version` / `deployment.environment.name`. |
+| `SERVICE_VERSION` | `dev` | `service.version`. |
+| `ENVIRONMENT` | `local` | `deployment.environment.name`. |
 
-Configuration errors are raised before anything is opened or bound.
+Configuration errors are raised before anything is opened or bound. `OUTBOX_RELAY_INTERVAL`, `OUTBOX_MAX_ATTEMPTS` and `SHUTDOWN_DRAIN_DELAY` fall back to their defaults with a WARN log on a malformed value; only `DATABASE_URL` and `KAFKA_BROKERS` are fatal.
 
 ## Boot and shutdown
 
