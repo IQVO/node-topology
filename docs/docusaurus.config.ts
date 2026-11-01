@@ -6,7 +6,7 @@ import type * as OpenApiPlugin from 'docusaurus-plugin-openapi-docs';
 const config: Config = {
   title: 'Node Topology',
   tagline:
-    'Node Topology: a Supporting bounded context of the retail-network domain (warehouse-systems).',
+    'The registry of the retail network’s shape: nodes, versioned operational profiles, lanes, regions and postal service areas.',
   favicon: 'img/favicon.svg',
 
   future: {

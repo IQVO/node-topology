@@ -35,7 +35,14 @@ function HomepageHeader() {
           {siteConfig.title}
         </Heading>
         <p className={styles.heroSubtitle}>{siteConfig.tagline}</p>
-        <p className={styles.heroLead}>TODO-LEAD</p>
+        <p className={styles.heroLead}>
+          Node Topology is the single owner of the facts every network promise rests on:
+          which buildings exist, what each declares it can do (hours, cutoffs, handling time,
+          throughput cap), which lanes connect them and which delivery station serves a postal
+          prefix. It consumes nothing and calls nobody: every change is published as one of nine
+          CloudEvents through a transactional outbox, and the same facts are readable over
+          REST, MCP and A2A.
+        </p>
         <div className={styles.buttons}>
           <Link className="button button--primary button--lg" to="/docs/overview/introduction">
             Read the docs

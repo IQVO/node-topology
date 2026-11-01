@@ -20,25 +20,25 @@ This project is a domain-driven design study. It is not associated with, endorse
 
 ## Documentation
 
-The context is documented on the fleet-wide warehouse-docs site, in the
-retail-network section: **<https://iqvo.github.io/warehouse-docs/network/contexts/node-topology>**
-(the model under `network/model/model.yaml` in IQVO/warehouse-docs is the
-single source of truth). Fleet-wide network pages:
-[strategic design](https://iqvo.github.io/warehouse-docs/network/strategic-design/subdomain-classification),
-[the CloudEvents event standard](https://iqvo.github.io/warehouse-docs/network/strategic-design/event-standard-cloudevents),
-the [node model](https://iqvo.github.io/warehouse-docs/network/network-model/node-model),
-and the [WMS/WES integration seam](https://iqvo.github.io/warehouse-docs/network/integration/wms-wes-integration).
-This repository's own references: [`docs/runtime.md`](docs/runtime.md) (all
-settings, the probes, the shutdown order and the outbox runbook) and the
-packaging checklist [`docs/before-first-release.md`](docs/before-first-release.md).
+The full documentation site is published at **<https://iqvo.github.io/node-topology/>**
+(source: [`docs/`](docs/), built with Docusaurus and deployed from `main` by
+`.github/workflows/docs.yml`; the build runs on every pull request). The
+aggregator's pages for this context on the fleet-wide warehouse-docs site
+([network section](https://iqvo.github.io/warehouse-docs/network/contexts/node-topology))
+are the model-side view; where the two differ, the code and this site win.
 
-Page map (on the warehouse-docs site, under `network/contexts/node-topology/`):
+Page map (paths under `https://iqvo.github.io/node-topology/docs/`):
 
 | Area | Pages |
 |---|---|
-| Business context | [Business context](https://iqvo.github.io/warehouse-docs/network/contexts/node-topology/business-context), [Use cases](https://iqvo.github.io/warehouse-docs/network/contexts/node-topology/use-cases) |
-| Language & model | [Ubiquitous language](https://iqvo.github.io/warehouse-docs/network/contexts/node-topology/ubiquitous-language), [Domain events](https://iqvo.github.io/warehouse-docs/network/contexts/node-topology/domain-events), [Domain message flow](https://iqvo.github.io/warehouse-docs/network/contexts/node-topology/domain-message-flow), [Class diagram](https://iqvo.github.io/warehouse-docs/network/contexts/node-topology/class-diagram), [Sequence diagrams](https://iqvo.github.io/warehouse-docs/network/contexts/node-topology/sequence-diagrams), [Entity-relationship](https://iqvo.github.io/warehouse-docs/network/contexts/node-topology/entity-relationship) |
-| DDD canvases | [Core domain chart](https://iqvo.github.io/warehouse-docs/network/contexts/node-topology/core-domain-chart), [Bounded context canvas](https://iqvo.github.io/warehouse-docs/network/contexts/node-topology/bounded-context-canvas), [Aggregate design canvas](https://iqvo.github.io/warehouse-docs/network/contexts/node-topology/aggregate-design-canvas), [EventStorming](https://iqvo.github.io/warehouse-docs/network/contexts/node-topology/eventstorming), [Context map](https://iqvo.github.io/warehouse-docs/network/contexts/node-topology/context-map) |
+| Overview | [Introduction](https://iqvo.github.io/node-topology/docs/overview/introduction), [Architecture](https://iqvo.github.io/node-topology/docs/overview/architecture), [Runtime](https://iqvo.github.io/node-topology/docs/overview/runtime), [Quickstart](https://iqvo.github.io/node-topology/docs/overview/quickstart) |
+| Operations | [Configuration](https://iqvo.github.io/node-topology/docs/operations/configuration), [Runbook](https://iqvo.github.io/node-topology/docs/operations/runbook), [Observability](https://iqvo.github.io/node-topology/docs/operations/observability), [Troubleshooting](https://iqvo.github.io/node-topology/docs/operations/troubleshooting), [Before the first release](https://iqvo.github.io/node-topology/docs/operations/before-first-release) |
+| Development | [Testing](https://iqvo.github.io/node-topology/docs/development/testing) |
+| Domain-driven design | [Use cases](https://iqvo.github.io/node-topology/docs/ddd/use-cases), [Subdomain classification](https://iqvo.github.io/node-topology/docs/ddd/subdomain-classification), [Ubiquitous language](https://iqvo.github.io/node-topology/docs/ddd/ubiquitous-language), [DDD artifacts index](https://iqvo.github.io/node-topology/docs/ddd/ddd-artifacts) |
+| DDD artifacts | [Core domain chart](https://iqvo.github.io/node-topology/docs/ddd/core-domain-chart), [Bounded context canvas](https://iqvo.github.io/node-topology/docs/ddd/bounded-context-canvas), [Context map](https://iqvo.github.io/node-topology/docs/ddd/context-map), [Aggregate design canvas](https://iqvo.github.io/node-topology/docs/ddd/aggregate-design-canvas), [Domain message flow](https://iqvo.github.io/node-topology/docs/ddd/domain-message-flow), [EventStorming](https://iqvo.github.io/node-topology/docs/ddd/eventstorming), [Class diagram](https://iqvo.github.io/node-topology/docs/ddd/class-diagram), [Entity-relationship](https://iqvo.github.io/node-topology/docs/ddd/entity-relationship), [Sequence diagrams](https://iqvo.github.io/node-topology/docs/ddd/sequence-diagrams), [Domain events](https://iqvo.github.io/node-topology/docs/ddd/domain-events) |
+| API reference | [Overview](https://iqvo.github.io/node-topology/docs/api-reference) (REST, MCP, A2A), [Event catalogue](https://iqvo.github.io/node-topology/docs/api-reference/events), generated REST reference |
+| Ecosystem | [Integration](https://iqvo.github.io/node-topology/docs/ecosystem/integration), [MCP tools](https://iqvo.github.io/node-topology/docs/mcp/tools) |
+| Decisions | [ADR index](https://iqvo.github.io/node-topology/docs/adr) (11 ADRs, also in [`docs/adr/`](docs/adr/)) |
 
 ## What it does
 
@@ -107,7 +107,7 @@ run at boot and the outbox relay is always on.
 
 ```sh
 export DATABASE_URL=postgres://user:***@localhost:5432/node_topology?sslmode=disable
-export KAFKA_BROKERS=localhost:29092   # whatever your broker advertises
+export KAFKA_BROKERS=localhost:9092    # the platform's single broker
 go run ./cmd/api                       # listens on :8080 (HTTP_ADDR)
 ```
 
