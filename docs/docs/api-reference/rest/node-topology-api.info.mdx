@@ -1,0 +1,47 @@
+---
+id: node-topology-api
+title: "Node Topology API"
+description: "REST contract of the node-topology bounded context of the retail network, derived from retail-network-docs model/model.yaml (contexts[node-topology].rest, .aggregates, .publishes, conventions.errors). Node Topology is the authoritative registry of nodes, their declared operational profiles, lanes, regions and service areas. vendor-connectivity calls POST /nodes and PUT /nodes/{nodeId}/operational-profile in-organization while it processes vendor submissions; the network-ops planner calls the other write routes and may also declare a network node's profile (declaredBy NETWORK_OPS); any context may call the read routes. No authentication, consistent with the fleet. Errors are RFC 9457 problem details. The shared problem types are not-found (404), illegal-transition (409), concurrent-update (409) and validation-failed (422)."
+sidebar_label: Introduction
+sidebar_position: 0
+hide_title: true
+custom_edit_url: null
+---
+
+import ApiLogo from "@theme/ApiLogo";
+import Heading from "@theme/Heading";
+import SchemaTabs from "@theme/SchemaTabs";
+import TabItem from "@theme/TabItem";
+import Export from "@theme/ApiExplorer/Export";
+
+<span
+  className={"theme-doc-version-badge badge badge--secondary"}
+  children={"Version: 0.1.0"}
+>
+</span>
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Node Topology API"}
+>
+</Heading>
+
+
+
+REST contract of the node-topology bounded context of the retail network, derived from retail-network-docs model/model.yaml (contexts[node-topology].rest, .aggregates, .publishes, conventions.errors). Node Topology is the authoritative registry of nodes, their declared operational profiles, lanes, regions and service areas. vendor-connectivity calls POST /nodes and PUT /nodes/\{nodeId\}/operational-profile in-organization while it processes vendor submissions; the network-ops planner calls the other write routes and may also declare a network node's profile (declaredBy NETWORK_OPS); any context may call the read routes. No authentication, consistent with the fleet. Errors are RFC 9457 problem details. The shared problem types are not-found (404), illegal-transition (409), concurrent-update (409) and validation-failed (422).
+
+<div
+  style={{"display":"flex","flexDirection":"column","marginBottom":"var(--ifm-paragraph-margin-bottom)"}}
+>
+  <h3
+    style={{"marginBottom":"0.25rem"}}
+  >
+    Contact
+  </h3><span>
+    node-topology maintainers: 
+  </span><span>
+    URL: [https://github.com/IQVO/node-topology](https://github.com/IQVO/node-topology)
+  </span>
+</div>
+      
