@@ -13,6 +13,20 @@ import (
 // Now is the instant every builder stamps its aggregates with.
 var Now = time.Date(2026, 10, 23, 12, 0, 0, 0, time.UTC)
 
+// Fixture ids the contract suites share; the builders and the case tables
+// reference the same few ids, so they are named once here.
+const (
+	regionOne = region.ID("region-1")
+	nodeA     = node.ID("node-a")
+	nodeB     = node.ID("node-b")
+	nodeC     = node.ID("node-c")
+	nodeD     = node.ID("node-d")
+	nodeO     = node.ID("node-o")
+	laneA     = lane.ID("lane-a")
+	laneB     = lane.ID("lane-b")
+	laneC     = lane.ID("lane-c")
+)
+
 // NewRegion defines a region.
 func NewRegion(t testing.TB, id region.ID, code string) *region.Region {
 	t.Helper()

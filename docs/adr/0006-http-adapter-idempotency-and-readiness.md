@@ -22,14 +22,13 @@ graceful shutdown.
    `cmd/api` injects the use cases, the readiness gate and the transaction
    binder (`pgtx.With`), and never imports the memory or repocontract packages.
 2. **Operations.** `POST /nodes`, `GET /nodes`, `GET /nodes/{nodeId}`,
-   `PUT /nodes/{nodeId}/operational-profile`, `POST /nodes/{nodeId}:activate`,
-   `:suspend`, `:retire`, `POST /lanes`, `GET /lanes`, `POST /lanes/{laneId}:close`,
+   `PUT /nodes/{nodeId}/operational-profile`, `POST /nodes/{nodeId}/activations`,
+   `/suspensions`, `/retirements`, `POST /lanes`, `GET /lanes`, `POST /lanes/{laneId}/closures`,
    `PUT /service-areas/{postalPrefix}`, `GET /service-areas/{postalPrefix}`,
    `POST /regions`, `GET /regions`, `GET /regions/{regionId}`; plus the probes
    `GET /healthz` and `GET /readyz` (not part of the business contract). Creates
-   answer 201, everything else 200. `GET /nodes` answers `{"nodes":[...]}`,
-   `GET /lanes` `{"lanes":[...]}`, `GET /regions` a bare array; an empty result is
-   `[]`, never null. The response bodies are the `views` types.
+   answer 201, everything else 200. The three lists answer `{"items":[...],"nextCursor":"..."}` (ADR 0012); an
+   empty result is `{"items":[]}`, never null. The response bodies are the `views` types.
 3. **Problems (RFC 9457, `application/problem+json`).** `type` is the slug (the
    OpenAPI `Problem` schema), `title`, `status`, `detail` (the error text; an
    unmapped error is an opaque 500 whose detail is fixed and whose cause is
@@ -46,19 +45,19 @@ graceful shutdown.
    trailing data, NUL), 400 `malformed-request-query` (NUL in the query), 413
    `request-body-too-large` (64 KiB), 404 `not-found` for an unknown route or a
    NUL in the path, 405 `method-not-allowed`, 400 `idempotency-key-required`,
-   400 `idempotency-key-invalid` (over 200 characters or a control character),
-   422 `idempotency-key-reused`, 503 `dependency-unavailable`.
+   400 `idempotency-key-invalid` (not 1-128 printable ASCII characters),
+   409 `idempotency-key-reused`, 400 `invalid-limit` / `invalid-cursor` /
+   `unknown-query-parameter`, 503 `dependency-unavailable`.
 4. **NUL.** A NUL (U+0000) cannot be stored in Postgres text and would abort the
    transaction. `rejectNUL` answers before the Idempotency middleware records
    anything: 404 for the path, 400 for the query and the body (raw byte or the
    `\u0000` escape; an escaped backslash before `u0000` is not a NUL).
-5. **Idempotency-Key.** Required on all eight state-changing routes. The scope is
-   `(route, key)` where route is the operation (`POST /nodes/{nodeId}:activate`);
-   the request fingerprint is `sha256(method, path, body)`, so the same key on
-   another node is another request. The same key and fingerprint replays the first
+5. **Idempotency-Key.** Required on all eight state-changing routes. The key is global
+   (ADR 0012; `route` is stored for diagnosis only); the request fingerprint is
+   `sha256(method, path, body)`, so the same key on another node is a reuse. The same key and fingerprint replays the first
    status and body (header `Idempotency-Replayed: true`, content type derived from
-   the status); the same key with another fingerprint is **422**
-   `idempotency-key-reused` (the fleet's choice, not 409). The key row and the
+   the status); the same key with another fingerprint is **409**
+   `idempotency-key-reused` (ADR 0012; it was 422). The key row and the
    handler's writes share one transaction: the handler runs in a SAVEPOINT bound
    into its context, a 2xx keeps its writes, a 4xx rolls them back to the
    savepoint but is stored (a repeat answers the same), a 5xx or a panic rolls

@@ -15,7 +15,7 @@ function mount() {
 
 describe("RegionsScreen", () => {
   it("lists every region with its code and name", async () => {
-    mockApi({ "GET /regions": json([northRegion, southRegion]) });
+    mockApi({ "GET /regions": json({ items: [northRegion, southRegion] }) });
     mount();
     expect(await screen.findByText("region-9c21")).toBeInTheDocument();
     expect(screen.getByText("NORTH")).toBeInTheDocument();
@@ -25,7 +25,7 @@ describe("RegionsScreen", () => {
   });
 
   it("shows the empty note when no region is defined", async () => {
-    mockApi({ "GET /regions": json([]) });
+    mockApi({ "GET /regions": json({ items: [] }) });
     mount();
     expect(await screen.findByText("No region is defined.")).toBeInTheDocument();
   });

@@ -29,14 +29,13 @@ type (
 	declareProfile interface {
 		Execute(context.Context, usecases.DeclareOperationalProfileCommand) (views.Node, error)
 	}
-	nodeTransition interface {
+	// nodeByID is the shape of every use case that targets one node by
+	// id and answers it: get, activate and retire all take (ctx, node.ID).
+	nodeByID interface {
 		Execute(context.Context, node.ID) (views.Node, error)
 	}
 	suspendNode interface {
 		Execute(context.Context, node.ID, string) (views.Node, error)
-	}
-	getNode interface {
-		Execute(context.Context, node.ID) (views.Node, error)
 	}
 	listNodes interface {
 		Execute(context.Context, usecases.ListNodesQuery) ([]views.Node, error)
@@ -63,7 +62,7 @@ type (
 		Execute(context.Context, region.ID) (views.Region, error)
 	}
 	listRegions interface {
-		Execute(context.Context) ([]views.Region, error)
+		Execute(context.Context, usecases.ListRegionsQuery) ([]views.Region, error)
 	}
 )
 
@@ -71,10 +70,10 @@ type (
 type Server struct {
 	RegisterNode       registerNode
 	DeclareProfile     declareProfile
-	ActivateNode       nodeTransition
+	ActivateNode       nodeByID
 	SuspendNode        suspendNode
-	RetireNode         nodeTransition
-	GetNode            getNode
+	RetireNode         nodeByID
+	GetNode            nodeByID
 	ListNodes          listNodes
 	OpenLane           openLane
 	CloseLane          closeLane

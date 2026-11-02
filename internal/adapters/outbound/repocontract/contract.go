@@ -37,6 +37,14 @@ type named struct {
 	run  func(*testing.T, Fixture)
 }
 
+// Case names the aggregate suites share: every repository promises the
+// same round-trip and the same unknown-id miss, so the wording is named
+// once here.
+const (
+	saveGetRoundTrip = "save then get round-trips the snapshot"
+	unknownIDMiss    = "get of an unknown id is ErrNotFound"
+)
+
 // Run executes the whole contract; every case gets a fresh Fixture.
 func Run(t *testing.T, factory Factory) {
 	t.Helper()

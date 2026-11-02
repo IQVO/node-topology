@@ -2,7 +2,6 @@ package http
 
 import (
 	"github.com/claudioed/node-topology/internal/application/usecases"
-	"github.com/claudioed/node-topology/internal/application/views"
 	"github.com/claudioed/node-topology/internal/domain/lane"
 	"github.com/claudioed/node-topology/internal/domain/node"
 	"github.com/claudioed/node-topology/internal/domain/region"
@@ -160,14 +159,4 @@ type defineRegionBody struct {
 
 func (b defineRegionBody) command() usecases.DefineRegionCommand {
 	return usecases.DefineRegionCommand{Code: b.Code, Name: b.Name}
-}
-
-// nodeList and laneList wrap the list responses (apis/openapi.yaml); GET
-// /regions answers a bare array.
-type nodeList struct {
-	Nodes []views.Node `json:"nodes"`
-}
-
-type laneList struct {
-	Lanes []views.Lane `json:"lanes"`
 }

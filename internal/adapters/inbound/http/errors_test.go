@@ -75,7 +75,9 @@ func (f failDefine) Execute(context.Context, usecases.DefineRegionCommand) (view
 func (f failGetReg) Execute(context.Context, region.ID) (views.Region, error) {
 	return views.Region{}, f.err
 }
-func (f failListReg) Execute(context.Context) ([]views.Region, error) { return nil, f.err }
+func (f failListReg) Execute(context.Context, usecases.ListRegionsQuery) ([]views.Region, error) {
+	return nil, f.err
+}
 
 func failingServer(err error) *inboundhttp.Server {
 	f := failing{err}
@@ -97,12 +99,12 @@ var operations = []struct {
 	{"listNodes", http.MethodGet, "/nodes", ""},
 	{"getNode", http.MethodGet, "/nodes/node-1", ""},
 	{"declareOperationalProfile", http.MethodPut, "/nodes/node-1/operational-profile", `{"profileRevision":1}`},
-	{"activateNode", http.MethodPost, "/nodes/node-1:activate", ""},
-	{"suspendNode", http.MethodPost, "/nodes/node-1:suspend", `{"reason":"r"}`},
-	{"retireNode", http.MethodPost, "/nodes/node-1:retire", ""},
+	{"activateNode", http.MethodPost, "/nodes/node-1/activations", ""},
+	{"suspendNode", http.MethodPost, "/nodes/node-1/suspensions", `{"reason":"r"}`},
+	{"retireNode", http.MethodPost, "/nodes/node-1/retirements", ""},
 	{"openLane", http.MethodPost, "/lanes", `{"originNodeId":"a","destinationNodeId":"b","mode":"GROUND","nominalTransitMinutes":5}`},
 	{"listLanes", http.MethodGet, "/lanes", ""},
-	{"closeLane", http.MethodPost, "/lanes/lane-1:close", ""},
+	{"closeLane", http.MethodPost, "/lanes/lane-1/closures", ""},
 	{"assignServiceArea", http.MethodPut, "/service-areas/01310", `{"deliveryStationNodeId":"n","assignmentVersion":1}`},
 	{"resolveServiceArea", http.MethodGet, "/service-areas/01310", ""},
 	{"defineRegion", http.MethodPost, "/regions", `{"code":"SE","name":"Southeast"}`},

@@ -97,7 +97,7 @@ func TestNULIsRejectedBeforeAnythingElse(t *testing.T) {
 	}{
 		{"raw NUL in the path", http.MethodGet, "/nodes/no\x00de", "", "", "", "", 404, "not-found"},
 		{"encoded NUL in the path", http.MethodGet, "/nodes/no\x00de", "/nodes/no%00de", "", "", "", 404, "not-found"},
-		{"encoded NUL in a keyed path", http.MethodPost, "/nodes/no\x00de:activate", "/nodes/no%00de:activate", "", "", "k1", 404, "not-found"},
+		{"encoded NUL in a keyed path", http.MethodPost, "/nodes/no\x00de/activations", "/nodes/no%00de/activations", "", "", "k1", 404, "not-found"},
 		{"NUL in the query", http.MethodGet, "/nodes", "", "type=%00", "", "", 400, "malformed-request-query"},
 		{"raw NUL in the query", http.MethodGet, "/nodes", "", "type=a\x00b", "", "", 400, "malformed-request-query"},
 		{"escaped NUL in a body", http.MethodPost, "/regions", "", "", `{"code":"S\u0000E","name":"x"}`, "k2", 400, "malformed-request-body"},
@@ -119,7 +119,7 @@ func TestNULIsRejectedBeforeAnythingElse(t *testing.T) {
 			}
 		})
 	}
-	if list := a.get("/regions"); trimNL(list.raw) != "[]" {
+	if list := a.get("/regions"); trimNL(list.raw) != `{"items":[]}` {
 		t.Fatalf("a rejected NUL request created something: %s", list.raw)
 	}
 }

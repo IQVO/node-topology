@@ -152,11 +152,11 @@ It holds declared facts. It does not schedule, promise, assign or measure.
 | `vendor-connectivity` | `RegisterNode` (vendor node) | Command | REST `POST /nodes` (in-org) | Customer/Supplier (this context is the Supplier) |
 | `vendor-connectivity` | `DeclareOperationalProfile` | Command | REST `PUT /nodes/{nodeId}/operational-profile` (in-org) | Customer/Supplier |
 | network-ops planner | `RegisterNode` (network node) | Command | REST `POST /nodes` | UI |
-| network-ops planner | `ActivateNode` | Command | REST `POST /nodes/{nodeId}:activate` | UI |
-| network-ops planner | `SuspendNode` | Command | REST `POST /nodes/{nodeId}:suspend` | UI |
-| network-ops planner | `RetireNode` | Command | REST `POST /nodes/{nodeId}:retire` | UI |
+| network-ops planner | `ActivateNode` | Command | REST `POST /nodes/{nodeId}/activations` | UI |
+| network-ops planner | `SuspendNode` | Command | REST `POST /nodes/{nodeId}/suspensions` | UI |
+| network-ops planner | `RetireNode` | Command | REST `POST /nodes/{nodeId}/retirements` | UI |
 | network-ops planner | `OpenLane` | Command | REST `POST /lanes` | UI |
-| network-ops planner | `CloseLane` | Command | REST `POST /lanes/{laneId}:close` | UI |
+| network-ops planner | `CloseLane` | Command | REST `POST /lanes/{laneId}/closures` | UI |
 | network-ops planner | `AssignServiceArea` | Command | REST `PUT /service-areas/{postalPrefix}` | UI |
 | network-ops planner | `DefineRegion` | Command | REST `POST /regions` | UI |
 | Any context | `GetNode` | Query | REST `GET /nodes/{nodeId}` | Open Host Service |

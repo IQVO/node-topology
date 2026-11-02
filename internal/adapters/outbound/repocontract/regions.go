@@ -6,25 +6,27 @@ import (
 	"testing"
 
 	"github.com/claudioed/node-topology/internal/application/ports"
+	"github.com/claudioed/node-topology/internal/application/repository"
 	"github.com/claudioed/node-topology/internal/domain/region"
 )
 
 var regionCases = []named{
-	{"save then get round-trips the snapshot", regionRoundTrip},
-	{"get of an unknown id is ErrNotFound", regionGetMiss},
+	{saveGetRoundTrip, regionRoundTrip},
+	{unknownIDMiss, regionGetMiss},
 	{"find by code hits and misses", regionFindByCode},
 	{"a second region with the same code is ErrRegionCodeTaken", regionCodeTaken},
 	{"creating an id that exists is ErrConcurrentUpdate", regionDuplicateID},
 	{"list is empty, never nil, on an empty database", regionListEmpty},
 	{"list returns every region ordered by id", regionListOrdered},
 	{"list skips a rejected region", regionListSkipsRejected},
+	{"list walks keyset pages without duplicate or skip", regionListWindow},
 }
 
 func regionRoundTrip(t *testing.T, f Fixture) {
 	ctx := context.Background()
-	r := NewRegion(t, "region-1", "SP")
+	r := NewRegion(t, regionOne, "SP")
 	noErr(t, f.Regions.Save(ctx, r))
-	got, err := f.Regions.Get(ctx, "region-1")
+	got, err := f.Regions.Get(ctx, regionOne)
 	noErr(t, err)
 	if !reflect.DeepEqual(got.Snapshot(), r.Snapshot()) {
 		t.Fatalf("snapshot = %+v, want %+v", got.Snapshot(), r.Snapshot())
@@ -38,10 +40,10 @@ func regionGetMiss(t *testing.T, f Fixture) {
 
 func regionFindByCode(t *testing.T, f Fixture) {
 	ctx := context.Background()
-	noErr(t, f.Regions.Save(ctx, NewRegion(t, "region-1", "SP")))
+	noErr(t, f.Regions.Save(ctx, NewRegion(t, regionOne, "SP")))
 	got, err := f.Regions.FindByCode(ctx, "SP")
 	noErr(t, err)
-	if got.ID() != "region-1" {
+	if got.ID() != regionOne {
 		t.Fatalf("id = %s, want region-1", got.ID())
 	}
 	_, err = f.Regions.FindByCode(ctx, "RJ")
@@ -50,7 +52,7 @@ func regionFindByCode(t *testing.T, f Fixture) {
 
 func regionCodeTaken(t *testing.T, f Fixture) {
 	ctx := context.Background()
-	noErr(t, f.Regions.Save(ctx, NewRegion(t, "region-1", "SP")))
+	noErr(t, f.Regions.Save(ctx, NewRegion(t, regionOne, "SP")))
 	wantErr(t, f.Regions.Save(ctx, NewRegion(t, "region-2", "SP")), region.ErrRegionCodeTaken)
 	if _, err := f.Regions.Get(ctx, "region-2"); err == nil {
 		t.Fatal("the rejected region was stored")
@@ -60,12 +62,12 @@ func regionCodeTaken(t *testing.T, f Fixture) {
 
 func regionDuplicateID(t *testing.T, f Fixture) {
 	ctx := context.Background()
-	noErr(t, f.Regions.Save(ctx, NewRegion(t, "region-1", "SP")))
-	wantErr(t, f.Regions.Save(ctx, NewRegion(t, "region-1", "RJ")), ports.ErrConcurrentUpdate)
+	noErr(t, f.Regions.Save(ctx, NewRegion(t, regionOne, "SP")))
+	wantErr(t, f.Regions.Save(ctx, NewRegion(t, regionOne, "RJ")), ports.ErrConcurrentUpdate)
 }
 
 func regionListEmpty(t *testing.T, f Fixture) {
-	got, err := f.Regions.List(context.Background())
+	got, err := f.Regions.List(context.Background(), repository.RegionFilter{})
 	noErr(t, err)
 	if got == nil || len(got) != 0 {
 		t.Fatalf("list = %#v, want a non-nil empty list", got)
@@ -77,7 +79,7 @@ func regionListOrdered(t *testing.T, f Fixture) {
 	noErr(t, f.Regions.Save(ctx, NewRegion(t, "region-b", "RJ")))
 	noErr(t, f.Regions.Save(ctx, NewRegion(t, "region-c", "MG")))
 	noErr(t, f.Regions.Save(ctx, NewRegion(t, "region-a", "SP")))
-	got, err := f.Regions.List(ctx)
+	got, err := f.Regions.List(ctx, repository.RegionFilter{})
 	noErr(t, err)
 	ids := []region.ID{}
 	for _, r := range got {
@@ -93,11 +95,34 @@ func regionListOrdered(t *testing.T, f Fixture) {
 
 func regionListSkipsRejected(t *testing.T, f Fixture) {
 	ctx := context.Background()
-	noErr(t, f.Regions.Save(ctx, NewRegion(t, "region-1", "SP")))
+	noErr(t, f.Regions.Save(ctx, NewRegion(t, regionOne, "SP")))
 	wantErr(t, f.Regions.Save(ctx, NewRegion(t, "region-2", "SP")), region.ErrRegionCodeTaken)
-	got, err := f.Regions.List(ctx)
+	got, err := f.Regions.List(ctx, repository.RegionFilter{})
 	noErr(t, err)
-	if len(got) != 1 || got[0].ID() != "region-1" {
+	if len(got) != 1 || got[0].ID() != regionOne {
 		t.Fatalf("list holds %d regions, want only region-1", len(got))
+	}
+}
+
+func regionListWindow(t *testing.T, f Fixture) {
+	ctx := context.Background()
+	for i, c := range []string{"SP", "RJ", "MG", "BA", "PR"} {
+		noErr(t, f.Regions.Save(ctx, NewRegion(t, region.ID("region-"+string(rune('a'+i))), c)))
+	}
+	var seen []region.ID
+	after := ""
+	for pages := 0; pages < 10; pages++ {
+		got, err := f.Regions.List(ctx, repository.RegionFilter{Window: repository.Window{AfterID: after, Limit: 2}})
+		noErr(t, err)
+		if len(got) == 0 {
+			break
+		}
+		for _, r := range got {
+			seen = append(seen, r.ID())
+		}
+		after = string(got[len(got)-1].ID())
+	}
+	if want := []region.ID{"region-a", "region-b", "region-c", "region-d", "region-e"}; !reflect.DeepEqual(seen, want) {
+		t.Fatalf("walked ids = %v, want %v", seen, want)
 	}
 }

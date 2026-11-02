@@ -99,7 +99,8 @@ func (r *NodeRepo) FindByVendorRef(ctx context.Context, vendorID, vendorNodeCode
 func (r *NodeRepo) List(ctx context.Context, f repository.NodeFilter) ([]*node.Node, error) {
 	rows, err := queryFor(ctx, r.pool).Query(ctx, nodeSelect+`
 		WHERE ($1::text = '' OR n.node_type = $1) AND ($2::text = '' OR n.region_id = $2) AND ($3::text = '' OR n.status = $3)
-		ORDER BY n.id COLLATE "C"`, string(f.Type), string(f.RegionID), string(f.Status))
+		AND ($4::text = '' OR n.id COLLATE "C" > $4 COLLATE "C")
+		ORDER BY n.id COLLATE "C" LIMIT NULLIF($5::int, 0)`, string(f.Type), string(f.RegionID), string(f.Status), f.AfterID, f.Limit)
 	if err != nil {
 		return nil, fmt.Errorf("list nodes: %w", err)
 	}

@@ -159,11 +159,11 @@ type flakyRegions struct {
 	saves                    int
 }
 
-func (f *flakyRegions) List(ctx context.Context) ([]*region.Region, error) {
+func (f *flakyRegions) List(ctx context.Context, fl repository.RegionFilter) ([]*region.Region, error) {
 	if f.listErr != nil {
 		return nil, f.listErr
 	}
-	return f.RegionRepository.List(ctx)
+	return f.RegionRepository.List(ctx, fl)
 }
 
 func (f *flakyRegions) Get(ctx context.Context, id region.ID) (*region.Region, error) {

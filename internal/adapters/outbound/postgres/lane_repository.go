@@ -75,7 +75,8 @@ func (r *LaneRepo) List(ctx context.Context, f repository.LaneFilter) ([]*lane.L
 	rows, err := queryFor(ctx, r.pool).Query(ctx, `SELECT `+laneColumns+`
 		FROM lanes
 		WHERE ($1::text = '' OR origin_node_id = $1) AND ($2::text = '' OR destination_node_id = $2)
-		ORDER BY id COLLATE "C"`, string(f.Origin), string(f.Destination))
+		AND ($3::text = '' OR id COLLATE "C" > $3 COLLATE "C")
+		ORDER BY id COLLATE "C" LIMIT NULLIF($4::int, 0)`, string(f.Origin), string(f.Destination), f.AfterID, f.Limit)
 	if err != nil {
 		return nil, fmt.Errorf("list lanes: %w", err)
 	}

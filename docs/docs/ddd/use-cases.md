@@ -13,7 +13,7 @@ One use case per operation of `apis/openapi.yaml`, in `internal/application/usec
 
 Source: `internal/application/usecases/writer.go`, `internal/adapters/inbound/http/idempotency.go`.
 
-1. The REST adapter requires an `Idempotency-Key` (at most 200 printable characters). A key already seen on the same route with the same method, path and body replays the stored response (header `Idempotency-Replayed: true`); the same key with another request is `422 idempotency-key-reused`. Keys live 24 hours in `idempotency_keys`.
+1. The REST adapter requires an `Idempotency-Key` (1 to 128 printable ASCII characters). A key already seen with the same method, path and body replays the stored response (header `Idempotency-Replayed: true`); the same key with another request is `409 idempotency-key-reused`. Keys live 24 hours in `idempotency_keys`.
 2. Inside one `UnitOfWork` the use case loads the aggregate (and, where an invariant needs it, the other aggregate it reads), calls the domain method and saves the aggregate with an optimistic-concurrency version check.
 3. In the same Postgres transaction `EventOutbox.Append` writes one already-encoded `outbox_events` row per event, and the idempotency record is stored.
 4. The outbox relay publishes the row to `retailnetwork.node-topology.events` after commit.
@@ -33,11 +33,11 @@ A `ErrConcurrentUpdate` at step 2 reruns the whole attempt once on fresh state (
 | --- | --- | --- | --- |
 | `RegisterNode` | `vendor-connectivity` (vendor node) or a network-ops planner (parcel node) | `POST /nodes` | `NodeRegistered` |
 | `DeclareOperationalProfile` | `vendor-connectivity` (`declaredBy` `VENDOR`) or a planner (`NETWORK_OPS`) | `PUT /nodes/{nodeId}/operational-profile` | `NodeOperationalProfileDeclared` |
-| `ActivateNode` | planner | `POST /nodes/{nodeId}:activate` | `NodeActivated` |
-| `SuspendNode` | planner | `POST /nodes/{nodeId}:suspend` | `NodeSuspended` |
-| `RetireNode` | planner | `POST /nodes/{nodeId}:retire` | `NodeRetired` |
+| `ActivateNode` | planner | `POST /nodes/{nodeId}/activations` | `NodeActivated` |
+| `SuspendNode` | planner | `POST /nodes/{nodeId}/suspensions` | `NodeSuspended` |
+| `RetireNode` | planner | `POST /nodes/{nodeId}/retirements` | `NodeRetired` |
 | `OpenLane` | planner | `POST /lanes` | `LaneOpened` |
-| `CloseLane` | planner | `POST /lanes/{laneId}:close` | `LaneClosed` |
+| `CloseLane` | planner | `POST /lanes/{laneId}/closures` | `LaneClosed` |
 | `AssignServiceArea` | planner, in bulk at network redesign | `PUT /service-areas/{postalPrefix}` | `ServiceAreaAssigned` |
 | `DefineRegion` | planner | `POST /regions` | `RegionDefined` |
 
@@ -128,4 +128,4 @@ Source: `usecases/queries.go`. Reads load through the repositories and return `v
 | `ListNodes` | `GET /nodes?type=&region=&status=`, MCP `list_nodes`, A2A `find_nodes` | By id ascending; filters combine with AND; no match is an empty list; an unknown `type` or `status` is `validation-failed`. |
 | `ListLanes` | `GET /lanes?origin=&destination=`, MCP `list_lanes` | Open and closed lanes, by id ascending. |
 | `ResolveServiceArea` | `GET /service-areas/{postalPrefix}`, MCP `resolve_service_area`, A2A `serving_station` | The current assignment; an unassigned prefix is `not-found`. |
-| `GetRegion`, `ListRegions` | `GET /regions/{regionId}`, `GET /regions`, MCP `get_region`, `list_regions` | Regions by id ascending; not paginated. |
+| `GetRegion`, `ListRegions` | `GET /regions/{regionId}`, `GET /regions`, MCP `get_region`, `list_regions` | Regions by id ascending, keyset-paginated. |

@@ -1,6 +1,6 @@
 import { TOPOLOGY_API_BASE } from "./config";
 import type {
-  LaneList, ListLanesQuery, ListNodesQuery, Node, NodeList, Region, ServiceArea,
+  Lane, LaneList, ListLanesQuery, ListNodesQuery, Node, NodeList, Region, ServiceArea,
 } from "./types";
 
 /** RFC 9457 problem+json body every error response from node-topology
@@ -87,16 +87,31 @@ async function request<T>(path: string): Promise<T> {
 
 const seg = encodeURIComponent;
 
-/** A node list the UI can render: the list is never undefined. */
-function normalizeList(list: NodeList): NodeList {
-  return { nodes: list.nodes ?? [] };
+/** One page of a collection: `{ items, nextCursor }`, nextCursor absent on the last page. */
+interface Page<T> {
+  items?: T[];
+  nextCursor?: string;
 }
 
-/** GET /nodes?type=&region=&status= -- the registry, one page, id ascending. */
+/** Hard bound on the pages followed for one list (500 rows each), so a broken cursor cannot loop forever. */
+const MAX_PAGES = 100;
+
+/** Reads every page of a collection: follows `nextCursor` until it is absent. */
+async function collect<T>(path: string, query: Record<string, string | undefined>): Promise<T[]> {
+  const all: T[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const res = await request<Page<T>>(withQuery(path, { ...query, limit: 500, cursor }));
+    all.push(...(res.items ?? []));
+    if (!res.nextCursor) return all;
+    cursor = res.nextCursor;
+  }
+  throw new ApiError(0, null, `${path}: more than ${MAX_PAGES} pages`);
+}
+
+/** GET /nodes?type=&region=&status= -- the registry, every page, id ascending. */
 export async function listNodes(q: ListNodesQuery): Promise<NodeList> {
-  return normalizeList(
-    await request<NodeList>(withQuery("/nodes", { type: q.type, region: q.regionId, status: q.status })),
-  );
+  return { nodes: await collect<Node>("/nodes", { type: q.type, region: q.regionId, status: q.status }) };
 }
 
 /** GET /nodes/{nodeId} (404 not-found). */
@@ -104,10 +119,9 @@ export async function getNode(nodeId: string): Promise<Node> {
   return request<Node>(`/nodes/${seg(nodeId)}`);
 }
 
-/** GET /lanes?origin=&destination= -- open and closed lanes together. */
+/** GET /lanes?origin=&destination= -- open and closed lanes together, every page. */
 export async function listLanes(q: ListLanesQuery): Promise<LaneList> {
-  const res = await request<LaneList>(withQuery("/lanes", { origin: q.origin, destination: q.destination }));
-  return { lanes: res.lanes ?? [] };
+  return { lanes: await collect<Lane>("/lanes", { origin: q.origin, destination: q.destination }) };
 }
 
 /** GET /service-areas/{postalPrefix} -- which delivery station serves a prefix. */
@@ -115,10 +129,9 @@ export async function resolveServiceArea(postalPrefix: string): Promise<ServiceA
   return request<ServiceArea>(`/service-areas/${seg(postalPrefix)}`);
 }
 
-/** GET /regions -- every region, id ascending. */
+/** GET /regions -- every region, every page, id ascending. */
 export async function listRegions(): Promise<Region[]> {
-  const res = await request<Region[]>("/regions");
-  return res ?? [];
+  return collect<Region>("/regions", {});
 }
 
 /** GET /regions/{regionId} (404 not-found). */

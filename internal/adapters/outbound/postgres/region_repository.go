@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/claudioed/node-topology/internal/application/ports"
+	"github.com/claudioed/node-topology/internal/application/repository"
 	"github.com/claudioed/node-topology/internal/domain/region"
 )
 
@@ -62,8 +63,10 @@ func regionOrMiss(r *region.Region, err error) (*region.Region, error) {
 }
 
 // List implements ports.RegionRepository.
-func (r *RegionRepo) List(ctx context.Context) ([]*region.Region, error) {
-	rows, err := queryFor(ctx, r.pool).Query(ctx, `SELECT `+regionColumns+` FROM regions ORDER BY id COLLATE "C"`)
+func (r *RegionRepo) List(ctx context.Context, f repository.RegionFilter) ([]*region.Region, error) {
+	rows, err := queryFor(ctx, r.pool).Query(ctx, `SELECT `+regionColumns+` FROM regions
+		WHERE ($1::text = '' OR id COLLATE "C" > $1 COLLATE "C")
+		ORDER BY id COLLATE "C" LIMIT NULLIF($2::int, 0)`, f.AfterID, f.Limit)
 	if err != nil {
 		return nil, fmt.Errorf("list regions: %w", err)
 	}

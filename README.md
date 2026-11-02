@@ -144,14 +144,19 @@ values render the env.
 
 Contract: [`apis/openapi.yaml`](apis/openapi.yaml). No authentication. Errors are RFC 9457 `application/problem+json` (`type` is a slug such as
 `not-found`, `illegal-transition`, `concurrent-update`, `validation-failed`, `stale-profile-revision`).
-Every state-changing request needs an `Idempotency-Key` header: a repeat with the same request replays the first response for 24 hours.
+Every state-changing request (each POST, and the two PUTs that append) needs an `Idempotency-Key` header (1-128 printable ASCII characters, one per logical
+submit). The key is global: a repeat of the same request replays the first response for 24 hours with `Idempotency-Replayed: true`; the same key with another
+method, path or body is `409 idempotency-key-reused`; a missing or malformed key is `400 idempotency-key-required` / `idempotency-key-invalid`. The three
+collections (`GET /nodes`, `GET /lanes`, `GET /regions`) are keyset-paginated: `limit` (1-500, default 100) and an opaque `cursor`, answering
+`{"items":[...],"nextCursor":"..."}` (`nextCursor` absent on the last page); an undeclared query parameter is `400 unknown-query-parameter`
+([ADR 0012](docs/adr/0012-adopt-the-fleet-rest-api-guideline.md)).
 
 | Method and path | Operation |
 | --- | --- |
-| `POST /nodes`, `GET /nodes?type=&region=&status=`, `GET /nodes/{nodeId}` | register, list, read |
+| `POST /nodes`, `GET /nodes?type=&region=&status=&limit=&cursor=`, `GET /nodes/{nodeId}` | register, list, read |
 | `PUT /nodes/{nodeId}/operational-profile` | declare a profile revision |
-| `POST /nodes/{nodeId}:activate`, `:suspend`, `:retire` | lifecycle |
-| `POST /lanes`, `GET /lanes?origin=&destination=`, `POST /lanes/{laneId}:close` | lanes |
+| `POST /nodes/{nodeId}/activations`, `/suspensions`, `/retirements` | lifecycle |
+| `POST /lanes`, `GET /lanes?origin=&destination=`, `POST /lanes/{laneId}/closures` | lanes |
 | `PUT /service-areas/{postalPrefix}`, `GET /service-areas/{postalPrefix}` | assign, resolve |
 | `POST /regions`, `GET /regions`, `GET /regions/{regionId}` | regions |
 | `GET /healthz`, `GET /readyz` | liveness, readiness |

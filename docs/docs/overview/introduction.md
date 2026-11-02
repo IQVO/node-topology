@@ -70,3 +70,7 @@ Nine commands change state ([Use cases](/docs/ddd/use-cases)); everything else i
 | Read the decisions | [ADR index](/docs/adr) |
 
 Published at [https://iqvo.github.io/node-topology/](https://iqvo.github.io/node-topology/).
+
+:::note[Disclaimer]
+This project is a domain-driven design study. It is not associated with, endorsed by or affiliated with any company, and it uses no company's code, data, logos or trademarks. All names, figures and examples are illustrative or synthetic.
+:::

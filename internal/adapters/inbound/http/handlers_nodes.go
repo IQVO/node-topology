@@ -6,9 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/claudioed/node-topology/internal/application/usecases"
-	"github.com/claudioed/node-topology/internal/application/views"
 	"github.com/claudioed/node-topology/internal/domain/node"
-	"github.com/claudioed/node-topology/internal/domain/region"
 )
 
 func (s *Server) mountNodes(r chi.Router) {
@@ -16,9 +14,9 @@ func (s *Server) mountNodes(r chi.Router) {
 	r.Get("/nodes", s.listNodes)
 	r.Get("/nodes/{nodeId}", s.getNode)
 	s.keyed(r, http.MethodPut, "/nodes/{nodeId}/operational-profile", s.declareOperationalProfile)
-	s.keyed(r, http.MethodPost, "/nodes/{nodeId}:activate", s.nodeTransition(s.ActivateNode))
-	s.keyed(r, http.MethodPost, "/nodes/{nodeId}:suspend", s.suspendNode)
-	s.keyed(r, http.MethodPost, "/nodes/{nodeId}:retire", s.nodeTransition(s.RetireNode))
+	s.keyed(r, http.MethodPost, "/nodes/{nodeId}/activations", s.nodeTransition(s.ActivateNode))
+	s.keyed(r, http.MethodPost, "/nodes/{nodeId}/suspensions", s.suspendNode)
+	s.keyed(r, http.MethodPost, "/nodes/{nodeId}/retirements", s.nodeTransition(s.RetireNode))
 }
 
 func nodeID(r *http.Request) node.ID { return node.ID(chi.URLParam(r, "nodeId")) }
@@ -36,26 +34,6 @@ func (s *Server) registerNode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, n)
-}
-
-// listNodes is GET /nodes?type=&region=&status=.
-func (s *Server) listNodes(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	nodes, err := s.ListNodes.Execute(r.Context(), usecases.ListNodesQuery{
-		Type: node.Type(q.Get("type")), RegionID: region.ID(q.Get("region")), Status: node.Status(q.Get("status")),
-	})
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, nodeList{Nodes: nonNilNodes(nodes)})
-}
-
-func nonNilNodes(in []views.Node) []views.Node {
-	if in == nil {
-		return []views.Node{}
-	}
-	return in
 }
 
 // getNode is GET /nodes/{nodeId}.
@@ -83,9 +61,9 @@ func (s *Server) declareOperationalProfile(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, n)
 }
 
-// nodeTransition is POST /nodes/{nodeId}:activate and :retire, which take no
+// nodeTransition is POST /nodes/{nodeId}/activations and /retirements, which take no
 // body.
-func (s *Server) nodeTransition(uc nodeTransition) http.HandlerFunc {
+func (s *Server) nodeTransition(uc nodeByID) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		n, err := uc.Execute(r.Context(), nodeID(r))
 		if err != nil {
@@ -96,7 +74,7 @@ func (s *Server) nodeTransition(uc nodeTransition) http.HandlerFunc {
 	}
 }
 
-// suspendNode is POST /nodes/{nodeId}:suspend.
+// suspendNode is POST /nodes/{nodeId}/suspensions.
 func (s *Server) suspendNode(w http.ResponseWriter, r *http.Request) {
 	var body suspendBody
 	if err := decodeJSON(r, &body); err != nil {

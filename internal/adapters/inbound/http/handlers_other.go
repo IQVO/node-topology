@@ -5,10 +5,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/claudioed/node-topology/internal/application/usecases"
-	"github.com/claudioed/node-topology/internal/application/views"
 	"github.com/claudioed/node-topology/internal/domain/lane"
-	"github.com/claudioed/node-topology/internal/domain/node"
 	"github.com/claudioed/node-topology/internal/domain/region"
 	"github.com/claudioed/node-topology/internal/domain/servicearea"
 )
@@ -16,7 +13,7 @@ import (
 func (s *Server) mountLanes(r chi.Router) {
 	s.keyed(r, http.MethodPost, "/lanes", s.openLane)
 	r.Get("/lanes", s.listLanes)
-	s.keyed(r, http.MethodPost, "/lanes/{laneId}:close", s.closeLane)
+	s.keyed(r, http.MethodPost, "/lanes/{laneId}/closures", s.closeLane)
 }
 
 func (s *Server) mountServiceAreas(r chi.Router) {
@@ -45,23 +42,7 @@ func (s *Server) openLane(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, l)
 }
 
-// listLanes is GET /lanes?origin=&destination=.
-func (s *Server) listLanes(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	lanes, err := s.ListLanes.Execute(r.Context(), usecases.ListLanesQuery{
-		Origin: node.ID(q.Get("origin")), Destination: node.ID(q.Get("destination")),
-	})
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	if lanes == nil {
-		lanes = []views.Lane{}
-	}
-	writeJSON(w, http.StatusOK, laneList{Lanes: lanes})
-}
-
-// closeLane is POST /lanes/{laneId}:close.
+// closeLane is POST /lanes/{laneId}/closures.
 func (s *Server) closeLane(w http.ResponseWriter, r *http.Request) {
 	l, err := s.CloseLane.Execute(r.Context(), lane.ID(chi.URLParam(r, "laneId")))
 	if err != nil {
@@ -109,19 +90,6 @@ func (s *Server) defineRegion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, reg)
-}
-
-// listRegions is GET /regions: a bare array ordered by regionId.
-func (s *Server) listRegions(w http.ResponseWriter, r *http.Request) {
-	regions, err := s.ListRegions.Execute(r.Context())
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	if regions == nil {
-		regions = []views.Region{}
-	}
-	writeJSON(w, http.StatusOK, regions)
 }
 
 // getRegion is GET /regions/{regionId}.
