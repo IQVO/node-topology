@@ -155,7 +155,7 @@ Errors are RFC 9457 `application/problem+json` and `type` is a slug (full list o
 
 ```text
 POST /regions without a key        -> 400 idempotency-key-required
-same key, other body               -> 422 idempotency-key-reused
+same key, other body               -> 409 idempotency-key-reused
 GET /nodes/nope                    -> 404 not-found
 POST /regions code SE-BR again     -> 409 region-code-taken
 GET /nodes?type=BOGUS              -> 422 validation-failed ("unknown node type")

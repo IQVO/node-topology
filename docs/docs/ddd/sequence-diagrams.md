@@ -21,10 +21,10 @@ are the same in every diagram:
 
 Every state-changing route requires an `Idempotency-Key` header (`400
 idempotency-key-required` without one). The middleware opens a transaction,
-claims `(route, key)` and runs the handler inside a savepoint of it, so the key,
+claims the key and runs the handler inside a savepoint of it, so the key,
 the aggregate rows and the outbox rows of a 2xx commit together. The same key
 with the same request replays the first answer (header `Idempotency-Replayed:
-true`), the same key with another request is `422 idempotency-key-reused`. A 4xx
+true`), the same key with another request is `409 idempotency-key-reused`. A 4xx
 is stored too, a 5xx rolls everything back and is not stored. Each diagram shows
 the optimistic-concurrency version check (or the unique index that backs a
 create), the outbox write and the relay. When the version check fails the use

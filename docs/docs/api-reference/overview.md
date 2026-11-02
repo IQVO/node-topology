@@ -26,27 +26,27 @@ All routes are on `cmd/api`. State-changing routes need an `Idempotency-Key`.
 | Tag | Endpoint | Operation id | Success |
 | --- | --- | --- | --- |
 | Nodes | `POST /nodes` | `registerNode` | `201`, the node in `PROPOSED` |
-| Nodes | `GET /nodes` | `listNodes` | `200 {nodes}`, by id, filters `type`, `region`, `status` |
+| Nodes | `GET /nodes` | `listNodes` | `200 {items, nextCursor}`, by id, filters `type`, `region`, `status` |
 | Nodes | `GET /nodes/{nodeId}` | `getNode` | `200`, the node with its current `operationalProfile` |
 | Nodes | `PUT /nodes/{nodeId}/operational-profile` | `declareOperationalProfile` | `200`, the node with the new revision |
 | Nodes | `POST /nodes/{nodeId}/activations` | `activateNode` | `200`, the node `ACTIVE` |
 | Nodes | `POST /nodes/{nodeId}/suspensions` | `suspendNode` | `200`, the node `SUSPENDED` (body `{reason}`) |
 | Nodes | `POST /nodes/{nodeId}/retirements` | `retireNode` | `200`, the node `RETIRED` |
 | Lanes | `POST /lanes` | `openLane` | `201`, the lane `OPEN` |
-| Lanes | `GET /lanes` | `listLanes` | `200 {lanes}`, filters `origin`, `destination` |
+| Lanes | `GET /lanes` | `listLanes` | `200 {items, nextCursor}`, filters `origin`, `destination` |
 | Lanes | `POST /lanes/{laneId}/closures` | `closeLane` | `200`, the lane `CLOSED` |
 | Service areas | `PUT /service-areas/{postalPrefix}` | `assignServiceArea` | `200`, the assignment at its new version |
 | Service areas | `GET /service-areas/{postalPrefix}` | `resolveServiceArea` | `200`, the current assignment; `404 not-found` if unassigned |
 | Regions | `POST /regions` | `defineRegion` | `201`, the region |
-| Regions | `GET /regions` | `listRegions` | `200`, a bare array of regions |
+| Regions | `GET /regions` | `listRegions` | `200 {items, nextCursor}`, regions |
 | Regions | `GET /regions/{regionId}` | `getRegion` | `200`, the region |
 | Health | `GET /healthz`, `GET /readyz` | none (not in the spec) | `200`, or `503` on `/readyz` while draining or a dependency is down |
 
 ## Conventions in the contract
 
-- **`Idempotency-Key`.** Required on every `POST` and `PUT` (`400 idempotency-key-required` when absent, `400 idempotency-key-invalid` over 200 characters or with a control character). The same key on the same route with an equal method, path and body replays the stored answer byte for byte with header `Idempotency-Replayed: true`; with a different request it is `422 idempotency-key-reused`. Keys live 24 hours. 2xx and 4xx outcomes are stored, 5xx never.
+- **`Idempotency-Key`.** Required on every `POST` and on the two appending `PUT`s (`PUT /nodes/{nodeId}/operational-profile`, `PUT /service-areas/{postalPrefix}`); `400 idempotency-key-required` when absent, `400 idempotency-key-invalid` unless 1 to 128 printable ASCII characters. The key is global: the same key with an equal method, path and body replays the stored answer byte for byte with header `Idempotency-Replayed: true`; with a different request it is `409 idempotency-key-reused`. Keys live 24 hours. 2xx and 4xx outcomes are stored, 5xx never.
 - **Versioning without ETags.** There is no `If-Match`. A profile carries `profileRevision` and a service area `assignmentVersion`; the caller sends the next number and a stale one is `409 stale-profile-revision` or `409 stale-assignment-version`. Profile revisions are immutable and kept.
-- **Lists.** Not paginated: nodes, lanes and regions come back by id ascending, an empty list when nothing matches. An unknown `type` or `status` filter is `422 validation-failed`. The REST regions list is a bare array; the MCP `list_regions` wraps it as `{regions}`.
+- **Lists.** Keyset-paginated: nodes, lanes and regions come back by id ascending as `{items, nextCursor}` (`limit` 1-500, default 100, opaque `cursor`; `nextCursor` is absent on the last page), `{items: []}` when nothing matches. `400 invalid-limit`, `400 invalid-cursor`, and `400 unknown-query-parameter` for any parameter the collection does not declare. An unknown `type` or `status` filter is `422 validation-failed`. The MCP `list_regions` still wraps every region as `{regions}`.
 - **Errors** are RFC 9457 `application/problem+json` with `type` set to the slug alone (not a URL), plus `title`, `status`, `detail` and `instance`. The slugs: `not-found`, `method-not-allowed`, `illegal-transition`, `concurrent-update`, `validation-failed`, `malformed-request-body`, `malformed-request-query`, `request-body-too-large`, `idempotency-key-required`, `idempotency-key-invalid`, `idempotency-key-reused`, `vendor-node-code-taken`, `operator-not-allowed-for-node-type`, `subtype-not-allowed`, `stale-profile-revision`, `incomplete-operational-profile`, `cutoff-outside-operating-hours`, `sort-dwell-not-allowed`, `node-retired`, `lane-loop`, `lane-type-pair-not-allowed`, `lane-endpoint-not-active`, `duplicate-lane`, `not-a-delivery-station`, `stale-assignment-version`, `region-code-taken`, `unknown-region`, `dependency-unavailable` and `internal-error`. Status, trigger and remedy for each are on [Troubleshooting](/docs/operations/troubleshooting#rest-problem-types); the use case that raises each is on [Use cases](/docs/ddd/use-cases).
 - **Limits.** Request bodies over 64 KiB are `413 request-body-too-large`; a NUL character in a body or query string is `400`.
 - **Auth**: none. The fleet reverted REST, MCP and A2A auth on 2026-09-11, and `TestNoAuthMiddlewareReintroduced` fails CI if auth middleware returns under `internal/adapters/inbound`.

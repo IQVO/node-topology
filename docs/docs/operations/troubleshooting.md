@@ -50,8 +50,8 @@ Symptom, cause, check, fix, built from the failure modes visible in the code. Lo
 | Symptom | Likely cause | Check | Fix |
 | --- | --- | --- | --- |
 | `400 idempotency-key-required` | A `POST`, `PUT` or `:action` call without `Idempotency-Key`. Every state-changing route needs one; there is no unkeyed mode | The request headers | Send a unique key per logical request |
-| `400 idempotency-key-invalid` | Key longer than 200 characters or containing a control character | The key | Use up to 200 printable characters |
-| `422 idempotency-key-reused` | The same key (per route) with a different method, path or body; or the key expired while the request was in flight | Compare the two requests | Use a new key, or resend the original request to get its stored answer |
+| `400 idempotency-key-invalid` | Key longer than 128 characters or not printable ASCII | The key | Use 1 to 128 printable ASCII characters |
+| `409 idempotency-key-reused` | The same key with a different method, path or body (the key is global); or the key expired while the request was in flight | Compare the two requests | Use a new key, or resend the original request to get its stored answer |
 | A rejected request keeps answering the same 4xx | 2xx and 4xx outcomes are stored for 24 h and replayed byte for byte with header `Idempotency-Replayed: true`. A 5xx is never stored | The response header | Fix the request and send it with a **new** key |
 | A retry after a 500 does the work again | Expected: a 5xx rolls everything back and is not stored, so the same key can retry | none | none |
 
@@ -78,7 +78,7 @@ Every error is `application/problem+json` with `type` (the slug), `title`, `stat
 | 409 | `not-a-delivery-station` | The target of a service-area assignment is not an ACTIVE delivery station | Activate the station or pick another |
 | 409 | `stale-assignment-version` | `assignmentVersion` is not above the current one for the prefix | Resolve the prefix and send current + 1 |
 | 409 | `region-code-taken` | A region with this `code` exists | Use the existing region |
-| 422 | `idempotency-key-reused` | See Idempotency above | |
+| 409 | `idempotency-key-reused` | See Idempotency above | |
 | 422 | `operator-not-allowed-for-node-type` | Parcel nodes (sortation centre, delivery station, air hub) must be `NETWORK`-operated; fulfilment centre, inbound cross-dock and returns centre must be `VENDOR`-operated | Fix `operator` |
 | 422 | `subtype-not-allowed` | A `subtype` on anything but a fulfilment centre | Drop it |
 | 422 | `cutoff-outside-operating-hours` | A cutoff falls outside the operating hours of its day | Fix the profile |

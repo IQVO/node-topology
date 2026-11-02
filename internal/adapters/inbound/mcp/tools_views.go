@@ -110,8 +110,8 @@ type regionView struct {
 
 // regionsListView wraps the region list the way the node and lane lists are
 // wrapped: an OBJECT, so a tool's structured content is always an object
-// (REST returns the regions as a bare array; the extra envelope key is the
-// only shape difference between the two surfaces).
+// (REST answers {items, nextCursor}; the MCP tool returns every region under
+// its own `regions` key).
 type regionsListView struct {
 	Regions []regionView `json:"regions"`
 }

@@ -16,7 +16,7 @@ func exec(t *testing.T, pool *pgxpool.Pool, sql string, args ...any) error {
 	return err
 }
 
-func TestIdempotencyKeysAreUniquePerRouteAndKey(t *testing.T) {
+func TestIdempotencyKeysAreUniquePerKey(t *testing.T) {
 	pool := newPool(t)
 	const insert = `INSERT INTO idempotency_keys (route, key, request_hash) VALUES ($1, $2, $3)`
 
@@ -24,10 +24,10 @@ func TestIdempotencyKeysAreUniquePerRouteAndKey(t *testing.T) {
 		t.Fatalf("first insert: %v", err)
 	}
 	if err := exec(t, pool, insert, "POST /nodes", "k-1", "hash-b"); err == nil {
-		t.Fatal("the same (route, key) was stored twice")
+		t.Fatal("the same key was stored twice")
 	}
-	if err := exec(t, pool, insert, "POST /lanes", "k-1", "hash-a"); err != nil {
-		t.Fatalf("the same key on another route must be accepted: %v", err)
+	if err := exec(t, pool, insert, "POST /lanes", "k-1", "hash-a"); err == nil {
+		t.Fatal("the same key on another route was stored: the key is global (ADR 0012)")
 	}
 }
 

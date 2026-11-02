@@ -25,3 +25,4 @@ The *Status* column is copied from each ADR's own `## Status` section.
 | [0009](./0009-console-remote.md) | a web console remote (node_topology_mfe) | Accepted (2026-10-24) |
 | [0010](./0010-fleet-observability-standard.md) | Adopt the fleet observability standard (logs, metrics, traces) | Accepted (2026-10-26) |
 | [0011](./0011-a2a-inbound-adapter.md) | A2A inbound adapter | Accepted (2026-10-29) |
+| [0012](./0012-adopt-the-fleet-rest-api-guideline.md) | Adopt the fleet REST API guideline | Accepted (2026-11-01) |

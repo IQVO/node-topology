@@ -189,7 +189,7 @@ These tables are infrastructure, not domain state:
   row stops being claimed once `attempts` reaches `OUTBOX_MAX_ATTEMPTS`. The
   migration comment names a second topic suffix `.analytics`; nothing is ever
   written to it.
-- `idempotency_keys` is keyed by `(route, key)`. A repeat with the same
+- `idempotency_keys` is keyed by `key` alone. A repeat with the same
   `request_hash` replays the stored response; a different hash is the problem
   `idempotency-key-reused`. `response_status` and `response_body` are null
   while the first request is still in flight. Rows live 24 hours; the cleanup
@@ -211,5 +211,5 @@ None. The four query routes read the aggregate tables directly.
 | `service_areas` | **ServiceArea** | One row per postal prefix, holding the current assignment. |
 | `regions` | **Region** | One row per region. |
 | `outbox_events` | none (infrastructure) | Transactional outbox. |
-| `idempotency_keys` | none (infrastructure) | `Idempotency-Key` replay store, keyed by `(route, key)`, 24-hour TTL. |
+| `idempotency_keys` | none (infrastructure) | `Idempotency-Key` replay store, keyed by `key`, 24-hour TTL. |
 | `schema_migrations` | none (infrastructure) | Migration bookkeeping. |
