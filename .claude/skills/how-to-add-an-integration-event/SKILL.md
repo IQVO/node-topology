@@ -48,7 +48,7 @@ envelope is CloudEvents 1.0 only; read `.claude/rules/integration-events.md` and
 Not today: this context consumes nothing and calls no sibling. Adding a consumer
 supersedes ADR 0003 first (new ADR), then follows `.claude/rules/fleet/kafka-testing-and-consumers.md`:
 a consumer group id from a mandatory env var (boot error naming it, listed in
-`docs/runtime.md` and the chart), an inbox table keyed by the CloudEvents `id`,
+`docs/docs/overview/runtime.md` and the chart), an inbox table keyed by the CloudEvents `id`,
 dispatch on the FULL `type`, tolerant decoding, a DLQ path that guards shutdown
 (`TestDeadLetterCallsGuardCancellation`), adapters in a new inbound Kafka package under
 `internal/adapters/inbound/`, and the vendored contract of the producer's AsyncAPI.
