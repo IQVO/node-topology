@@ -68,7 +68,7 @@ func (w *world) commandRefusedWith(slug string) error {
 		return errNoCommand
 	}
 	if !errors.Is(w.lastErr, want) {
-		return fmt.Errorf("the command ended with %v, want %s", w.lastErr, slug)
+		return fmt.Errorf("the command ended with %w, want %s", w.lastErr, slug)
 	}
 	return nil
 }

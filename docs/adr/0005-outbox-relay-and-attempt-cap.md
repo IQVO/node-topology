@@ -26,7 +26,7 @@ poison row can block forever.
    (two replicas never claim the same row), stops at the first send failure
    (a later event of an aggregate never overtakes an earlier one that is being
    retried), records `attempts` and `last_error` on the failed row, commits the
-   rows already sent and returns an `*outbox.SendFailure`. A cancelled context
+   rows already sent and returns an `*outbox.SendFailureError`. A cancelled context
    still commits what was sent.
 3. **Delivery is at-least-once.** A crash between the send and the `UPDATE`
    republishes that row with the SAME CloudEvents `id` (minted once, at append,
