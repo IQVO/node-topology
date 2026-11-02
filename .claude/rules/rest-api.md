@@ -15,16 +15,16 @@ registered in `internal/adapters/inbound/http/handlers_nodes.go` and
 - `GET /nodes?type=&region=&status=` -> `ListNodes` (`{"nodes":[...]}`)
 - `GET /nodes/{nodeId}` -> `GetNode`
 - `PUT /nodes/{nodeId}/operational-profile` -> `DeclareOperationalProfile`
-- `POST /nodes/{nodeId}:activate` -> `ActivateNode`
-- `POST /nodes/{nodeId}:suspend` -> `SuspendNode` (body `{"reason"}`)
-- `POST /nodes/{nodeId}:retire` -> `RetireNode`
+- `POST /nodes/{nodeId}/activations` -> `ActivateNode`
+- `POST /nodes/{nodeId}/suspensions` -> `SuspendNode` (body `{"reason"}`)
+- `POST /nodes/{nodeId}/retirements` -> `RetireNode`
 - `POST /lanes` -> `OpenLane` (201)
 - `GET /lanes?origin=&destination=` -> `ListLanes` (`{"lanes":[...]}`)
-- `POST /lanes/{laneId}:close` -> `CloseLane`
+- `POST /lanes/{laneId}/closures` -> `CloseLane`
 - `PUT /service-areas/{postalPrefix}` -> `AssignServiceArea`
 - `GET /service-areas/{postalPrefix}` -> `ResolveServiceArea`
 - `POST /regions` -> `DefineRegion` (201)
-- `GET /regions` -> `ListRegions` (a bare array)
+- `GET /regions` -> `ListRegions` (paged `{items,nextCursor}`, `cursor` / `limit`)
 - `GET /regions/{regionId}` -> `GetRegion`
 - `GET /healthz` (liveness), `GET /readyz` (readiness): not business operations.
 
@@ -39,7 +39,7 @@ registered in `internal/adapters/inbound/http/handlers_nodes.go` and
   row and a row in `errors_test.go`.
 - **Idempotency-Key** is required on all eight state-changing routes
   (`idempotency.go`): same key + same request replays the first response, same
-  key + other request is 422 `idempotency-key-reused`, missing key 400
+  key + other request is 409 `idempotency-key-reused`, missing key 400
   `idempotency-key-required`, keys live 24 h in `idempotency_keys`. A new
   state-changing route registers through `Server.keyed`, never `r.Post`.
 - **NUL** (U+0000) is rejected before anything else (`nul.go`): 404 in the path,
