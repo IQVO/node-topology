@@ -83,28 +83,28 @@ func TestTheSameKeyAndBodyReplaysTheFirstResponse(t *testing.T) {
 	}
 }
 
-func TestTheSameKeyWithAnotherBodyIs422KeyReused(t *testing.T) {
+func TestTheSameKeyWithAnotherBodyIs409KeyReused(t *testing.T) {
 	d := newDBAPI(t)
 	d.do(http.MethodPost, "/regions", regionBody, "key-1")
 	r := d.do(http.MethodPost, "/regions", `{"code":"NE","name":"Northeast"}`, "key-1")
-	if r.status != http.StatusUnprocessableEntity || r.slug() != "idempotency-key-reused" || !r.isProblem() {
-		t.Fatalf("conflicting body = %d %s, want 422 idempotency-key-reused", r.status, r.raw)
+	if r.status != http.StatusConflict || r.slug() != "idempotency-key-reused" || !r.isProblem() {
+		t.Fatalf("conflicting body = %d %s, want 409 idempotency-key-reused", r.status, r.raw)
 	}
 	if d.count("regions") != 1 {
 		t.Fatalf("the conflicting request created a region")
 	}
 }
 
-func TestTheSameKeyOnAnotherResourceIsAnotherRequest(t *testing.T) {
+func TestTheSameKeyOnAnotherResourceIsKeyReused(t *testing.T) {
 	d := newDBAPI(t)
 	w := activeNodes(t, d, 2)
-	first := d.do(http.MethodPost, "/nodes/"+w[0]+":suspend", `{"reason":"r"}`, "same-key")
+	first := d.do(http.MethodPost, "/nodes/"+w[0]+"/suspensions", `{"reason":"r"}`, "same-key")
 	if first.status != http.StatusOK {
 		t.Fatalf("suspend = %d %s", first.status, first.raw)
 	}
-	other := d.do(http.MethodPost, "/nodes/"+w[1]+":suspend", `{"reason":"r"}`, "same-key")
-	if other.status != http.StatusUnprocessableEntity || other.slug() != "idempotency-key-reused" {
-		t.Fatalf("same key, other node = %d %s, want 422 idempotency-key-reused", other.status, other.raw)
+	other := d.do(http.MethodPost, "/nodes/"+w[1]+"/suspensions", `{"reason":"r"}`, "same-key")
+	if other.status != http.StatusConflict || other.slug() != "idempotency-key-reused" {
+		t.Fatalf("same key, other node = %d %s, want 409 idempotency-key-reused", other.status, other.raw)
 	}
 	if n := d.get("/nodes/" + w[1]); n.field("status") != "ACTIVE" {
 		t.Fatalf("the refused request suspended the other node: %s", n.raw)
@@ -114,7 +114,7 @@ func TestTheSameKeyOnAnotherResourceIsAnotherRequest(t *testing.T) {
 func activeNodes(t *testing.T, d dbAPI, n int) []string {
 	t.Helper()
 	d.do(http.MethodPost, "/regions", `{"code":"SE","name":"Southeast"}`, "region-key")
-	reg := d.get("/regions").decoded.([]any)[0].(map[string]any)["regionId"].(string)
+	reg := d.get("/regions").decoded.(map[string]any)["items"].([]any)[0].(map[string]any)["regionId"].(string)
 	var out []string
 	for i := range n {
 		body := strings.Replace(registerBody("SORTATION_CENTER", "NETWORK", ""), "region-1", reg, 1)
@@ -124,7 +124,7 @@ func activeNodes(t *testing.T, d dbAPI, n int) []string {
 			t.Fatalf("register: %d %s", r.status, r.raw)
 		}
 		d.do(http.MethodPut, "/nodes/"+id+"/operational-profile", profileWith(`,"sortDwellMinutes":10`), "prof-"+string(rune('a'+i)))
-		if a := d.do(http.MethodPost, "/nodes/"+id+":activate", "", "act-"+string(rune('a'+i))); a.status != http.StatusOK {
+		if a := d.do(http.MethodPost, "/nodes/"+id+"/activations", "", "act-"+string(rune('a'+i))); a.status != http.StatusOK {
 			t.Fatalf("activate: %d %s", a.status, a.raw)
 		}
 		out = append(out, id)
@@ -137,11 +137,17 @@ func TestAMissingOrInvalidKeyIs400(t *testing.T) {
 	if r := d.do(http.MethodPost, "/regions", regionBody, ""); r.status != 400 || r.slug() != "idempotency-key-required" {
 		t.Fatalf("no key = %d %s", r.status, r.raw)
 	}
-	if r := d.do(http.MethodPost, "/regions", regionBody, strings.Repeat("k", 201)); r.status != 400 || r.slug() != "idempotency-key-invalid" {
-		t.Fatalf("201-char key = %d %s", r.status, r.raw)
+	if r := d.do(http.MethodPost, "/regions", regionBody, strings.Repeat("k", 129)); r.status != 400 || r.slug() != "idempotency-key-invalid" {
+		t.Fatalf("129-char key = %d %s", r.status, r.raw)
 	}
-	if r := d.do(http.MethodPost, "/regions", regionBody, strings.Repeat("k", 200)); r.status != 201 {
-		t.Fatalf("200-char key = %d %s, want it accepted", r.status, r.raw)
+	if r := d.do(http.MethodPost, "/regions", regionBody, strings.Repeat("k", 128)); r.status != 201 {
+		t.Fatalf("128-char key = %d %s, want it accepted", r.status, r.raw)
+	}
+	if r := d.do(http.MethodPost, "/regions", `{"code":"NE","name":"Northeast"}`, "has space"); r.status != 400 || r.slug() != "idempotency-key-invalid" {
+		t.Fatalf("key with a space = %d %s", r.status, r.raw)
+	}
+	if r := d.do(http.MethodPost, "/regions", `{"code":"NE","name":"Northeast"}`, "ünï"); r.status != 400 || r.slug() != "idempotency-key-invalid" {
+		t.Fatalf("non-ASCII key = %d %s", r.status, r.raw)
 	}
 	if d.count("idempotency_keys") != 1 {
 		t.Fatalf("refused keys were recorded: %d rows", d.count("idempotency_keys"))
@@ -263,4 +269,33 @@ type panicOnce struct{}
 
 func (panicOnce) Execute(context.Context, usecases.DefineRegionCommand) (views.Region, error) {
 	panic("boom")
+}
+
+// TestTheKeyIsGlobalAcrossRoutes: one key on two different routes is a reuse,
+// not two independent keys.
+func TestTheKeyIsGlobalAcrossRoutes(t *testing.T) {
+	d := newDBAPI(t)
+	if r := d.do(http.MethodPost, "/regions", regionBody, "shared"); r.status != http.StatusCreated {
+		t.Fatalf("first = %d %s", r.status, r.raw)
+	}
+	r := d.do(http.MethodPost, "/lanes", `{"originNodeId":"a","destinationNodeId":"b","mode":"GROUND","nominalTransitMinutes":5}`, "shared")
+	if r.status != http.StatusConflict || r.slug() != "idempotency-key-reused" {
+		t.Fatalf("same key on another route = %d %s, want 409 idempotency-key-reused", r.status, r.raw)
+	}
+}
+
+// TestEveryKeyedRouteIsBehindTheMiddleware: a state-changing request without
+// a key is 400 on every POST and on the two PUTs that append.
+func TestEveryKeyedRouteIsBehindTheMiddleware(t *testing.T) {
+	d := newDBAPI(t)
+	for _, tc := range []struct{ method, path string }{
+		{http.MethodPost, "/nodes"}, {http.MethodPost, "/nodes/n/activations"}, {http.MethodPost, "/nodes/n/suspensions"},
+		{http.MethodPost, "/nodes/n/retirements"}, {http.MethodPut, "/nodes/n/operational-profile"},
+		{http.MethodPost, "/lanes"}, {http.MethodPost, "/lanes/l/closures"}, {http.MethodPut, "/service-areas/01310"},
+		{http.MethodPost, "/regions"},
+	} {
+		if r := d.do(tc.method, tc.path, "{}", ""); r.status != http.StatusBadRequest || r.slug() != "idempotency-key-required" {
+			t.Errorf("%s %s without a key = %d %s", tc.method, tc.path, r.status, r.raw)
+		}
+	}
 }

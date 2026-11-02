@@ -88,22 +88,20 @@ func checkProblem(t *testing.T, rec *httptest.ResponseRecorder, wantStatus int, 
 	}
 }
 
-func TestHasControl(t *testing.T) {
+func TestPrintableASCII(t *testing.T) {
 	tests := []struct {
 		in   string
 		want bool
 	}{
-		{"", false},
-		{"plain-key-123", false},
+		{"plain-key-123", true},
 		{"with space", false},
-		{"with\ttab", true},
-		{"with\nnewline", true},
-		{"with\x00nul", true},
+		{"with\ttab", false},
+		{"with\x00nul", false},
 		{"ünïcode-á", false},
 	}
 	for _, tc := range tests {
-		if got := hasControl(tc.in); got != tc.want {
-			t.Errorf("hasControl(%q) = %v, want %v", tc.in, got, tc.want)
+		if got := printableASCII(tc.in); got != tc.want {
+			t.Errorf("printableASCII(%q) = %v, want %v", tc.in, got, tc.want)
 		}
 	}
 }

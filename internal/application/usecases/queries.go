@@ -33,6 +33,9 @@ type ListNodesQuery struct {
 	Type     node.Type
 	RegionID region.ID
 	Status   node.Status
+	// AfterID and Limit window the list (keyset by id); Limit 0 = every row.
+	AfterID string
+	Limit   int
 }
 
 // ListNodes lists nodes by type, region and status.
@@ -53,6 +56,7 @@ func (q *ListNodes) Execute(ctx context.Context, query ListNodesQuery) ([]views.
 	}
 	nodes, err := q.nodes.List(ctx, repository.NodeFilter{
 		Type: query.Type, RegionID: query.RegionID, Status: query.Status,
+		Window: repository.Window{AfterID: query.AfterID, Limit: query.Limit},
 	})
 	if err != nil {
 		return nil, err
@@ -79,16 +83,22 @@ func (q *GetRegion) Execute(ctx context.Context, id region.ID) (views.Region, er
 	return views.RegionFrom(r), nil
 }
 
-// ListRegions lists every region (Open Host Service).
+// ListRegionsQuery windows ListRegions (keyset by id); Limit 0 = every row.
+type ListRegionsQuery struct {
+	AfterID string
+	Limit   int
+}
+
+// ListRegions lists regions (Open Host Service).
 type ListRegions struct{ regions ports.RegionRepository }
 
 // NewListRegions builds the query.
 func NewListRegions(regions ports.RegionRepository) *ListRegions { return &ListRegions{regions} }
 
 // Execute returns every region by id ascending, an empty list when none is
-// defined. Regions are not paginated (single digits of regions).
-func (q *ListRegions) Execute(ctx context.Context) ([]views.Region, error) {
-	regions, err := q.regions.List(ctx)
+// defined.
+func (q *ListRegions) Execute(ctx context.Context, query ListRegionsQuery) ([]views.Region, error) {
+	regions, err := q.regions.List(ctx, repository.RegionFilter{Window: repository.Window{AfterID: query.AfterID, Limit: query.Limit}})
 	if err != nil {
 		return nil, err
 	}
@@ -99,6 +109,9 @@ func (q *ListRegions) Execute(ctx context.Context) ([]views.Region, error) {
 type ListLanesQuery struct {
 	Origin      node.ID
 	Destination node.ID
+	// AfterID and Limit window the list (keyset by id); Limit 0 = every row.
+	AfterID string
+	Limit   int
 }
 
 // ListLanes lists lanes by origin and destination.
@@ -110,7 +123,7 @@ func NewListLanes(lanes ports.LaneRepository) *ListLanes { return &ListLanes{lan
 // Execute returns the matching lanes (open and closed) by id ascending, an
 // empty list when none match.
 func (q *ListLanes) Execute(ctx context.Context, query ListLanesQuery) ([]views.Lane, error) {
-	lanes, err := q.lanes.List(ctx, repository.LaneFilter{Origin: query.Origin, Destination: query.Destination})
+	lanes, err := q.lanes.List(ctx, repository.LaneFilter{Origin: query.Origin, Destination: query.Destination, Window: repository.Window{AfterID: query.AfterID, Limit: query.Limit}})
 	if err != nil {
 		return nil, err
 	}

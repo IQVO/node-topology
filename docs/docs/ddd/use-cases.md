@@ -33,11 +33,11 @@ A `ErrConcurrentUpdate` at step 2 reruns the whole attempt once on fresh state (
 | --- | --- | --- | --- |
 | `RegisterNode` | `vendor-connectivity` (vendor node) or a network-ops planner (parcel node) | `POST /nodes` | `NodeRegistered` |
 | `DeclareOperationalProfile` | `vendor-connectivity` (`declaredBy` `VENDOR`) or a planner (`NETWORK_OPS`) | `PUT /nodes/{nodeId}/operational-profile` | `NodeOperationalProfileDeclared` |
-| `ActivateNode` | planner | `POST /nodes/{nodeId}:activate` | `NodeActivated` |
-| `SuspendNode` | planner | `POST /nodes/{nodeId}:suspend` | `NodeSuspended` |
-| `RetireNode` | planner | `POST /nodes/{nodeId}:retire` | `NodeRetired` |
+| `ActivateNode` | planner | `POST /nodes/{nodeId}/activations` | `NodeActivated` |
+| `SuspendNode` | planner | `POST /nodes/{nodeId}/suspensions` | `NodeSuspended` |
+| `RetireNode` | planner | `POST /nodes/{nodeId}/retirements` | `NodeRetired` |
 | `OpenLane` | planner | `POST /lanes` | `LaneOpened` |
-| `CloseLane` | planner | `POST /lanes/{laneId}:close` | `LaneClosed` |
+| `CloseLane` | planner | `POST /lanes/{laneId}/closures` | `LaneClosed` |
 | `AssignServiceArea` | planner, in bulk at network redesign | `PUT /service-areas/{postalPrefix}` | `ServiceAreaAssigned` |
 | `DefineRegion` | planner | `POST /regions` | `RegionDefined` |
 

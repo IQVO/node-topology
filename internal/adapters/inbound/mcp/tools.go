@@ -108,7 +108,7 @@ func (d Deps) getRegion(ctx context.Context, in regionIDInput) (regionView, erro
 }
 
 func (d Deps) listRegions(ctx context.Context, _ struct{}) (regionsListView, error) {
-	regions, err := d.ListRegions.Execute(ctx)
+	regions, err := d.ListRegions.Execute(ctx, usecases.ListRegionsQuery{})
 	if err != nil {
 		return regionsListView{}, mapError(ctx, err)
 	}

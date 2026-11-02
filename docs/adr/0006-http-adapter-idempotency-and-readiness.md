@@ -22,8 +22,8 @@ graceful shutdown.
    `cmd/api` injects the use cases, the readiness gate and the transaction
    binder (`pgtx.With`), and never imports the memory or repocontract packages.
 2. **Operations.** `POST /nodes`, `GET /nodes`, `GET /nodes/{nodeId}`,
-   `PUT /nodes/{nodeId}/operational-profile`, `POST /nodes/{nodeId}:activate`,
-   `:suspend`, `:retire`, `POST /lanes`, `GET /lanes`, `POST /lanes/{laneId}:close`,
+   `PUT /nodes/{nodeId}/operational-profile`, `POST /nodes/{nodeId}/activations`,
+   `/suspensions`, `/retirements`, `POST /lanes`, `GET /lanes`, `POST /lanes/{laneId}/closures`,
    `PUT /service-areas/{postalPrefix}`, `GET /service-areas/{postalPrefix}`,
    `POST /regions`, `GET /regions`, `GET /regions/{regionId}`; plus the probes
    `GET /healthz` and `GET /readyz` (not part of the business contract). Creates
@@ -53,7 +53,7 @@ graceful shutdown.
    anything: 404 for the path, 400 for the query and the body (raw byte or the
    `\u0000` escape; an escaped backslash before `u0000` is not a NUL).
 5. **Idempotency-Key.** Required on all eight state-changing routes. The scope is
-   `(route, key)` where route is the operation (`POST /nodes/{nodeId}:activate`);
+   `(route, key)` where route is the operation (`POST /nodes/{nodeId}/activations`);
    the request fingerprint is `sha256(method, path, body)`, so the same key on
    another node is another request. The same key and fingerprint replays the first
    status and body (header `Idempotency-Replayed: true`, content type derived from

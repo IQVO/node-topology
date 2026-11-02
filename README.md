@@ -150,8 +150,8 @@ Every state-changing request needs an `Idempotency-Key` header: a repeat with th
 | --- | --- |
 | `POST /nodes`, `GET /nodes?type=&region=&status=`, `GET /nodes/{nodeId}` | register, list, read |
 | `PUT /nodes/{nodeId}/operational-profile` | declare a profile revision |
-| `POST /nodes/{nodeId}:activate`, `:suspend`, `:retire` | lifecycle |
-| `POST /lanes`, `GET /lanes?origin=&destination=`, `POST /lanes/{laneId}:close` | lanes |
+| `POST /nodes/{nodeId}/activations`, `/suspensions`, `/retirements` | lifecycle |
+| `POST /lanes`, `GET /lanes?origin=&destination=`, `POST /lanes/{laneId}/closures` | lanes |
 | `PUT /service-areas/{postalPrefix}`, `GET /service-areas/{postalPrefix}` | assign, resolve |
 | `POST /regions`, `GET /regions`, `GET /regions/{regionId}` | regions |
 | `GET /healthz`, `GET /readyz` | liveness, readiness |

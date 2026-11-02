@@ -24,9 +24,9 @@ function mountHostedAt(path: string) {
 describe("App (as node_topology_mfe/App under the shell's splat route)", () => {
   it("lands on the node registry and navigates the sections with relative links", async () => {
     mockApi({
-      "GET /nodes": json({ nodes: [fcNode] }),
-      "GET /lanes": json({ lanes: [groundLane] }),
-      "GET /regions": json([northRegion]),
+      "GET /nodes": json({ items: [fcNode] }),
+      "GET /lanes": json({ items: [groundLane] }),
+      "GET /regions": json({ items: [northRegion] }),
     });
     mountHostedAt("/node-topology");
     expect(await screen.findByText("node-3f6a")).toBeInTheDocument();
@@ -44,7 +44,7 @@ describe("App (as node_topology_mfe/App under the shell's splat route)", () => {
 
   it("follows a node row into the node's own page", async () => {
     mockApi({
-      "GET /nodes": json({ nodes: [fcNode] }),
+      "GET /nodes": json({ items: [fcNode] }),
       "GET /nodes/node-3f6a": json(fcNode),
     });
     mountHostedAt("/node-topology");

@@ -112,9 +112,9 @@ named neighbour and are listed from the network model.
 | --- | --- | --- |
 | `RegisterNode` | `POST /nodes` | `vendor-connectivity` (vendor node), network-ops planner (network node) |
 | `DeclareOperationalProfile` | `PUT /nodes/{nodeId}/operational-profile` | `vendor-connectivity` (`declaredBy` `VENDOR`), network-ops planner (`declaredBy` `NETWORK_OPS`) |
-| `ActivateNode` | `POST /nodes/{nodeId}:activate` | network-ops planner |
-| `SuspendNode` | `POST /nodes/{nodeId}:suspend` | network-ops planner |
-| `RetireNode` | `POST /nodes/{nodeId}:retire` | network-ops planner |
+| `ActivateNode` | `POST /nodes/{nodeId}/activations` | network-ops planner |
+| `SuspendNode` | `POST /nodes/{nodeId}/suspensions` | network-ops planner |
+| `RetireNode` | `POST /nodes/{nodeId}/retirements` | network-ops planner |
 
 ### 7. Created Events
 
@@ -191,7 +191,7 @@ Omitted: nothing. There is no reopen; a new lane is opened instead.
 | Command | Inbound route | Issued by |
 | --- | --- | --- |
 | `OpenLane` | `POST /lanes` | network-ops planner |
-| `CloseLane` | `POST /lanes/{laneId}:close` | network-ops planner |
+| `CloseLane` | `POST /lanes/{laneId}/closures` | network-ops planner |
 
 ### 7. Created Events
 

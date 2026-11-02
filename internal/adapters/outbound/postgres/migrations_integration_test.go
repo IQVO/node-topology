@@ -81,7 +81,7 @@ func TestMigrationsGoUpDownUp(t *testing.T) {
 	if err := m.Up(); err != nil {
 		t.Fatalf("up: %v", err)
 	}
-	wantVersion(t, m, 3)
+	wantVersion(t, m, 4)
 	wantTables(t, pool, allTables)
 
 	if err := m.Down(); err != nil {
@@ -93,7 +93,7 @@ func TestMigrationsGoUpDownUp(t *testing.T) {
 	if err := m.Up(); err != nil {
 		t.Fatalf("up again: %v", err)
 	}
-	wantVersion(t, m, 3)
+	wantVersion(t, m, 4)
 	wantTables(t, pool, allTables)
 }
 

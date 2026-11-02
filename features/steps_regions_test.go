@@ -54,7 +54,7 @@ func (w *world) readRegionByID(id string) error {
 }
 
 func (w *world) regionsListedAs(want string) error {
-	got, err := usecases.NewListRegions(w.deps.Regions).Execute(w.ctx())
+	got, err := usecases.NewListRegions(w.deps.Regions).Execute(w.ctx(), usecases.ListRegionsQuery{})
 	if err != nil {
 		return err
 	}

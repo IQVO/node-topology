@@ -117,7 +117,7 @@ curl -s -X PUT localhost:18080/nodes/node-e9740c8e-4adf-43d6-9b21-a335cc45fc76/o
 The response is `200` with the node and its `operationalProfile` (`profileRevision` 1, `holidays` `[]`, `declaredAt` set by the server), still `PROPOSED`. Then:
 
 ```bash
-curl -s -X POST 'localhost:18080/nodes/node-e9740c8e-4adf-43d6-9b21-a335cc45fc76:activate' \
+curl -s -X POST 'localhost:18080/nodes/node-e9740c8e-4adf-43d6-9b21-a335cc45fc76/activations' \
   -H 'Idempotency-Key: qs-act-1'
 ```
 

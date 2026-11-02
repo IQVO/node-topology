@@ -16,7 +16,7 @@ function mount() {
 
 describe("NodesScreen", () => {
   it("lists the registry with each node's human type and status", async () => {
-    mockApi({ "GET /nodes": json({ nodes: [fcNode, stationNode, proposedNode] }) });
+    mockApi({ "GET /nodes": json({ items: [fcNode, stationNode, proposedNode] }) });
     mount();
     expect(await screen.findByText("node-3f6a")).toBeInTheDocument();
     expect(screen.getByText("fulfillment centre (SORTABLE)")).toBeInTheDocument();
@@ -30,7 +30,7 @@ describe("NodesScreen", () => {
   });
 
   it("sends the type, region and status filters to GET /nodes", async () => {
-    const api = mockApi({ "GET /nodes": json({ nodes: [] }) });
+    const api = mockApi({ "GET /nodes": json({ items: [] }) });
     mount();
     const user = userEvent.setup();
     await user.selectOptions(screen.getByLabelText("Node type"), "DELIVERY_STATION");
@@ -45,7 +45,7 @@ describe("NodesScreen", () => {
   });
 
   it("shows the empty note when nothing matches", async () => {
-    mockApi({ "GET /nodes": json({ nodes: [] }) });
+    mockApi({ "GET /nodes": json({ items: [] }) });
     mount();
     expect(await screen.findByText("No node matches these filters.")).toBeInTheDocument();
   });

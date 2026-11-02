@@ -16,7 +16,7 @@ function mount() {
 
 describe("LanesScreen", () => {
   it("lists lanes with mode, transit and status", async () => {
-    mockApi({ "GET /lanes": json({ lanes: [groundLane] }) });
+    mockApi({ "GET /lanes": json({ items: [groundLane] }) });
     mount();
     expect(await screen.findByText("lane-77aa")).toBeInTheDocument();
     expect(screen.getByText("node-4c10")).toBeInTheDocument();
@@ -27,7 +27,7 @@ describe("LanesScreen", () => {
   });
 
   it("sends the origin and destination filters", async () => {
-    const api = mockApi({ "GET /lanes": json({ lanes: [] }) });
+    const api = mockApi({ "GET /lanes": json({ items: [] }) });
     mount();
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Origin node"), "node-4c10");
@@ -40,7 +40,7 @@ describe("LanesScreen", () => {
   });
 
   it("shows the empty note when nothing matches", async () => {
-    mockApi({ "GET /lanes": json({ lanes: [] }) });
+    mockApi({ "GET /lanes": json({ items: [] }) });
     mount();
     expect(await screen.findByText("No lane matches these filters.")).toBeInTheDocument();
   });

@@ -50,14 +50,19 @@ paths:
             schema:
               $ref: '#/components/schemas/RegisterNodeRequest'
       responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '201':
           description: Node registered.
+          headers:
+            Idempotency-Replayed:
+              $ref: '#/components/headers/IdempotencyReplayed'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Node'
         '409':
-          description: "vendor-node-code-taken (ErrVendorNodeCodeTaken), or concurrent-update (ErrConcurrentUpdate)."
+          description: "vendor-node-code-taken (ErrVendorNodeCodeTaken), or concurrent-update (ErrConcurrentUpdate); or idempotency-key-reused (the Idempotency-Key was already used with a different request)."
           content:
             application/problem+json:
               schema:
@@ -72,8 +77,10 @@ paths:
       tags: [Nodes]
       operationId: listNodes
       summary: List nodes by type, region and status (ListNodes)
-      description: Open Host Service read. Each filter is optional and filters combine with AND; an empty result is 200 with an empty list.
+      description: Open Host Service read, keyset-paginated by nodeId ascending. Each filter is optional and filters combine with AND; an empty result is 200 with an empty items list.
       parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
         - name: type
           in: query
           required: false
@@ -92,17 +99,19 @@ paths:
             $ref: '#/components/schemas/NodeStatus'
       responses:
         '200':
-          description: Matching nodes.
+          description: One page of matching nodes.
           content:
             application/json:
               schema:
-                type: object
-                required: [nodes]
-                properties:
-                  nodes:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Node'
+                $ref: '#/components/schemas/NodePage'
+        '400':
+          $ref: '#/components/responses/ListBadRequest'
+        '422':
+          description: validation-failed (a type or status that is not an enumeration value).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
   /nodes/{nodeId}:
     get:
       tags: [Nodes]
@@ -177,8 +186,13 @@ paths:
                   throughputCap: { value: 400, timeUnit: HOUR, unit: ORDER }
                   declaredBy: VENDOR
       responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '200':
           description: Profile revision stored; the node with its current profile.
+          headers:
+            Idempotency-Replayed:
+              $ref: '#/components/headers/IdempotencyReplayed'
           content:
             application/json:
               schema:
@@ -186,7 +200,7 @@ paths:
         '404':
           $ref: '#/components/responses/NodeNotFound'
         '409':
-          description: "stale-profile-revision (ErrStaleProfileRevision), incomplete-operational-profile (ErrIncompleteOperationalProfile), node-retired (ErrNodeRetired), or concurrent-update (ErrConcurrentUpdate)."
+          description: "stale-profile-revision (ErrStaleProfileRevision), incomplete-operational-profile (ErrIncompleteOperationalProfile), node-retired (ErrNodeRetired), or concurrent-update (ErrConcurrentUpdate); or idempotency-key-reused (the Idempotency-Key was already used with a different request)."
           content:
             application/problem+json:
               schema:
@@ -197,7 +211,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-  /nodes/{nodeId}:activate:
+  /nodes/{nodeId}/activations:
     post:
       tags: [Nodes]
       operationId: activateNode
@@ -207,8 +221,13 @@ paths:
         - $ref: '#/components/parameters/NodeId'
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '200':
           description: Node is ACTIVE.
+          headers:
+            Idempotency-Replayed:
+              $ref: '#/components/headers/IdempotencyReplayed'
           content:
             application/json:
               schema:
@@ -216,12 +235,12 @@ paths:
         '404':
           $ref: '#/components/responses/NodeNotFound'
         '409':
-          description: "incomplete-operational-profile (ErrIncompleteOperationalProfile), node-retired (ErrNodeRetired), illegal-transition (ErrIllegalTransition), or concurrent-update (ErrConcurrentUpdate)."
+          description: "incomplete-operational-profile (ErrIncompleteOperationalProfile), node-retired (ErrNodeRetired), illegal-transition (ErrIllegalTransition), or concurrent-update (ErrConcurrentUpdate); or idempotency-key-reused (the Idempotency-Key was already used with a different request)."
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-  /nodes/{nodeId}:suspend:
+  /nodes/{nodeId}/suspensions:
     post:
       tags: [Nodes]
       operationId: suspendNode
@@ -237,8 +256,13 @@ paths:
             schema:
               $ref: '#/components/schemas/SuspendNodeRequest'
       responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '200':
           description: Node is SUSPENDED.
+          headers:
+            Idempotency-Replayed:
+              $ref: '#/components/headers/IdempotencyReplayed'
           content:
             application/json:
               schema:
@@ -246,12 +270,12 @@ paths:
         '404':
           $ref: '#/components/responses/NodeNotFound'
         '409':
-          description: "node-retired (ErrNodeRetired), illegal-transition (ErrIllegalTransition), or concurrent-update (ErrConcurrentUpdate)."
+          description: "node-retired (ErrNodeRetired), illegal-transition (ErrIllegalTransition), or concurrent-update (ErrConcurrentUpdate); or idempotency-key-reused (the Idempotency-Key was already used with a different request)."
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-  /nodes/{nodeId}:retire:
+  /nodes/{nodeId}/retirements:
     post:
       tags: [Nodes]
       operationId: retireNode
@@ -261,8 +285,13 @@ paths:
         - $ref: '#/components/parameters/NodeId'
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '200':
           description: Node is RETIRED.
+          headers:
+            Idempotency-Replayed:
+              $ref: '#/components/headers/IdempotencyReplayed'
           content:
             application/json:
               schema:
@@ -270,7 +299,7 @@ paths:
         '404':
           $ref: '#/components/responses/NodeNotFound'
         '409':
-          description: "node-retired (ErrNodeRetired), illegal-transition (ErrIllegalTransition), or concurrent-update (ErrConcurrentUpdate)."
+          description: "node-retired (ErrNodeRetired), illegal-transition (ErrIllegalTransition), or concurrent-update (ErrConcurrentUpdate); or idempotency-key-reused (the Idempotency-Key was already used with a different request)."
           content:
             application/problem+json:
               schema:
@@ -290,8 +319,13 @@ paths:
             schema:
               $ref: '#/components/schemas/OpenLaneRequest'
       responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '201':
           description: Lane OPEN.
+          headers:
+            Idempotency-Replayed:
+              $ref: '#/components/headers/IdempotencyReplayed'
           content:
             application/json:
               schema:
@@ -299,7 +333,7 @@ paths:
         '404':
           $ref: '#/components/responses/NodeNotFound'
         '409':
-          description: "lane-endpoint-not-active (ErrLaneEndpointNotActive), duplicate-lane (ErrDuplicateLane), or concurrent-update (ErrConcurrentUpdate)."
+          description: "lane-endpoint-not-active (ErrLaneEndpointNotActive), duplicate-lane (ErrDuplicateLane), or concurrent-update (ErrConcurrentUpdate); or idempotency-key-reused (the Idempotency-Key was already used with a different request)."
           content:
             application/problem+json:
               schema:
@@ -314,8 +348,10 @@ paths:
       tags: [Lanes]
       operationId: listLanes
       summary: List lanes by origin and destination (ListLanes)
-      description: Open Host Service read. Both filters are optional and combine with AND; open and closed lanes are listed, distinguished by status.
+      description: Open Host Service read, keyset-paginated by laneId ascending. Both filters are optional and combine with AND; open and closed lanes are listed, distinguished by status.
       parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
         - name: origin
           in: query
           required: false
@@ -330,18 +366,14 @@ paths:
             type: string
       responses:
         '200':
-          description: Matching lanes.
+          description: One page of matching lanes.
           content:
             application/json:
               schema:
-                type: object
-                required: [lanes]
-                properties:
-                  lanes:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Lane'
-  /lanes/{laneId}:close:
+                $ref: '#/components/schemas/LanePage'
+        '400':
+          $ref: '#/components/responses/ListBadRequest'
+  /lanes/{laneId}/closures:
     post:
       tags: [Lanes]
       operationId: closeLane
@@ -355,8 +387,13 @@ paths:
             type: string
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '200':
           description: Lane CLOSED.
+          headers:
+            Idempotency-Replayed:
+              $ref: '#/components/headers/IdempotencyReplayed'
           content:
             application/json:
               schema:
@@ -368,7 +405,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
         '409':
-          description: "illegal-transition (ErrIllegalTransition): the lane is already CLOSED; or concurrent-update (ErrConcurrentUpdate)."
+          description: "illegal-transition (ErrIllegalTransition): the lane is already CLOSED; or concurrent-update (ErrConcurrentUpdate); or idempotency-key-reused (the Idempotency-Key was already used with a different request)."
           content:
             application/problem+json:
               schema:
@@ -393,8 +430,13 @@ paths:
             schema:
               $ref: '#/components/schemas/AssignServiceAreaRequest'
       responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '200':
           description: Assignment stored.
+          headers:
+            Idempotency-Replayed:
+              $ref: '#/components/headers/IdempotencyReplayed'
           content:
             application/json:
               schema:
@@ -402,7 +444,7 @@ paths:
         '404':
           $ref: '#/components/responses/NodeNotFound'
         '409':
-          description: "not-a-delivery-station (ErrNotADeliveryStation), stale-assignment-version (ErrStaleAssignmentVersion), or concurrent-update (ErrConcurrentUpdate)."
+          description: "not-a-delivery-station (ErrNotADeliveryStation), stale-assignment-version (ErrStaleAssignmentVersion), or concurrent-update (ErrConcurrentUpdate); or idempotency-key-reused (the Idempotency-Key was already used with a different request)."
           content:
             application/problem+json:
               schema:
@@ -446,14 +488,19 @@ paths:
             schema:
               $ref: '#/components/schemas/DefineRegionRequest'
       responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '201':
           description: Region defined.
+          headers:
+            Idempotency-Replayed:
+              $ref: '#/components/headers/IdempotencyReplayed'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Region'
         '409':
-          description: "region-code-taken (ErrRegionCodeTaken)."
+          description: "region-code-taken (ErrRegionCodeTaken); or idempotency-key-reused (the Idempotency-Key was already used with a different request)."
           content:
             application/problem+json:
               schema:
@@ -468,16 +515,19 @@ paths:
       tags: [Regions]
       operationId: listRegions
       summary: List regions (ListRegions)
-      description: Ordered by regionId. Not paginated (single digits of regions).
+      description: Keyset-paginated, ordered by regionId.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
       responses:
         '200':
-          description: The regions.
+          description: One page of regions.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Region'
+                $ref: '#/components/schemas/RegionPage'
+        '400':
+          $ref: '#/components/responses/ListBadRequest'
   /regions/{regionId}:
     get:
       tags: [Regions]
@@ -510,12 +560,37 @@ components:
       in: header
       required: true
       description: >-
-        Client-chosen key. A repeat on the same route with the same key and
-        request replays the first response. Keys are kept for 24 hours.
-        vendor-connectivity sends its transactionId.
+        Client-generated key (1-128 printable ASCII characters), one per
+        logical submit; a retry reuses it. A repeat of the same request
+        replays the first response with the header Idempotency-Replayed: true;
+        the same key with another method, path or body is 409
+        idempotency-key-reused. A missing key is 400 idempotency-key-required,
+        a malformed one 400 idempotency-key-invalid. Keys are kept for 24
+        hours. vendor-connectivity sends its transactionId.
       schema:
         type: string
-        maxLength: 200
+        minLength: 1
+        maxLength: 128
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Page size, 1 to 500 (default 100). An invalid value is 400 invalid-limit.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 500
+        default: 100
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: >-
+        Opaque keyset cursor taken from nextCursor of the previous page; repeat
+        the filters on every page. An undecodable value is 400 invalid-cursor.
+        Any other undeclared query parameter is 400 unknown-query-parameter.
+      schema:
+        type: string
     NodeId:
       name: nodeId
       in: path
@@ -528,7 +603,30 @@ components:
       required: true
       schema:
         type: string
+  headers:
+    IdempotencyReplayed:
+      description: Present, with the value true, only when the response replays the first answer stored for the Idempotency-Key.
+      schema:
+        type: string
+        enum: ['true']
   responses:
+    BadRequest:
+      description: >-
+        idempotency-key-required (no Idempotency-Key header), idempotency-key-invalid
+        (not 1-128 printable ASCII characters), or malformed-request-body.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ListBadRequest:
+      description: >-
+        invalid-limit, invalid-cursor, unknown-query-parameter (a query parameter
+        the collection does not declare, including the retired after, from, offset
+        and nextToken), or malformed-request-query.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
     NodeNotFound:
       description: "not-found (ErrNotFound): an unknown nodeId in the path or body."
       content:
@@ -557,6 +655,39 @@ components:
           type: string
         instance:
           type: string
+    NodePage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Node'
+        nextCursor:
+          type: string
+          description: Opaque cursor of the next page; absent on the last page.
+    LanePage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Lane'
+        nextCursor:
+          type: string
+          description: Opaque cursor of the next page; absent on the last page.
+    RegionPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Region'
+        nextCursor:
+          type: string
+          description: Opaque cursor of the next page; absent on the last page.
     NodeType:
       type: string
       enum: [FULFILLMENT_CENTER, INBOUND_CROSS_DOCK, RETURNS_CENTER, SORTATION_CENTER, DELIVERY_STATION, AIR_HUB]

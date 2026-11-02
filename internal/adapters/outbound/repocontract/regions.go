@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/claudioed/node-topology/internal/application/ports"
+	"github.com/claudioed/node-topology/internal/application/repository"
 	"github.com/claudioed/node-topology/internal/domain/region"
 )
 
@@ -18,6 +19,7 @@ var regionCases = []named{
 	{"list is empty, never nil, on an empty database", regionListEmpty},
 	{"list returns every region ordered by id", regionListOrdered},
 	{"list skips a rejected region", regionListSkipsRejected},
+	{"list walks keyset pages without duplicate or skip", regionListWindow},
 }
 
 func regionRoundTrip(t *testing.T, f Fixture) {
@@ -65,7 +67,7 @@ func regionDuplicateID(t *testing.T, f Fixture) {
 }
 
 func regionListEmpty(t *testing.T, f Fixture) {
-	got, err := f.Regions.List(context.Background())
+	got, err := f.Regions.List(context.Background(), repository.RegionFilter{})
 	noErr(t, err)
 	if got == nil || len(got) != 0 {
 		t.Fatalf("list = %#v, want a non-nil empty list", got)
@@ -77,7 +79,7 @@ func regionListOrdered(t *testing.T, f Fixture) {
 	noErr(t, f.Regions.Save(ctx, NewRegion(t, "region-b", "RJ")))
 	noErr(t, f.Regions.Save(ctx, NewRegion(t, "region-c", "MG")))
 	noErr(t, f.Regions.Save(ctx, NewRegion(t, "region-a", "SP")))
-	got, err := f.Regions.List(ctx)
+	got, err := f.Regions.List(ctx, repository.RegionFilter{})
 	noErr(t, err)
 	ids := []region.ID{}
 	for _, r := range got {
@@ -95,9 +97,32 @@ func regionListSkipsRejected(t *testing.T, f Fixture) {
 	ctx := context.Background()
 	noErr(t, f.Regions.Save(ctx, NewRegion(t, "region-1", "SP")))
 	wantErr(t, f.Regions.Save(ctx, NewRegion(t, "region-2", "SP")), region.ErrRegionCodeTaken)
-	got, err := f.Regions.List(ctx)
+	got, err := f.Regions.List(ctx, repository.RegionFilter{})
 	noErr(t, err)
 	if len(got) != 1 || got[0].ID() != "region-1" {
 		t.Fatalf("list holds %d regions, want only region-1", len(got))
+	}
+}
+
+func regionListWindow(t *testing.T, f Fixture) {
+	ctx := context.Background()
+	for i, c := range []string{"SP", "RJ", "MG", "BA", "PR"} {
+		noErr(t, f.Regions.Save(ctx, NewRegion(t, region.ID("region-"+string(rune('a'+i))), c)))
+	}
+	var seen []region.ID
+	after := ""
+	for pages := 0; pages < 10; pages++ {
+		got, err := f.Regions.List(ctx, repository.RegionFilter{Window: repository.Window{AfterID: after, Limit: 2}})
+		noErr(t, err)
+		if len(got) == 0 {
+			break
+		}
+		for _, r := range got {
+			seen = append(seen, r.ID())
+		}
+		after = string(got[len(got)-1].ID())
+	}
+	if want := []region.ID{"region-a", "region-b", "region-c", "region-d", "region-e"}; !reflect.DeepEqual(seen, want) {
+		t.Fatalf("walked ids = %v, want %v", seen, want)
 	}
 }

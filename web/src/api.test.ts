@@ -10,7 +10,7 @@ beforeEach(() => {
 describe("listNodes", () => {
   it("sends the type, region and status filters and normalizes the list", async () => {
     const api = mockApi({});
-    api.set("GET /nodes", json({ nodes: [fcNode] }));
+    api.set("GET /nodes", json({ items: [fcNode] }));
     const res = await listNodes({ type: "FULFILLMENT_CENTER", regionId: "region-9c21", status: "ACTIVE" });
     expect(res.nodes).toHaveLength(1);
     expect(api.to("GET /nodes")[0].query.get("type")).toBe("FULFILLMENT_CENTER");
@@ -20,9 +20,24 @@ describe("listNodes", () => {
 
   it("omits unset filters from the query string", async () => {
     const api = mockApi({});
-    api.set("GET /nodes", json({ nodes: [] }));
+    api.set("GET /nodes", json({ items: [] }));
     await listNodes({});
-    expect(api.to("GET /nodes")[0].query.toString()).toBe("");
+    expect(api.to("GET /nodes")[0].query.toString()).toBe("limit=500");
+  });
+
+  it("follows nextCursor until it is absent and sends no retired paging parameter", async () => {
+    const api = mockApi({});
+    api.set("GET /nodes", (call) =>
+      call.query.get("cursor") === "page-2"
+        ? json({ items: [fcNode] })
+        : json({ items: [fcNode], nextCursor: "page-2" }),
+    );
+    const res = await listNodes({});
+    expect(res.nodes).toHaveLength(2);
+    const calls = api.to("GET /nodes");
+    expect(calls).toHaveLength(2);
+    expect(calls[1].query.get("cursor")).toBe("page-2");
+    expect(calls[1].query.get("after")).toBeNull();
   });
 
   it("a missing list is an empty list, never undefined", async () => {
@@ -51,7 +66,7 @@ describe("getNode", () => {
 
 describe("listLanes", () => {
   it("filters by origin and destination", async () => {
-    const api = mockApi({ "GET /lanes": json({ lanes: [groundLane] }) });
+    const api = mockApi({ "GET /lanes": json({ items: [groundLane] }) });
     const res = await listLanes({ origin: "node-4c10" });
     expect(res.lanes[0].laneId).toBe("lane-77aa");
     expect(api.to("GET /lanes")[0].query.get("origin")).toBe("node-4c10");
@@ -70,7 +85,7 @@ describe("resolveServiceArea", () => {
 
 describe("getRegion / listRegions", () => {
   it("reads one region and lists them all", async () => {
-    const api = mockApi({ "GET /regions": json([northRegion]), "GET /regions/region-9c21": json(northRegion) });
+    const api = mockApi({ "GET /regions": json({ items: [northRegion] }), "GET /regions/region-9c21": json(northRegion) });
     expect(await getRegion("region-9c21")).toEqual(northRegion);
     expect(await listRegions()).toEqual([northRegion]);
     expect(api.to("GET /regions")).toHaveLength(1);

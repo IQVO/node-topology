@@ -65,7 +65,7 @@ func (w world) activeNode(t *testing.T, nodeType, code string) string {
 	if r := w.a.keyed(http.MethodPut, "/nodes/"+id+"/operational-profile", profileWith(extra)); r.status != http.StatusOK {
 		t.Fatalf("declare profile of %s: %d %s", nodeType, r.status, r.raw)
 	}
-	if r := w.a.keyed(http.MethodPost, "/nodes/"+id+":activate", ""); r.status != http.StatusOK {
+	if r := w.a.keyed(http.MethodPost, "/nodes/"+id+"/activations", ""); r.status != http.StatusOK {
 		t.Fatalf("activate %s: %d %s", nodeType, r.status, r.raw)
 	}
 	return id
@@ -81,7 +81,7 @@ func TestNodeReadRoutes(t *testing.T) {
 		t.Fatalf("getNode lacks the current profile: %s", got.raw)
 	}
 	list := w.a.get("/nodes?type=DELIVERY_STATION&region=region-1&status=ACTIVE")
-	nodes, _ := list.decoded.(map[string]any)["nodes"].([]any)
+	nodes, _ := list.decoded.(map[string]any)["items"].([]any)
 	if list.status != http.StatusOK || len(nodes) != 1 {
 		t.Fatalf("listNodes filtered = %d %s", list.status, list.raw)
 	}
@@ -92,18 +92,18 @@ func TestNodeReadRoutes(t *testing.T) {
 
 func TestNodeLifecycleRoutes(t *testing.T) {
 	w := newWorld(t)
-	sus := w.a.keyed(http.MethodPost, "/nodes/"+w.station+":suspend", `{"reason":"dock closed"}`)
+	sus := w.a.keyed(http.MethodPost, "/nodes/"+w.station+"/suspensions", `{"reason":"dock closed"}`)
 	if sus.status != http.StatusOK || sus.field("status") != "SUSPENDED" || sus.field("suspendReason") != "dock closed" {
 		t.Fatalf("suspendNode = %d %s", sus.status, sus.raw)
 	}
-	if r := w.a.keyed(http.MethodPost, "/nodes/"+w.station+":activate", ""); r.status != http.StatusOK || r.field("status") != "ACTIVE" {
+	if r := w.a.keyed(http.MethodPost, "/nodes/"+w.station+"/activations", ""); r.status != http.StatusOK || r.field("status") != "ACTIVE" {
 		t.Fatalf("reactivate = %d %s", r.status, r.raw)
 	}
-	ret := w.a.keyed(http.MethodPost, "/nodes/"+w.station+":retire", "")
+	ret := w.a.keyed(http.MethodPost, "/nodes/"+w.station+"/retirements", "")
 	if ret.status != http.StatusOK || ret.field("status") != "RETIRED" {
 		t.Fatalf("retireNode = %d %s", ret.status, ret.raw)
 	}
-	if again := w.a.keyed(http.MethodPost, "/nodes/"+w.station+":activate", ""); again.status != http.StatusConflict || again.slug() != "node-retired" {
+	if again := w.a.keyed(http.MethodPost, "/nodes/"+w.station+"/activations", ""); again.status != http.StatusConflict || again.slug() != "node-retired" {
 		t.Fatalf("activating a retired node = %d %s", again.status, again.raw)
 	}
 }
@@ -111,7 +111,7 @@ func TestNodeLifecycleRoutes(t *testing.T) {
 func TestEmptyListsAreArraysNotNull(t *testing.T) {
 	srv, _ := memoryServer()
 	a := &api{t: t, h: routerOf(t, srv)}
-	for path, want := range map[string]string{"/nodes": `{"nodes":[]}`, "/lanes": `{"lanes":[]}`, "/regions": `[]`} {
+	for path, want := range map[string]string{"/nodes": `{"items":[]}`, "/lanes": `{"items":[]}`, "/regions": `{"items":[]}`} {
 		r := a.get(path)
 		if r.status != http.StatusOK || trimNL(r.raw) != want {
 			t.Errorf("GET %s = %d %q, want 200 %s", path, r.status, r.raw, want)
@@ -129,19 +129,19 @@ func TestLaneRoutesEndToEnd(t *testing.T) {
 	id := open.field("laneId")
 
 	list := a.get("/lanes?origin=" + w.origin + "&destination=" + w.dest)
-	lanes, _ := list.decoded.(map[string]any)["lanes"].([]any)
+	lanes, _ := list.decoded.(map[string]any)["items"].([]any)
 	if list.status != http.StatusOK || len(lanes) != 1 {
 		t.Fatalf("listLanes = %d %s", list.status, list.raw)
 	}
-	if other := a.get("/lanes?origin=nobody"); trimNL(other.raw) != `{"lanes":[]}` {
+	if other := a.get("/lanes?origin=nobody"); trimNL(other.raw) != `{"items":[]}` {
 		t.Fatalf("listLanes of another origin = %s", other.raw)
 	}
 
-	closed := a.keyed(http.MethodPost, "/lanes/"+id+":close", "")
+	closed := a.keyed(http.MethodPost, "/lanes/"+id+"/closures", "")
 	if closed.status != http.StatusOK || closed.field("status") != "CLOSED" || closed.field("closedAt") == "" {
 		t.Fatalf("closeLane = %d %s", closed.status, closed.raw)
 	}
-	if again := a.keyed(http.MethodPost, "/lanes/"+id+":close", ""); again.status != http.StatusConflict || again.slug() != "illegal-transition" {
+	if again := a.keyed(http.MethodPost, "/lanes/"+id+"/closures", ""); again.status != http.StatusConflict || again.slug() != "illegal-transition" {
 		t.Fatalf("closing twice = %d %s", again.status, again.raw)
 	}
 }
@@ -177,7 +177,7 @@ func TestRegionRoutesEndToEnd(t *testing.T) {
 	}
 	a.keyed(http.MethodPost, "/regions", `{"code":"AA","name":"Alpha"}`)
 	list := a.get("/regions")
-	items, _ := list.decoded.([]any)
+	items, _ := list.decoded.(map[string]any)["items"].([]any)
 	if list.status != http.StatusOK || len(items) != 2 {
 		t.Fatalf("listRegions = %d %s", list.status, list.raw)
 	}
@@ -210,7 +210,7 @@ func TestDomainRefusalsMapToTheirProblems(t *testing.T) {
 		{"lane loop", http.MethodPost, "/lanes", `{"originNodeId":"` + w.origin + `","destinationNodeId":"` + w.origin + `","mode":"GROUND","nominalTransitMinutes":10}`, 422, "lane-loop"},
 		{"lane endpoint unknown", http.MethodPost, "/lanes", `{"originNodeId":"node-nope","destinationNodeId":"` + w.dest + `","mode":"GROUND","nominalTransitMinutes":10}`, 404, "not-found"},
 		{"not a delivery station", http.MethodPut, "/service-areas/01310", `{"deliveryStationNodeId":"` + w.origin + `","assignmentVersion":1}`, 409, "not-a-delivery-station"},
-		{"unknown close", http.MethodPost, "/lanes/lane-nope:close", "", 404, "not-found"},
+		{"unknown close", http.MethodPost, "/lanes/lane-nope/closures", "", 404, "not-found"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

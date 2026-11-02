@@ -29,12 +29,12 @@ All routes are on `cmd/api`. State-changing routes need an `Idempotency-Key`.
 | Nodes | `GET /nodes` | `listNodes` | `200 {nodes}`, by id, filters `type`, `region`, `status` |
 | Nodes | `GET /nodes/{nodeId}` | `getNode` | `200`, the node with its current `operationalProfile` |
 | Nodes | `PUT /nodes/{nodeId}/operational-profile` | `declareOperationalProfile` | `200`, the node with the new revision |
-| Nodes | `POST /nodes/{nodeId}:activate` | `activateNode` | `200`, the node `ACTIVE` |
-| Nodes | `POST /nodes/{nodeId}:suspend` | `suspendNode` | `200`, the node `SUSPENDED` (body `{reason}`) |
-| Nodes | `POST /nodes/{nodeId}:retire` | `retireNode` | `200`, the node `RETIRED` |
+| Nodes | `POST /nodes/{nodeId}/activations` | `activateNode` | `200`, the node `ACTIVE` |
+| Nodes | `POST /nodes/{nodeId}/suspensions` | `suspendNode` | `200`, the node `SUSPENDED` (body `{reason}`) |
+| Nodes | `POST /nodes/{nodeId}/retirements` | `retireNode` | `200`, the node `RETIRED` |
 | Lanes | `POST /lanes` | `openLane` | `201`, the lane `OPEN` |
 | Lanes | `GET /lanes` | `listLanes` | `200 {lanes}`, filters `origin`, `destination` |
-| Lanes | `POST /lanes/{laneId}:close` | `closeLane` | `200`, the lane `CLOSED` |
+| Lanes | `POST /lanes/{laneId}/closures` | `closeLane` | `200`, the lane `CLOSED` |
 | Service areas | `PUT /service-areas/{postalPrefix}` | `assignServiceArea` | `200`, the assignment at its new version |
 | Service areas | `GET /service-areas/{postalPrefix}` | `resolveServiceArea` | `200`, the current assignment; `404 not-found` if unassigned |
 | Regions | `POST /regions` | `defineRegion` | `201`, the region |
