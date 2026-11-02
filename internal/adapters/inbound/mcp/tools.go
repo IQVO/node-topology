@@ -127,7 +127,6 @@ func (d Deps) listRegions(ctx context.Context, _ struct{}) (regionsListView, err
 // write-verb name (docs/adr/0008).
 func (d Deps) registerTools(server *mcp.Server) {
 	closedWorld := false
-	readOnly := &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true, OpenWorldHint: &closedWorld}
 
 	addTool(server, &mcp.Tool{
 		Name: "get_node",
@@ -136,7 +135,7 @@ func (d Deps) registerTools(server *mcp.Server) {
 			"location, derived capabilities, status (PROPOSED, ACTIVE, SUSPENDED or RETIRED) and the profile revision the node " +
 			"currently holds (operating hours, holidays, handling time, cutoffs, throughput cap, sort dwell). Read-only; an unknown " +
 			"id fails with not-found.",
-		Annotations: readOnly,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true, OpenWorldHint: &closedWorld},
 		Meta:        authorityMeta(authorityL1),
 	}, d.getNode)
 
@@ -146,7 +145,7 @@ func (d Deps) registerTools(server *mcp.Server) {
 			"RETURNS_CENTER, SORTATION_CENTER, DELIVERY_STATION or AIR_HUB), region and/or status (PROPOSED, ACTIVE, SUSPENDED or " +
 			"RETIRED); the filters combine with AND and no match is an empty list. Each node carries its current operational profile. " +
 			"Read-only; a type or status that is not an enumeration value fails with validation-failed.",
-		Annotations: readOnly,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true, OpenWorldHint: &closedWorld},
 		Meta:        authorityMeta(authorityL1),
 	}, d.listNodes)
 
@@ -156,7 +155,7 @@ func (d Deps) registerTools(server *mcp.Server) {
 			"arriving at one destination node (the filters combine with AND). Open and closed lanes are both listed, distinguished " +
 			"by status (OPEN or CLOSED); mode is GROUND or AIR and nominalTransitMinutes is the planned transit. Read-only; no match " +
 			"is an empty list.",
-		Annotations: readOnly,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true, OpenWorldHint: &closedWorld},
 		Meta:        authorityMeta(authorityL1),
 	}, d.listLanes)
 
@@ -164,7 +163,7 @@ func (d Deps) registerTools(server *mcp.Server) {
 		Name: "resolve_service_area",
 		Description: "Resolve which delivery station serves a postal prefix: the prefix (matched exactly), the deliveryStationNodeId, " +
 			"the station's regionId and the assignmentVersion. Read-only; an unassigned prefix fails with not-found.",
-		Annotations: readOnly,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true, OpenWorldHint: &closedWorld},
 		Meta:        authorityMeta(authorityL1),
 	}, d.resolveServiceArea)
 
@@ -172,7 +171,7 @@ func (d Deps) registerTools(server *mcp.Server) {
 		Name: "get_region",
 		Description: "Read one region of the network by its id: the code and the name it was defined with. Read-only; an unknown id " +
 			"fails with not-found.",
-		Annotations: readOnly,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true, OpenWorldHint: &closedWorld},
 		Meta:        authorityMeta(authorityL1),
 	}, d.getRegion)
 
@@ -180,7 +179,7 @@ func (d Deps) registerTools(server *mcp.Server) {
 		Name: "list_regions",
 		Description: "List every region of the network by id ascending (code and name). Regions are few and are not paginated; none " +
 			"defined is an empty list. Read-only.",
-		Annotations: readOnly,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true, OpenWorldHint: &closedWorld},
 		Meta:        authorityMeta(authorityL1),
 	}, d.listRegions)
 }
