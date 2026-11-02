@@ -52,6 +52,8 @@ paths:
       responses:
         '400':
           $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '201':
           description: Node registered.
           headers:
@@ -188,6 +190,8 @@ paths:
       responses:
         '400':
           $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '200':
           description: Profile revision stored; the node with its current profile.
           headers:
@@ -223,6 +227,8 @@ paths:
       responses:
         '400':
           $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '200':
           description: Node is ACTIVE.
           headers:
@@ -258,6 +264,8 @@ paths:
       responses:
         '400':
           $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '200':
           description: Node is SUSPENDED.
           headers:
@@ -287,6 +295,8 @@ paths:
       responses:
         '400':
           $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '200':
           description: Node is RETIRED.
           headers:
@@ -321,6 +331,8 @@ paths:
       responses:
         '400':
           $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '201':
           description: Lane OPEN.
           headers:
@@ -389,6 +401,8 @@ paths:
       responses:
         '400':
           $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '200':
           description: Lane CLOSED.
           headers:
@@ -432,6 +446,8 @@ paths:
       responses:
         '400':
           $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '200':
           description: Assignment stored.
           headers:
@@ -490,6 +506,8 @@ paths:
       responses:
         '400':
           $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '201':
           description: Region defined.
           headers:
@@ -605,7 +623,7 @@ components:
         type: string
   headers:
     IdempotencyReplayed:
-      description: Present, with the value true, only when the response replays the first answer stored for the Idempotency-Key.
+      description: Present, with the value true, only when the response replays the first answer stored for the Idempotency-Key (a stored 2xx or 4xx outcome; a 5xx is never stored).
       schema:
         type: string
         enum: ['true']
@@ -613,7 +631,10 @@ components:
     BadRequest:
       description: >-
         idempotency-key-required (no Idempotency-Key header), idempotency-key-invalid
-        (not 1-128 printable ASCII characters), or malformed-request-body.
+        (not 1-128 printable ASCII characters), malformed-request-body (invalid
+        JSON, an empty body, trailing data, an unknown field, a wrongly typed
+        field or a NUL character), or malformed-request-query (a NUL character
+        in the query string).
       content:
         application/problem+json:
           schema:
@@ -623,6 +644,12 @@ components:
         invalid-limit, invalid-cursor, unknown-query-parameter (a query parameter
         the collection does not declare, including the retired after, from, offset
         and nextToken), or malformed-request-query.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    PayloadTooLarge:
+      description: request-body-too-large (the request body is larger than 64 KiB).
       content:
         application/problem+json:
           schema:
@@ -914,7 +941,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/OperationalProfileDeclaration'
         - type: object
-          required: [declaredAt]
+          required: [holidays, declaredAt]
           properties:
             declaredAt:
               type: string
