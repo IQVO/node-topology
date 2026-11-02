@@ -67,10 +67,10 @@ Feature: REST adapter
     Given an active "FULFILLMENT_CENTER" node "fc" exists in the region "SP"
     When a GET request is sent to "/nodes?type=FULFILLMENT_CENTER&status=ACTIVE&region=region:SP"
     Then the response status is 200
-    And the response list "nodes" has 1 items
+    And the response list "items" has 1 items
     When a GET request is sent to "/nodes?type=DELIVERY_STATION"
     Then the response status is 200
-    And the response list "nodes" has 0 items
+    And the response list "items" has 0 items
 
   Scenario: An unknown node type is not a filter
     When a GET request is sent to "/nodes?type=NOT_A_TYPE"
@@ -108,23 +108,23 @@ Feature: REST adapter
 
   Scenario: Activating a fulfillment center over REST
     Given a "FULFILLMENT_CENTER" node "fc" exists in the region "SP"
-    When a POST request is sent to "/nodes/node:fc:activate" with the idempotency key "act-1"
+    When a POST request is sent to "/nodes/node:fc/activations" with the idempotency key "act-1"
     Then the response status is 409
     And the response problem is "incomplete-operational-profile"
     Given the node "fc" has declared a complete profile
-    When a POST request is sent to "/nodes/node:fc:activate" with the idempotency key "act-2"
+    When a POST request is sent to "/nodes/node:fc/activations" with the idempotency key "act-2"
     Then the response status is 200
     And the response field "status" is "ACTIVE"
 
   Scenario: Suspending over REST
     Given an active "FULFILLMENT_CENTER" node "fc" exists in the region "SP"
-    When a POST request is sent to "/nodes/node:fc:suspend" with the idempotency key "sus-1" and the JSON body
+    When a POST request is sent to "/nodes/node:fc/suspensions" with the idempotency key "sus-1" and the JSON body
       """json
       {"reason":" "}
       """
     Then the response status is 422
     And the response problem is "validation-failed"
-    When a POST request is sent to "/nodes/node:fc:suspend" with the idempotency key "sus-2" and the JSON body
+    When a POST request is sent to "/nodes/node:fc/suspensions" with the idempotency key "sus-2" and the JSON body
       """json
       {"reason":"flooded dock"}
       """
@@ -134,10 +134,10 @@ Feature: REST adapter
 
   Scenario: Retirement is terminal over REST
     Given an active "DELIVERY_STATION" node "ds" exists in the region "SP"
-    When a POST request is sent to "/nodes/node:ds:retire" with the idempotency key "ret-1"
+    When a POST request is sent to "/nodes/node:ds/retirements" with the idempotency key "ret-1"
     Then the response status is 200
     And the response field "status" is "RETIRED"
-    When a POST request is sent to "/nodes/node:ds:activate" with the idempotency key "ret-2"
+    When a POST request is sent to "/nodes/node:ds/activations" with the idempotency key "ret-2"
     Then the response status is 409
     And the response problem is "node-retired"
 
@@ -155,8 +155,8 @@ Feature: REST adapter
     And the lane id of the response is remembered as "L1"
     When a GET request is sent to "/lanes?origin=node:fc"
     Then the response status is 200
-    And the response list "lanes" has 1 items
-    And the response field "lanes.0.laneId" is "lane:L1"
+    And the response list "items" has 1 items
+    And the response field "items.0.laneId" is "lane:L1"
 
   Scenario: A duplicate lane over REST is a 409 problem
     Given an active "FULFILLMENT_CENTER" node "fc" exists in the region "SP"
@@ -191,7 +191,7 @@ Feature: REST adapter
     Given an active "FULFILLMENT_CENTER" node "fc" exists in the region "SP"
     And an active "DELIVERY_STATION" node "ds" exists in the region "SP"
     And an open GROUND lane "L1" exists from "fc" to "ds"
-    When a POST request is sent to "/lanes/lane:L1:close" with the idempotency key "close-1"
+    When a POST request is sent to "/lanes/lane:L1/closures" with the idempotency key "close-1"
     Then the response status is 200
     And the response field "status" is "CLOSED"
 
@@ -236,7 +236,7 @@ Feature: REST adapter
     And the region id of the response is remembered as "RJ"
     When a GET request is sent to "/regions"
     Then the response status is 200
-    And the response list "" has 2 items
+    And the response list "items" has 2 items
     When a GET request is sent to "/regions/region:RJ"
     Then the response status is 200
     And the response field "code" is "RJ"

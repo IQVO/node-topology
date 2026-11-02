@@ -63,7 +63,7 @@ type (
 		Execute(context.Context, region.ID) (views.Region, error)
 	}
 	listRegions interface {
-		Execute(context.Context) ([]views.Region, error)
+		Execute(context.Context, usecases.ListRegionsQuery) ([]views.Region, error)
 	}
 )
 

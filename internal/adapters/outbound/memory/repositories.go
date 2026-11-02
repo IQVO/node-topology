@@ -82,7 +82,7 @@ func (r *NodeRepository) List(ctx context.Context, f repository.NodeFilter) ([]*
 		}
 		out = append(out, n)
 	}
-	return out, nil
+	return repository.Apply(f.Window, out, func(n *node.Node) string { return string(n.Snapshot().ID) }), nil
 }
 
 // ProfileRevisions returns every stored profile revision, oldest first, or
@@ -168,7 +168,7 @@ func (r *LaneRepository) List(ctx context.Context, f repository.LaneFilter) ([]*
 		}
 		out = append(out, l)
 	}
-	return out, nil
+	return repository.Apply(f.Window, out, func(l *lane.Lane) string { return string(l.Snapshot().ID) }), nil
 }
 
 // Save stores the lane; a second OPEN lane for the same triple is
@@ -242,7 +242,7 @@ func (r *RegionRepository) FindByCode(ctx context.Context, code string) (*region
 }
 
 // List returns every region by id ascending, an empty list when none exists.
-func (r *RegionRepository) List(ctx context.Context) ([]*region.Region, error) {
+func (r *RegionRepository) List(ctx context.Context, f repository.RegionFilter) ([]*region.Region, error) {
 	defer r.s.enter(ctx)()
 	out := []*region.Region{}
 	for _, snap := range sortedValues(r.s.regions) {
@@ -252,7 +252,7 @@ func (r *RegionRepository) List(ctx context.Context) ([]*region.Region, error) {
 		}
 		out = append(out, g)
 	}
-	return out, nil
+	return repository.Apply(f.Window, out, func(g *region.Region) string { return string(g.Snapshot().ID) }), nil
 }
 
 // Save stores the region; a second region with the same code is

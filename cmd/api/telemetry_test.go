@@ -16,6 +16,7 @@ import (
 
 	inboundhttp "github.com/claudioed/node-topology/internal/adapters/inbound/http"
 	"github.com/claudioed/node-topology/internal/adapters/outbound/telemetry"
+	"github.com/claudioed/node-topology/internal/application/usecases"
 	"github.com/claudioed/node-topology/internal/application/views"
 )
 
@@ -80,7 +81,9 @@ func TestNewLoggerHonoursLogLevel(t *testing.T) {
 
 type noRegions struct{}
 
-func (noRegions) Execute(context.Context) ([]views.Region, error) { return nil, nil }
+func (noRegions) Execute(context.Context, usecases.ListRegionsQuery) ([]views.Region, error) {
+	return nil, nil
+}
 
 func passThrough(string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler { return next }

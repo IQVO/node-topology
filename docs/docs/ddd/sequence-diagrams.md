@@ -21,10 +21,10 @@ are the same in every diagram:
 
 Every state-changing route requires an `Idempotency-Key` header (`400
 idempotency-key-required` without one). The middleware opens a transaction,
-claims `(route, key)` and runs the handler inside a savepoint of it, so the key,
+claims the key and runs the handler inside a savepoint of it, so the key,
 the aggregate rows and the outbox rows of a 2xx commit together. The same key
 with the same request replays the first answer (header `Idempotency-Replayed:
-true`), the same key with another request is `422 idempotency-key-reused`. A 4xx
+true`), the same key with another request is `409 idempotency-key-reused`. A 4xx
 is stored too, a 5xx rolls everything back and is not stored. Each diagram shows
 the optimistic-concurrency version check (or the unique index that backs a
 create), the outbox write and the relay. When the version check fails the use
@@ -162,7 +162,7 @@ Omitted: a node with no profile yet takes any first revision above zero. A `NETW
 
 ## 3. ActivateNode
 
-`POST /nodes/{nodeId}:activate`, published type `com.retailnetwork.logistics.node-topology.node.NodeActivated`.
+`POST /nodes/{nodeId}/activations`, published type `com.retailnetwork.logistics.node-topology.node.NodeActivated`.
 
 ```mermaid
 %%{init: {"sequence": {"wrap": true, "width": 120, "actorMargin": 24, "messageMargin": 28, "boxMargin": 6, "noteMargin": 6, "mirrorActors": false}}}%%
@@ -214,7 +214,7 @@ Omitted: the 404 for an unknown `nodeId` (same as diagram 2).
 
 ## 4. SuspendNode
 
-`POST /nodes/{nodeId}:suspend`, published type `com.retailnetwork.logistics.node-topology.node.NodeSuspended`.
+`POST /nodes/{nodeId}/suspensions`, published type `com.retailnetwork.logistics.node-topology.node.NodeSuspended`.
 
 ```mermaid
 %%{init: {"sequence": {"wrap": true, "width": 120, "actorMargin": 24, "messageMargin": 28, "boxMargin": 6, "noteMargin": 6, "mirrorActors": false}}}%%
@@ -266,7 +266,7 @@ Omitted: the 404 for an unknown `nodeId`; the downstream reactions (on [Domain M
 
 ## 5. RetireNode
 
-`POST /nodes/{nodeId}:retire`, published type `com.retailnetwork.logistics.node-topology.node.NodeRetired`.
+`POST /nodes/{nodeId}/retirements`, published type `com.retailnetwork.logistics.node-topology.node.NodeRetired`.
 
 ```mermaid
 %%{init: {"sequence": {"wrap": true, "width": 120, "actorMargin": 24, "messageMargin": 28, "boxMargin": 6, "noteMargin": 6, "mirrorActors": false}}}%%
@@ -377,7 +377,7 @@ Omitted: the two `Node` aggregates are read, never saved.
 
 ## 7. CloseLane
 
-`POST /lanes/{laneId}:close`, published type `com.retailnetwork.logistics.node-topology.lane.LaneClosed`.
+`POST /lanes/{laneId}/closures`, published type `com.retailnetwork.logistics.node-topology.lane.LaneClosed`.
 
 ```mermaid
 %%{init: {"sequence": {"wrap": true, "width": 120, "actorMargin": 24, "messageMargin": 28, "boxMargin": 6, "noteMargin": 6, "mirrorActors": false}}}%%

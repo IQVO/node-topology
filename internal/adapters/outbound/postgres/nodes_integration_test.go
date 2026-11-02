@@ -151,7 +151,7 @@ func TestRegionListOrdersIDsByteWise(t *testing.T) {
 	noErr(t, f.Regions.Save(ctx, repocontract.NewRegion(t, "region-b", "BB")))
 	noErr(t, f.Regions.Save(ctx, repocontract.NewRegion(t, "region-B", "AA")))
 
-	got, err := f.Regions.List(ctx)
+	got, err := f.Regions.List(ctx, repository.RegionFilter{})
 	noErr(t, err)
 	if len(got) != 2 || got[0].ID() != region.ID("region-B") {
 		t.Fatalf("regions = %v, want region-B first", got)

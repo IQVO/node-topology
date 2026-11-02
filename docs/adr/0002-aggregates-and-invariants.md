@@ -256,7 +256,7 @@ silent on the points below; each is an assumption and is reported as a model gap
   error or carry on; the outermost `Do` still owns commit and rollback.
 - **A30 Ordering.** Lists order by id byte-wise (`COLLATE "C"`), the order of
   the in-memory doubles, not the database locale.
-- **A31 Idempotency table.** `idempotency_keys(route, key)` has
+- **A31 Idempotency table.** `idempotency_keys(key)` (global since ADR 0012; `route` is a plain column) has
   `response_status` and `response_body` NULL while the first request is in
   flight, and an index on `created_at` for the 24 h cleanup. The middleware
   (step 5) may add columns (for example response headers) in a later migration.
@@ -303,9 +303,9 @@ silent on the points below; each is an assumption and is reported as a model gap
   missing required value that reaches the domain is 422 `validation-failed`. A
   NUL in the path is 404 `not-found`, in the query 400 `malformed-request-query`,
   in the body 400 `malformed-request-body`.
-- **A40 Lists.** `GET /nodes` and `GET /lanes` answer an envelope (`nodes`,
-  `lanes`) as the OpenAPI pins; `GET /regions` answers a bare array (the OpenAPI
-  `type: array`). No list is paginated (A21, A25).
+- **A40 Lists.** `GET /nodes`, `GET /lanes` and `GET /regions` answer
+  `{items, nextCursor}` and are keyset-paginated by id (ADR 0012, which
+  supersedes the unpaginated lists of A21 and A25).
 - **A41 Probes are outside the business contract.** `/healthz` and `/readyz` are
   not operations of `apis/openapi.yaml`; they are documented in ADR 0006 and
   README.

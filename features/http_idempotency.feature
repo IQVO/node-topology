@@ -3,7 +3,7 @@ Feature: Idempotency-Key guard
   scenarios drive the REAL middleware; its request validation runs before
   it would open a transaction, so no store is needed here. The replay
   semantics (same key replays the stored response, another fingerprint is
-  a 422) need the idempotency_keys table and live in the integration suite
+  a 409) need the idempotency_keys table and live in the integration suite
   (internal/adapters/inbound/http/idempotency_integration_test.go).
 
   Scenario: A state-changing request without a key is a 400 problem

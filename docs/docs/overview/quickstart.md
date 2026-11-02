@@ -117,7 +117,7 @@ curl -s -X PUT localhost:18080/nodes/node-e9740c8e-4adf-43d6-9b21-a335cc45fc76/o
 The response is `200` with the node and its `operationalProfile` (`profileRevision` 1, `holidays` `[]`, `declaredAt` set by the server), still `PROPOSED`. Then:
 
 ```bash
-curl -s -X POST 'localhost:18080/nodes/node-e9740c8e-4adf-43d6-9b21-a335cc45fc76:activate' \
+curl -s -X POST 'localhost:18080/nodes/node-e9740c8e-4adf-43d6-9b21-a335cc45fc76/activations' \
   -H 'Idempotency-Key: qs-act-1'
 ```
 
@@ -155,7 +155,7 @@ Errors are RFC 9457 `application/problem+json` and `type` is a slug (full list o
 
 ```text
 POST /regions without a key        -> 400 idempotency-key-required
-same key, other body               -> 422 idempotency-key-reused
+same key, other body               -> 409 idempotency-key-reused
 GET /nodes/nope                    -> 404 not-found
 POST /regions code SE-BR again     -> 409 region-code-taken
 GET /nodes?type=BOGUS              -> 422 validation-failed ("unknown node type")

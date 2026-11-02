@@ -48,7 +48,7 @@ Reads one region by id: `regionId`, `code`, `name`. An unknown id fails with `no
 
 ### `list_regions`
 
-Lists every region by id ascending. Regions are few and not paginated; none defined is an empty list. The output is wrapped as `{regions}` so structured content is always an object; the REST route returns a bare array.
+Lists every region by id ascending. Regions are few and not paginated; none defined is an empty list. The output is wrapped as `{regions}` so structured content is always an object.
 
 ## Errors
 

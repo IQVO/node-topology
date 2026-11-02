@@ -37,7 +37,7 @@ func TestListRegionsOrdersByID(t *testing.T) {
 	e.seedRegion("r-c", "MG")
 	e.seedRegion("r-a", "SP")
 
-	got, err := usecases.NewListRegions(e.regions).Execute(context.Background())
+	got, err := usecases.NewListRegions(e.regions).Execute(context.Background(), usecases.ListRegionsQuery{})
 	wantErr(t, err, nil)
 
 	ids, codes := []string{}, []string{}
@@ -54,7 +54,7 @@ func TestListRegionsOrdersByID(t *testing.T) {
 
 func TestListRegionsIsEmptyNotNil(t *testing.T) {
 	e := newEnv(t)
-	got, err := usecases.NewListRegions(e.regions).Execute(context.Background())
+	got, err := usecases.NewListRegions(e.regions).Execute(context.Background(), usecases.ListRegionsQuery{})
 	wantErr(t, err, nil)
 	if got == nil || len(got) != 0 {
 		t.Fatalf("list = %#v, want a non-nil empty list", got)
@@ -64,6 +64,6 @@ func TestListRegionsIsEmptyNotNil(t *testing.T) {
 func TestListRegionsFailure(t *testing.T) {
 	e := newEnv(t)
 	e.regions.listErr = errBoom
-	_, err := usecases.NewListRegions(e.regions).Execute(context.Background())
+	_, err := usecases.NewListRegions(e.regions).Execute(context.Background(), usecases.ListRegionsQuery{})
 	wantErr(t, err, errBoom)
 }

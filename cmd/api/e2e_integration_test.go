@@ -203,7 +203,7 @@ func restFlow(t *testing.T, s *service) world {
 	s.write(http.MethodPut, "/nodes/"+w.sc+"/operational-profile", fmt.Sprintf(profile, "NETWORK_OPS", `,"sortDwellMinutes":25,"inbound":{"maxCartonWeightG":25000,"maxCartonDimsMm":{"l":600,"w":400,"h":300},"acceptsPallets":true}`), http.StatusOK)
 	s.write(http.MethodPut, "/nodes/"+w.station+"/operational-profile", fmt.Sprintf(profile, "NETWORK_OPS", ""), http.StatusOK)
 	for _, id := range []string{w.fc, w.sc, w.station} {
-		if n := s.write(http.MethodPost, "/nodes/"+id+":activate", "", http.StatusOK); str(n, "status") != "ACTIVE" {
+		if n := s.write(http.MethodPost, "/nodes/"+id+"/activations", "", http.StatusOK); str(n, "status") != "ACTIVE" {
 			t.Fatalf("activate %s = %v", id, n)
 		}
 	}
@@ -269,9 +269,9 @@ func assertReplay(t *testing.T, s *service) {
 	if n := s.count("outbox_events"); n != 13 {
 		t.Fatalf("outbox rows = %d after a replayed create, want 13 (one more event)", n)
 	}
-	if r := s.call(http.MethodPost, "/regions", `{"code":"XX","name":"Other"}`, "replay-1"); r.status != http.StatusUnprocessableEntity ||
+	if r := s.call(http.MethodPost, "/regions", `{"code":"XX","name":"Other"}`, "replay-1"); r.status != http.StatusConflict ||
 		!strings.Contains(string(r.body), "idempotency-key-reused") {
-		t.Fatalf("conflicting body = %d %s, want 422 idempotency-key-reused", r.status, r.body)
+		t.Fatalf("conflicting body = %d %s, want 409 idempotency-key-reused", r.status, r.body)
 	}
 	if r := s.call(http.MethodPost, "/regions", body, ""); r.status != http.StatusBadRequest {
 		t.Fatalf("no key = %d, want 400", r.status)
