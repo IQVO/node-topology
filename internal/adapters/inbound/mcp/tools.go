@@ -137,6 +137,7 @@ func (d Deps) registerTools(server *mcp.Server) {
 			"currently holds (operating hours, holidays, handling time, cutoffs, throughput cap, sort dwell). Read-only; an unknown " +
 			"id fails with not-found.",
 		Annotations: readOnly,
+		Meta:        authorityMeta(authorityL1),
 	}, d.getNode)
 
 	addTool(server, &mcp.Tool{
@@ -146,6 +147,7 @@ func (d Deps) registerTools(server *mcp.Server) {
 			"RETIRED); the filters combine with AND and no match is an empty list. Each node carries its current operational profile. " +
 			"Read-only; a type or status that is not an enumeration value fails with validation-failed.",
 		Annotations: readOnly,
+		Meta:        authorityMeta(authorityL1),
 	}, d.listNodes)
 
 	addTool(server, &mcp.Tool{
@@ -155,6 +157,7 @@ func (d Deps) registerTools(server *mcp.Server) {
 			"by status (OPEN or CLOSED); mode is GROUND or AIR and nominalTransitMinutes is the planned transit. Read-only; no match " +
 			"is an empty list.",
 		Annotations: readOnly,
+		Meta:        authorityMeta(authorityL1),
 	}, d.listLanes)
 
 	addTool(server, &mcp.Tool{
@@ -162,6 +165,7 @@ func (d Deps) registerTools(server *mcp.Server) {
 		Description: "Resolve which delivery station serves a postal prefix: the prefix (matched exactly), the deliveryStationNodeId, " +
 			"the station's regionId and the assignmentVersion. Read-only; an unassigned prefix fails with not-found.",
 		Annotations: readOnly,
+		Meta:        authorityMeta(authorityL1),
 	}, d.resolveServiceArea)
 
 	addTool(server, &mcp.Tool{
@@ -169,6 +173,7 @@ func (d Deps) registerTools(server *mcp.Server) {
 		Description: "Read one region of the network by its id: the code and the name it was defined with. Read-only; an unknown id " +
 			"fails with not-found.",
 		Annotations: readOnly,
+		Meta:        authorityMeta(authorityL1),
 	}, d.getRegion)
 
 	addTool(server, &mcp.Tool{
@@ -176,6 +181,7 @@ func (d Deps) registerTools(server *mcp.Server) {
 		Description: "List every region of the network by id ascending (code and name). Regions are few and are not paginated; none " +
 			"defined is an empty list. Read-only.",
 		Annotations: readOnly,
+		Meta:        authorityMeta(authorityL1),
 	}, d.listRegions)
 }
 
