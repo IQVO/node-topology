@@ -63,7 +63,7 @@ func (s *Server) declareOperationalProfile(w http.ResponseWriter, r *http.Reques
 
 // nodeTransition is POST /nodes/{nodeId}/activations and /retirements, which take no
 // body.
-func (s *Server) nodeTransition(uc nodeTransition) http.HandlerFunc {
+func (s *Server) nodeTransition(uc nodeByID) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		n, err := uc.Execute(r.Context(), nodeID(r))
 		if err != nil {

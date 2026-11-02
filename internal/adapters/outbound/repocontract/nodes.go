@@ -13,7 +13,7 @@ import (
 
 var nodeCases = []named{
 	{"save then get round-trips the snapshot with its profile", nodeRoundTrip},
-	{"get of an unknown id is ErrNotFound", nodeGetMiss},
+	{unknownIDMiss, nodeGetMiss},
 	{"a loaded node does not alias stored state", nodeNoAliasing},
 	{"find by vendor reference hits and misses", nodeFindByVendorRef},
 	{"a second node with the same vendor code is ErrVendorNodeCodeTaken", nodeVendorCodeTaken},
@@ -56,7 +56,7 @@ func saveActive(t *testing.T, f Fixture, reg *region.Region, typ node.Type, id n
 
 func nodeRoundTrip(t *testing.T, f Fixture) {
 	ctx := context.Background()
-	reg := seedRegion(t, f, "region-1", "SP")
+	reg := seedRegion(t, f, regionOne, "SP")
 	n := saveActive(t, f, reg, node.FulfillmentCenter, "node-1", "FC-1")
 	got, err := f.Nodes.Get(ctx, "node-1")
 	noErr(t, err)
@@ -75,7 +75,7 @@ func nodeGetMiss(t *testing.T, f Fixture) {
 
 func nodeNoAliasing(t *testing.T, f Fixture) {
 	ctx := context.Background()
-	reg := seedRegion(t, f, "region-1", "SP")
+	reg := seedRegion(t, f, regionOne, "SP")
 	noErr(t, f.Nodes.Save(ctx, NewNode(t, reg, node.DeliveryStation, "node-1", "")))
 	a, err := f.Nodes.Get(ctx, "node-1")
 	noErr(t, err)
@@ -90,7 +90,7 @@ func nodeNoAliasing(t *testing.T, f Fixture) {
 
 func nodeFindByVendorRef(t *testing.T, f Fixture) {
 	ctx := context.Background()
-	reg := seedRegion(t, f, "region-1", "SP")
+	reg := seedRegion(t, f, regionOne, "SP")
 	noErr(t, f.Nodes.Save(ctx, NewNode(t, reg, node.FulfillmentCenter, "node-1", "FC-1")))
 	got, err := f.Nodes.FindByVendorRef(ctx, "vendor-1", "FC-1")
 	noErr(t, err)
@@ -105,7 +105,7 @@ func nodeFindByVendorRef(t *testing.T, f Fixture) {
 
 func nodeVendorCodeTaken(t *testing.T, f Fixture) {
 	ctx := context.Background()
-	reg := seedRegion(t, f, "region-1", "SP")
+	reg := seedRegion(t, f, regionOne, "SP")
 	noErr(t, f.Nodes.Save(ctx, NewNode(t, reg, node.FulfillmentCenter, "node-1", "FC-1")))
 	wantErr(t, f.Nodes.Save(ctx, NewNode(t, reg, node.FulfillmentCenter, "node-2", "FC-1")), node.ErrVendorNodeCodeTaken)
 	_, err := f.Nodes.Get(ctx, "node-2")
@@ -114,7 +114,7 @@ func nodeVendorCodeTaken(t *testing.T, f Fixture) {
 
 func nodeSameCodeOtherVendor(t *testing.T, f Fixture) {
 	ctx := context.Background()
-	reg := seedRegion(t, f, "region-1", "SP")
+	reg := seedRegion(t, f, regionOne, "SP")
 	noErr(t, f.Nodes.Save(ctx, NewNode(t, reg, node.FulfillmentCenter, "node-1", "FC-1")))
 	other := NewNode(t, reg, node.FulfillmentCenter, "node-2", "FC-1")
 	snap := other.Snapshot()
@@ -126,7 +126,7 @@ func nodeSameCodeOtherVendor(t *testing.T, f Fixture) {
 
 func nodeUpdate(t *testing.T, f Fixture) {
 	ctx := context.Background()
-	reg := seedRegion(t, f, "region-1", "SP")
+	reg := seedRegion(t, f, regionOne, "SP")
 	noErr(t, f.Nodes.Save(ctx, NewNode(t, reg, node.DeliveryStation, "node-1", "")))
 	n, err := f.Nodes.Get(ctx, "node-1")
 	noErr(t, err)
@@ -142,7 +142,7 @@ func nodeUpdate(t *testing.T, f Fixture) {
 
 func nodeConcurrency(t *testing.T, f Fixture) {
 	ctx := context.Background()
-	reg := seedRegion(t, f, "region-1", "SP")
+	reg := seedRegion(t, f, regionOne, "SP")
 	noErr(t, f.Nodes.Save(ctx, NewNode(t, reg, node.DeliveryStation, "node-1", "")))
 	winner, err := f.Nodes.Get(ctx, "node-1")
 	noErr(t, err)
@@ -164,7 +164,7 @@ func nodeConcurrency(t *testing.T, f Fixture) {
 
 func nodeProfileRevisions(t *testing.T, f Fixture) {
 	ctx := context.Background()
-	reg := seedRegion(t, f, "region-1", "SP")
+	reg := seedRegion(t, f, regionOne, "SP")
 	n := saveActive(t, f, reg, node.FulfillmentCenter, "node-1", "FC-1")
 	second := Declaration(2)
 	second.HandlingTimeMinutes = 45
@@ -189,7 +189,7 @@ func nodeProfileRevisions(t *testing.T, f Fixture) {
 
 func nodeInboundLimitsPerRevision(t *testing.T, f Fixture) {
 	ctx := context.Background()
-	reg := seedRegion(t, f, "region-1", "SP")
+	reg := seedRegion(t, f, regionOne, "SP")
 	n := saveActive(t, f, reg, node.FulfillmentCenter, "node-1", "FC-1") // revision 1: no inbound limits
 	weight, yes, no := 25000, true, false
 	second := Declaration(2)
@@ -226,7 +226,7 @@ func nodeInboundLimitsPerRevision(t *testing.T, f Fixture) {
 
 func nodeNoRevisionNoRow(t *testing.T, f Fixture) {
 	ctx := context.Background()
-	reg := seedRegion(t, f, "region-1", "SP")
+	reg := seedRegion(t, f, regionOne, "SP")
 	noErr(t, f.Nodes.Save(ctx, NewNode(t, reg, node.DeliveryStation, "node-1", "")))
 	rows, err := f.Nodes.ProfileRevisions(ctx, "node-1")
 	noErr(t, err)
@@ -257,23 +257,23 @@ func nodeProfileRevisionsMiss(t *testing.T, f Fixture) {
 
 func nodeList(t *testing.T, f Fixture) {
 	ctx := context.Background()
-	sp := seedRegion(t, f, "region-1", "SP")
+	sp := seedRegion(t, f, regionOne, "SP")
 	rj := seedRegion(t, f, "region-2", "RJ")
-	noErr(t, f.Nodes.Save(ctx, NewNode(t, sp, node.DeliveryStation, "node-b", "")))
-	noErr(t, f.Nodes.Save(ctx, NewNode(t, rj, node.DeliveryStation, "node-c", "")))
-	saveActive(t, f, sp, node.DeliveryStation, "node-a", "")
-	noErr(t, f.Nodes.Save(ctx, NewNode(t, sp, node.FulfillmentCenter, "node-d", "FC-1")))
+	noErr(t, f.Nodes.Save(ctx, NewNode(t, sp, node.DeliveryStation, nodeB, "")))
+	noErr(t, f.Nodes.Save(ctx, NewNode(t, rj, node.DeliveryStation, nodeC, "")))
+	saveActive(t, f, sp, node.DeliveryStation, nodeA, "")
+	noErr(t, f.Nodes.Save(ctx, NewNode(t, sp, node.FulfillmentCenter, nodeD, "FC-1")))
 
 	cases := []struct {
 		name   string
 		filter repository.NodeFilter
 		want   []node.ID
 	}{
-		{"no filter", repository.NodeFilter{}, []node.ID{"node-a", "node-b", "node-c", "node-d"}},
-		{"type", repository.NodeFilter{Type: node.DeliveryStation}, []node.ID{"node-a", "node-b", "node-c"}},
-		{"region", repository.NodeFilter{RegionID: "region-2"}, []node.ID{"node-c"}},
-		{"status", repository.NodeFilter{Status: node.StatusActive}, []node.ID{"node-a"}},
-		{"all three", repository.NodeFilter{Type: node.DeliveryStation, RegionID: "region-1", Status: node.StatusProposed}, []node.ID{"node-b"}},
+		{"no filter", repository.NodeFilter{}, []node.ID{nodeA, nodeB, nodeC, nodeD}},
+		{"type", repository.NodeFilter{Type: node.DeliveryStation}, []node.ID{nodeA, nodeB, nodeC}},
+		{"region", repository.NodeFilter{RegionID: "region-2"}, []node.ID{nodeC}},
+		{"status", repository.NodeFilter{Status: node.StatusActive}, []node.ID{nodeA}},
+		{"all three", repository.NodeFilter{Type: node.DeliveryStation, RegionID: regionOne, Status: node.StatusProposed}, []node.ID{nodeB}},
 		{"no match", repository.NodeFilter{Type: node.AirHub}, []node.ID{}},
 	}
 	for _, c := range cases {
