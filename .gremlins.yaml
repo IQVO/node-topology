@@ -27,5 +27,9 @@ unleash:
     # differs. See HARNESS.md's mutation-testing section for the
     # tagless-switch-under-reports pitfall before assuming a low number
     # means missing tests.
-    efficacy: "90"
-    mutant-coverage: "90"
+    # Measured before raising (gremlins v0.6.0, one worker, killed/lived/not-covered
+    # across efficacy and mutant coverage): lane 20/0/0, node 232/0/0, region 21/0/0,
+    # servicearea 35/0/0, shared 31/0/0 -- every internal/domain package at 100.00%,
+    # so the 95 gate keeps five points of drift headroom below the measured floor.
+    efficacy: "95"
+    mutant-coverage: "95"
