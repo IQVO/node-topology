@@ -12,7 +12,7 @@ import (
 )
 
 var serviceAreaCases = []named{
-	{"save then get round-trips the snapshot", areaRoundTrip},
+	{saveGetRoundTrip, areaRoundTrip},
 	{"get of an unassigned prefix is ErrNotFound and matching is exact", areaGetMiss},
 	{"a reassignment is stored under the next version", areaReassign},
 	{"stale saves are ErrConcurrentUpdate", areaConcurrency},
@@ -21,7 +21,7 @@ var serviceAreaCases = []named{
 // areaStation seeds a region and an ACTIVE delivery station.
 func areaStation(t *testing.T, f Fixture) (*region.Region, *node.Node) {
 	t.Helper()
-	reg := seedRegion(t, f, "region-1", "SP")
+	reg := seedRegion(t, f, regionOne, "SP")
 	return reg, saveActive(t, f, reg, node.DeliveryStation, "node-s", "")
 }
 

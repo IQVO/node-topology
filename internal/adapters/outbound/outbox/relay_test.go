@@ -52,7 +52,7 @@ func (s *fakeStore) Drain(ctx context.Context, limit, maxAttempts int, send func
 		}
 		if err := send(ctx, r.msg); err != nil {
 			r.attempts++
-			return n, &outbox.SendFailure{RowID: int64(i + 1), Message: r.msg, Attempts: r.attempts, Err: err}
+			return n, &outbox.SendFailureError{RowID: int64(i + 1), Message: r.msg, Attempts: r.attempts, Err: err}
 		}
 		r.published = true
 		r.attempts++
@@ -111,9 +111,9 @@ func TestRelayOnceStopsAtTheFirstFailureAndKeepsTheRow(t *testing.T) {
 	sink := &fakeSink{failOn: map[string]error{"b": errors.New("broker down")}}
 	r := NewOutboxRelay(store, sink, WithLogger(quiet()))
 	n, err := r.RelayOnce(context.Background())
-	var sf *outbox.SendFailure
+	var sf *outbox.SendFailureError
 	if !errors.As(err, &sf) || n != 1 || sf.Attempts != 1 || sf.Message.EventType != "b" {
-		t.Fatalf("n=%d err=%v, want 1 row published then a SendFailure on b", n, err)
+		t.Fatalf("n=%d err=%v, want 1 row published then a SendFailureError on b", n, err)
 	}
 	if store.rows[1].published || store.rows[2].published {
 		t.Fatal("b failed, so neither b nor c may be published (c must not overtake b)")
@@ -261,7 +261,7 @@ func TestRunReturnsAtOnceWhenTheContextIsAlreadyCancelled(t *testing.T) {
 
 func TestSendFailureErrorAndUnwrap(t *testing.T) {
 	cause := errors.New("boom")
-	sf := &outbox.SendFailure{RowID: 7, Message: outbox.Message{EventType: "x.Y"}, Err: cause}
+	sf := &outbox.SendFailureError{RowID: 7, Message: outbox.Message{EventType: "x.Y"}, Err: cause}
 	if sf.Error() != "outbox row 7 (x.Y): boom" || !errors.Is(sf, cause) {
 		t.Fatalf("error = %q", sf.Error())
 	}

@@ -42,6 +42,11 @@ type Config struct {
 	Version  string
 }
 
+// contentJSON is the MIME type of the message parts every skill consumes
+// and answers with; the card additionally accepts plain text on its
+// default modes.
+const contentJSON = "application/json"
+
 // Deps is everything the A2A skills need, injected by the composition root.
 // It carries the SAME read use cases the REST and MCP adapters expose (GET
 // /nodes, GET /nodes/{nodeId}, GET /service-areas/{postalPrefix}); the adapter
@@ -72,8 +77,8 @@ func Card(cfg Config) *a2a.AgentCard {
 		SupportedInterfaces: []*a2a.AgentInterface{
 			a2a.NewAgentInterface(cfg.AgentURL, a2a.TransportProtocolJSONRPC),
 		},
-		DefaultInputModes:  []string{"application/json", "text/plain"},
-		DefaultOutputModes: []string{"application/json", "text/plain"},
+		DefaultInputModes:  []string{contentJSON, "text/plain"},
+		DefaultOutputModes: []string{contentJSON, "text/plain"},
 		Capabilities:       a2a.AgentCapabilities{Streaming: false},
 		Skills: []a2a.AgentSkill{
 			{
@@ -81,7 +86,7 @@ func Card(cfg Config) *a2a.AgentCard {
 				Name:        "Delivery station serving a postal prefix",
 				Description: "Composed read: resolves the delivery station that serves a postal prefix (matched exactly) and returns the assignment (deliveryStationNodeId, regionId, assignmentVersion) together with that station's node: type, operator, region, timezone, location, status and its current operational profile (operating hours, holidays, handling time, cutoffs, throughput cap). An unassigned prefix is answered as a not-found problem.",
 				Tags:        []string{"topology", "service-area", "read"},
-				InputModes:  []string{"application/json"},
+				InputModes:  []string{contentJSON},
 				Examples: []string{
 					`{"skill":"serving_station","arguments":{"postalPrefix":"013"}}`,
 				},
@@ -91,7 +96,7 @@ func Card(cfg Config) *a2a.AgentCard {
 				Name:        "Find network nodes",
 				Description: "Lists the network's nodes by id ascending, optionally filtered by type (FULFILLMENT_CENTER, INBOUND_CROSS_DOCK, RETURNS_CENTER, SORTATION_CENTER, DELIVERY_STATION or AIR_HUB), regionId and/or status (PROPOSED, ACTIVE, SUSPENDED or RETIRED); the filters combine with AND and no match is an empty list. A type or status that is not an enumeration value is answered as a validation problem.",
 				Tags:        []string{"topology", "node", "read"},
-				InputModes:  []string{"application/json"},
+				InputModes:  []string{contentJSON},
 				Examples: []string{
 					`{"skill":"find_nodes","arguments":{}}`,
 					`{"skill":"find_nodes","arguments":{"type":"DELIVERY_STATION","status":"ACTIVE"}}`,

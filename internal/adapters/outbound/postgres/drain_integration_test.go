@@ -100,9 +100,9 @@ func TestDrainStopsAtTheFirstFailureAndRecordsIt(t *testing.T) {
 		return nil
 	})
 
-	var sf *outbox.SendFailure
+	var sf *outbox.SendFailureError
 	if !errors.As(err, &sf) || !errors.Is(err, errSend) || n != 1 {
-		t.Fatalf("n=%d err=%v, want one row published then a SendFailure wrapping the send error", n, err)
+		t.Fatalf("n=%d err=%v, want one row published then a SendFailureError wrapping the send error", n, err)
 	}
 	if sf.Attempts != 1 || sf.Message.Subject != "region-2" || sf.Message.EventType == "" || string(sf.Message.Key) != "region-2" {
 		t.Fatalf("failure = %+v", sf)
@@ -130,9 +130,9 @@ func TestDrainSkipsAPoisonRowOnceItReachedTheCap(t *testing.T) {
 	}
 	for attempt := 1; attempt <= 2; attempt++ {
 		_, err := repo.Drain(context.Background(), 10, 2, poison)
-		var sf *outbox.SendFailure
+		var sf *outbox.SendFailureError
 		if !errors.As(err, &sf) || sf.Attempts != attempt {
-			t.Fatalf("pass %d: err = %v, want a SendFailure at attempt %d", attempt, err, attempt)
+			t.Fatalf("pass %d: err = %v, want a SendFailureError at attempt %d", attempt, err, attempt)
 		}
 	}
 

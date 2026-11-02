@@ -12,8 +12,8 @@ import (
 )
 
 var laneCases = []named{
-	{"save then get round-trips the snapshot", laneRoundTrip},
-	{"get of an unknown id is ErrNotFound", laneGetMiss},
+	{saveGetRoundTrip, laneRoundTrip},
+	{unknownIDMiss, laneGetMiss},
 	{"find open hits only the OPEN lane of the triple", laneFindOpen},
 	{"a second OPEN lane for the triple is ErrDuplicateLane", laneDuplicate},
 	{"a closed lane frees the triple and keeps its history", laneReopenAfterClose},
@@ -24,9 +24,9 @@ var laneCases = []named{
 // laneEnds seeds a region and two ACTIVE nodes forming an allowed pair.
 func laneEnds(t *testing.T, f Fixture) (origin, destination *node.Node) {
 	t.Helper()
-	reg := seedRegion(t, f, "region-1", "SP")
+	reg := seedRegion(t, f, regionOne, "SP")
 	ot, dt := AllowedPair(t)
-	return saveActive(t, f, reg, ot, "node-o", "FC-O"), saveActive(t, f, reg, dt, "node-d", "FC-D")
+	return saveActive(t, f, reg, ot, nodeO, "FC-O"), saveActive(t, f, reg, dt, nodeD, "FC-D")
 }
 
 func laneRoundTrip(t *testing.T, f Fixture) {
@@ -50,7 +50,7 @@ func laneFindOpen(t *testing.T, f Fixture) {
 	ctx := context.Background()
 	o, d := laneEnds(t, f)
 	noErr(t, f.Lanes.Save(ctx, NewLane(t, "lane-1", o, d, lane.ModeGround)))
-	got, err := f.Lanes.FindOpen(ctx, "node-o", "node-d", lane.ModeGround)
+	got, err := f.Lanes.FindOpen(ctx, nodeO, nodeD, lane.ModeGround)
 	noErr(t, err)
 	if got.ID() != "lane-1" {
 		t.Fatalf("id = %s, want lane-1", got.ID())
@@ -58,7 +58,7 @@ func laneFindOpen(t *testing.T, f Fixture) {
 	for _, miss := range []struct {
 		o, d node.ID
 		m    lane.Mode
-	}{{"node-o", "node-d", lane.ModeAir}, {"node-d", "node-o", lane.ModeGround}, {"node-o", "node-x", lane.ModeGround}} {
+	}{{nodeO, nodeD, lane.ModeAir}, {nodeD, nodeO, lane.ModeGround}, {nodeO, "node-x", lane.ModeGround}} {
 		_, err = f.Lanes.FindOpen(ctx, miss.o, miss.d, miss.m)
 		wantErr(t, err, ports.ErrNotFound)
 	}
@@ -83,7 +83,7 @@ func laneReopenAfterClose(t *testing.T, f Fixture) {
 	_, err = first.Close(Now)
 	noErr(t, err)
 	noErr(t, f.Lanes.Save(ctx, first))
-	_, err = f.Lanes.FindOpen(ctx, "node-o", "node-d", lane.ModeGround)
+	_, err = f.Lanes.FindOpen(ctx, nodeO, nodeD, lane.ModeGround)
 	wantErr(t, err, ports.ErrNotFound)
 	noErr(t, f.Lanes.Save(ctx, NewLane(t, "lane-2", o, d, lane.ModeGround)))
 	closed, err := f.Lanes.Get(ctx, "lane-1")
@@ -113,13 +113,13 @@ func laneConcurrency(t *testing.T, f Fixture) {
 func laneList(t *testing.T, f Fixture) {
 	ctx := context.Background()
 	o, d := laneEnds(t, f)
-	noErr(t, f.Lanes.Save(ctx, NewLane(t, "lane-b", o, d, lane.ModeAir)))
-	noErr(t, f.Lanes.Save(ctx, NewLane(t, "lane-a", o, d, lane.ModeGround)))
+	noErr(t, f.Lanes.Save(ctx, NewLane(t, laneB, o, d, lane.ModeAir)))
+	noErr(t, f.Lanes.Save(ctx, NewLane(t, laneA, o, d, lane.ModeGround)))
 	// lane-c is saved open, then reloaded and closed.
 	ot, _ := AllowedPair(t)
 	other := saveActive(t, f, seedRegion(t, f, "region-2", "RJ"), ot, "node-o2", "FC-O2")
-	noErr(t, f.Lanes.Save(ctx, NewLane(t, "lane-c", other, d, lane.ModeGround)))
-	reloaded, err := f.Lanes.Get(ctx, "lane-c")
+	noErr(t, f.Lanes.Save(ctx, NewLane(t, laneC, other, d, lane.ModeGround)))
+	reloaded, err := f.Lanes.Get(ctx, laneC)
 	noErr(t, err)
 	_, err = reloaded.Close(Now)
 	noErr(t, err)
@@ -130,10 +130,10 @@ func laneList(t *testing.T, f Fixture) {
 		filter repository.LaneFilter
 		want   []lane.ID
 	}{
-		{"no filter", repository.LaneFilter{}, []lane.ID{"lane-a", "lane-b", "lane-c"}},
-		{"origin", repository.LaneFilter{Origin: "node-o"}, []lane.ID{"lane-a", "lane-b"}},
-		{"destination", repository.LaneFilter{Destination: "node-d"}, []lane.ID{"lane-a", "lane-b", "lane-c"}},
-		{"both", repository.LaneFilter{Origin: "node-o2", Destination: "node-d"}, []lane.ID{"lane-c"}},
+		{"no filter", repository.LaneFilter{}, []lane.ID{laneA, laneB, laneC}},
+		{"origin", repository.LaneFilter{Origin: nodeO}, []lane.ID{laneA, laneB}},
+		{"destination", repository.LaneFilter{Destination: nodeD}, []lane.ID{laneA, laneB, laneC}},
+		{"both", repository.LaneFilter{Origin: "node-o2", Destination: nodeD}, []lane.ID{laneC}},
 		{"no match", repository.LaneFilter{Origin: "node-x"}, []lane.ID{}},
 	}
 	for _, c := range cases {
