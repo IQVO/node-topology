@@ -8,7 +8,7 @@ description: Add or change a REST endpoint in this service in the hexagonal orde
 Follow this order: domain first, adapter last. A handler written before the
 invariant it relies on validates nothing and gets bypassed.
 
-The worked example is `POST /lanes/{laneId}:close`:
+The worked example is `POST /lanes/{laneId}/closures`:
 `internal/domain/lane/lane.go` `Close` -> `internal/application/usecases/lanes.go`
 `CloseLane` -> `internal/adapters/inbound/http/handlers_other.go` `closeLane`. The
 read side example is `GET /regions/{regionId}` (`usecases/queries.go` `GetRegion`
