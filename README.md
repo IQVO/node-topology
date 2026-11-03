@@ -166,7 +166,9 @@ collections (`GET /nodes`, `GET /lanes`, `GET /regions`) are keyset-paginated: `
 [ADR 0008](docs/adr/0008-mcp-server-adoption.md). `cmd/mcp` is a second, read-only deployable over the SAME read use cases as the REST adapter, served over
 Streamable HTTP (`/mcp`, official Go SDK) with an open `/healthz`. No auth (fleet decision), no Kafka, no outbox — it can never write. Tools: `get_node`,
 `list_nodes(type?, regionId?, status?)`, `list_lanes(origin?, destination?)`, `resolve_service_area(postalPrefix)`, `get_region`, `list_regions`; tool errors
-carry the REST problem slug (`not-found`, `validation-failed`).
+carry the REST problem slug (`not-found`, `validation-failed`). Every tool and both A2A skills declare authority `L1` (`_meta` `com.warehouse/authority` /
+tag `authority:L1`, Agentic Standard v2), the transport is stateless (2026-07-28 `server/discover` plus legacy `initialize`), and the surface carries one
+resource (`warehouse://node-topology/service-areas/{postalPrefix}`) and one prompt (`resolve_delivery_coverage`) — [ADR 0013](docs/adr/0013-agent-authority-levels-and-complete-mcp-surface.md).
 
 ```sh
 export DATABASE_URL=postgres://user:***@localhost:5432/node_topology?sslmode=disable
@@ -179,7 +181,8 @@ go run ./cmd/mcp                     # listens on :8090 (MCP_ADDR)
 (JSON-RPC over HTTP, official Go SDK) message-only agent with the Agent Card at `/.well-known/agent-card.json`, JSON-RPC at `/` and `/a2a`, and an open `/healthz`.
 A2A carries the DELEGATION of a goal, never data sync (facts stay CloudEvents on Kafka). No auth (fleet decision), no Kafka, no outbox, no outbound A2A client — it can
 never write (the MCP charter is read-only, so there is no write skill). Two skills, sent as `{"skill": "<id>", "arguments": {...}}`: `serving_station(postalPrefix)`
-(the delivery station serving a prefix, with its node and current operational profile) and `find_nodes(type?, regionId?, status?)`. Rejections are answered in the
+(the delivery station serving a prefix, with its node and current operational profile) and `find_nodes(type?, regionId?, status?)`; both declare `authority:L1` on the
+card (Agentic Standard v2, [ADR 0013](docs/adr/0013-agent-authority-levels-and-complete-mcp-surface.md)). Rejections are answered in the
 message as RFC 9457-shaped problems with the REST status classification (`not-found` 404, `validation-failed` 422, `malformed-skill-request` / `unknown-skill` /
 `invalid-argument` 400, `internal-error` 500), never as JSON-RPC errors.
 

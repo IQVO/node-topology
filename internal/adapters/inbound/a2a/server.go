@@ -85,7 +85,7 @@ func Card(cfg Config) *a2a.AgentCard {
 				ID:          skillServingStation,
 				Name:        "Delivery station serving a postal prefix",
 				Description: "Composed read: resolves the delivery station that serves a postal prefix (matched exactly) and returns the assignment (deliveryStationNodeId, regionId, assignmentVersion) together with that station's node: type, operator, region, timezone, location, status and its current operational profile (operating hours, holidays, handling time, cutoffs, throughput cap). An unassigned prefix is answered as a not-found problem.",
-				Tags:        []string{"topology", "service-area", "read"},
+				Tags:        []string{"topology", "service-area", "read", "authority:L1"},
 				InputModes:  []string{contentJSON},
 				Examples: []string{
 					`{"skill":"serving_station","arguments":{"postalPrefix":"013"}}`,
@@ -95,7 +95,7 @@ func Card(cfg Config) *a2a.AgentCard {
 				ID:          skillFindNodes,
 				Name:        "Find network nodes",
 				Description: "Lists the network's nodes by id ascending, optionally filtered by type (FULFILLMENT_CENTER, INBOUND_CROSS_DOCK, RETURNS_CENTER, SORTATION_CENTER, DELIVERY_STATION or AIR_HUB), regionId and/or status (PROPOSED, ACTIVE, SUSPENDED or RETIRED); the filters combine with AND and no match is an empty list. A type or status that is not an enumeration value is answered as a validation problem.",
-				Tags:        []string{"topology", "node", "read"},
+				Tags:        []string{"topology", "node", "read", "authority:L1"},
 				InputModes:  []string{contentJSON},
 				Examples: []string{
 					`{"skill":"find_nodes","arguments":{}}`,

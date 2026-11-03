@@ -13,16 +13,16 @@ description: "The six read-only MCP tools of Node Topology: input fields, output
 The tool list below is read from `internal/adapters/inbound/mcp/tools.go` (`registerTools`) and the input structs in the same file. It was not captured from a live `tools/list` call.
 :::
 
-Every tool carries the same annotations: `readOnlyHint: true`, `idempotentHint: true`, `openWorldHint: false`. There is no write tool. Registering nodes, declaring profiles, lifecycle transitions, lanes, service areas and regions are REST operations.
+Every tool carries the same annotations: `readOnlyHint: true`, `idempotentHint: true`, `openWorldHint: false`, and the same authority declaration (Agentic Standard v2, [ADR 0013](/docs/adr/0013-agent-authority-levels-and-complete-mcp-surface)): `_meta` `com.warehouse/authority` = `L1` — a pure read of this context's own state. There is no write tool (and so no L2/L3/L4 here). Registering nodes, declaring profiles, lifecycle transitions, lanes, service areas and regions are REST operations.
 
-| Tool | Read or write | Input fields | Output |
-| --- | --- | --- | --- |
-| `get_node` | read-only | `nodeId` (string, required) | one node |
-| `list_nodes` | read-only | `type`, `regionId`, `status` (all optional strings, combined with AND) | `{nodes: [...]}` |
-| `list_lanes` | read-only | `origin`, `destination` (optional node ids, combined with AND) | `{lanes: [...]}` |
-| `resolve_service_area` | read-only | `postalPrefix` (string, required, matched exactly) | one service area |
-| `get_region` | read-only | `regionId` (string, required) | one region |
-| `list_regions` | read-only | none | `{regions: [...]}` |
+| Tool | Read or write | Authority | Input fields | Output |
+| --- | --- | --- | --- | --- |
+| `get_node` | read-only | L1 | `nodeId` (string, required) | one node |
+| `list_nodes` | read-only | L1 | `type`, `regionId`, `status` (all optional strings, combined with AND) | `{nodes: [...]}` |
+| `list_lanes` | read-only | L1 | `origin`, `destination` (optional node ids, combined with AND) | `{lanes: [...]}` |
+| `resolve_service_area` | read-only | L1 | `postalPrefix` (string, required, matched exactly) | one service area |
+| `get_region` | read-only | L1 | `regionId` (string, required) | one region |
+| `list_regions` | read-only | L1 | none | `{regions: [...]}` |
 
 ## Tools
 
@@ -53,6 +53,17 @@ Lists every region by id ascending. Regions are few and not paginated; none defi
 ## Errors
 
 A failing tool returns an `isError` tool result, never a transport failure. The text is `<slug>: <detail>` with the same slug the REST adapter uses: `not-found`, `validation-failed`, or `internal-error: an unexpected internal error occurred` (the real cause is logged as `mcp tool failed with an unexpected error`, with the trace id of the call).
+
+## Transport: stateless Streamable HTTP
+
+The handler is built with `Stateless: true` (Agentic Standard v2, [ADR 0013](/docs/adr/0013-agent-authority-levels-and-complete-mcp-surface)): no `Mcp-Session-Id` is issued and nothing relies on cross-call session state. The server answers the 2026-07-28 revision's per-request handshake (`server/discover`, no initialize) and a legacy `initialize` still answers 200, so old and new clients keep working. Pinned by raw-POST tests; every tool carries its authority in `tools/list` `_meta`.
+
+## Resource and prompt
+
+Beyond the tools the server offers exactly one resource and one prompt (both L1 by nature, no tool `_meta`):
+
+- **Resource** `warehouse://node-topology/service-areas/{postalPrefix}` (`application/json`): the service-area read model of ONE prefix — `deliveryStationNodeId`, `regionId`, `assignmentVersion` — the same `ResolveServiceArea` read use case as the tool. A malformed URI or an unassigned prefix is an error, never a silent default.
+- **Prompt** `resolve_delivery_coverage` (argument `postalPrefix`, string, required): this context's operator SOP — resolve the prefix's delivery station, read its operational profile, trace the OPEN lanes that reach it. The prompt names tools and never calls them.
 
 ## Observability and operations
 
