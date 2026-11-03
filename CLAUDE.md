@@ -40,3 +40,4 @@ GitFlow: feature/* -> PR into develop, CI green before merge, never push develop
 Helm chart: charts/node-topology (api only, no consumer group; tests in charts/node-topology/tests, rows 5-9 of docs/docs/operations/before-first-release.md). Open follow-up: repository secrets (row 11).
 
 A2A: `cmd/a2a` (port 8093) is this context's read-only Agent2Agent agent, skills `serving_station` (read), `find_nodes` (read), decided in `docs/adr/0011-a2a-inbound-adapter.md`; delegation only (facts stay CloudEvents on Kafka), unauthenticated like REST and MCP; rules in `.claude/rules/fleet/a2a.md`.
+ Agent authority: every MCP tool and A2A skill declares a level (`com.warehouse/authority` _meta / `authority:L<n>` skill tag; L1 read, L2 recommend, L3 write - ADR 0013); the MCP Streamable HTTP handler is stateless and answers the 2026-07-28 revision.
