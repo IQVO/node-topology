@@ -5,7 +5,7 @@ description: Publish a cross-service Kafka event from this service: CloudEvents 
 
 # How to add an integration event
 
-node-topology publishes nine events and consumes none (ADR 0003, ADR 0004). The
+node-topology publishes ten events and consumes none (ADR 0003, ADR 0004). The
 envelope is CloudEvents 1.0 only; read `.claude/rules/integration-events.md` and
 `.claude/rules/fleet/cloudevents.md` first. The worked example is
 `LaneClosed`.

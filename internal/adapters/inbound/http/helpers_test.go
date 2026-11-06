@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -45,7 +46,7 @@ func memoryServer() (*inboundhttp.Server, *memory.Store) {
 		RegisterNode: usecases.NewRegisterNode(d), DeclareProfile: usecases.NewDeclareOperationalProfile(d),
 		ActivateNode: usecases.NewActivateNode(d), SuspendNode: usecases.NewSuspendNode(d), RetireNode: usecases.NewRetireNode(d),
 		GetNode: usecases.NewGetNode(d.Nodes), ListNodes: usecases.NewListNodes(d.Nodes),
-		OpenLane: usecases.NewOpenLane(d), CloseLane: usecases.NewCloseLane(d), ListLanes: usecases.NewListLanes(d.Lanes),
+		OpenLane: usecases.NewOpenLane(d), CloseLane: usecases.NewCloseLane(d), DeclareLaneCost: usecases.NewDeclareLaneCost(d), ListLanes: usecases.NewListLanes(d.Lanes),
 		AssignServiceArea: usecases.NewAssignServiceArea(d), ResolveServiceArea: usecases.NewResolveServiceArea(d.ServiceAreas),
 		DefineRegion: usecases.NewDefineRegion(d), GetRegion: usecases.NewGetRegion(d.Regions), ListRegions: usecases.NewListRegions(d.Regions),
 		Idempotency: requireKeyOnly, Readiness: inboundhttp.NewReadiness(0, 0),
@@ -113,8 +114,11 @@ func (r reply) field(name string) string {
 	if !ok {
 		return ""
 	}
-	if v, ok := m[name].(string); ok {
+	switch v := m[name].(type) {
+	case string:
 		return v
+	case float64:
+		return strconv.FormatFloat(v, 'f', -1, 64)
 	}
 	return ""
 }

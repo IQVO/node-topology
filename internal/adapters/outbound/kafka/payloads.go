@@ -119,6 +119,12 @@ type laneClosedPayload struct {
 	ClosedAt string `json:"closedAt"`
 }
 
+type laneCostDeclaredPayload struct {
+	LaneID           string `json:"laneId"`
+	CostPerUnitCents int64  `json:"costPerUnitCents"`
+	DeclaredAt       string `json:"declaredAt"`
+}
+
 type serviceAreaPayload struct {
 	PostalPrefix          string `json:"postalPrefix"`
 	DeliveryStationNodeID string `json:"deliveryStationNodeId"`

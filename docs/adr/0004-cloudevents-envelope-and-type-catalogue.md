@@ -47,6 +47,7 @@ type: com.retailnetwork.logistics.node-topology.node.NodeSuspended stream: event
 type: com.retailnetwork.logistics.node-topology.node.NodeRetired stream: events
 type: com.retailnetwork.logistics.node-topology.lane.LaneOpened stream: events
 type: com.retailnetwork.logistics.node-topology.lane.LaneClosed stream: events
+type: com.retailnetwork.logistics.node-topology.lane.LaneCostDeclared stream: events
 type: com.retailnetwork.logistics.node-topology.servicearea.ServiceAreaAssigned stream: events
 type: com.retailnetwork.logistics.node-topology.region.RegionDefined stream: events
 ```
@@ -60,6 +61,7 @@ type: com.retailnetwork.logistics.node-topology.region.RegionDefined stream: eve
 | `NodeRetired` | `nodeId` | RetireNode is saved | `{nodeId, retiredAt}` |
 | `LaneOpened` | `laneId` | OpenLane is saved | `{laneId, originNodeId, destinationNodeId, mode, nominalTransitMinutes}` |
 | `LaneClosed` | `laneId` | CloseLane is saved | `{laneId, closedAt}` |
+| `LaneCostDeclared` | `laneId` | DeclareLaneCost is saved (every declaration, ADR 0014) | `{laneId, costPerUnitCents, declaredAt}` |
 | `ServiceAreaAssigned` | `postalPrefix` | each saved assignment version | `{postalPrefix, deliveryStationNodeId, regionId, assignmentVersion}` |
 | `RegionDefined` | `regionId` | DefineRegion is saved | `{regionId, code, name}` |
 

@@ -13,7 +13,7 @@ Node Topology is upstream of everything it touches. It **consumes nothing and ca
 
 | Edge | Direction | Protocol | Contract | Pattern |
 | --- | --- | --- | --- | --- |
-| Seven or eight subscribing contexts | out | Kafka, CloudEvents 1.0 structured mode | `retailnetwork.node-topology.events`, nine event types ([Events](/docs/api-reference/events), `apis/asyncapi.yaml`) | Open Host Service + Published Language; consumers Conformist |
+| Seven or eight subscribing contexts | out | Kafka, CloudEvents 1.0 structured mode | `retailnetwork.node-topology.events`, ten event types ([Events](/docs/api-reference/events), `apis/asyncapi.yaml`) | Open Host Service + Published Language; consumers Conformist |
 | `vendor-connectivity` | in | REST, in-organisation | `POST /nodes`, `PUT /nodes/{nodeId}/operational-profile` | Customer/Supplier |
 | Network-ops planners and consoles | in | REST | the 15 operations of `apis/openapi.yaml` | UI |
 | Any context or client | in | REST, MCP, A2A | the read routes, the six MCP tools, the two A2A skills | Open Host Service |

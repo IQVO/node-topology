@@ -49,7 +49,7 @@ not domain errors. The domain imports nothing outside `internal/domain`.
 
 ## Domain events
 
-All nine are integration events on `retailnetwork.node-topology.events`
+All ten are integration events on `retailnetwork.node-topology.events`
 (`internal/domain/*/events.go`; wire shape in `apis/asyncapi.yaml`):
 
 - `NodeRegistered` — Register. `NodeOperationalProfileDeclared` — DeclareProfile

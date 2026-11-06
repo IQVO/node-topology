@@ -64,6 +64,10 @@ func goldenCases() []goldenCase {
 			"lane", "lane-1", `{"laneId":"lane-1","closedAt":"2026-10-08T12:00:00Z"}`,
 		},
 		{
+			"LaneCostDeclared", lane.LaneCostDeclared{Header: header, LaneID: "lane-1", CostPerUnitCents: 320, DeclaredAt: at},
+			"lane", "lane-1", `{"laneId":"lane-1","costPerUnitCents":320,"declaredAt":"2026-10-08T12:00:00Z"}`,
+		},
+		{
 			"ServiceAreaAssigned", servicearea.ServiceAreaAssigned{Header: header, PostalPrefix: "01310", DeliveryStationNodeID: "node-9", RegionID: "region-1", AssignmentVersion: 2},
 			"servicearea", "01310", `{"postalPrefix":"01310","deliveryStationNodeId":"node-9","regionId":"region-1","assignmentVersion":2}`,
 		},
@@ -230,14 +234,14 @@ func assertRow(t *testing.T, msg outbox.Message, tc goldenCase) {
 }
 
 // TestEncoderCoversEveryPublishedEvent keeps the golden table in step with
-// the catalogue: nine events, nine distinct names.
+// the catalogue: ten events, ten distinct names.
 func TestEncoderCoversEveryPublishedEvent(t *testing.T) {
 	names := map[string]bool{}
 	for _, tc := range goldenCases() {
 		names[tc.event.EventName()] = true
 	}
-	if len(names) != 9 {
-		t.Fatalf("golden table covers %d distinct events, want 9: %v", len(names), names)
+	if len(names) != 10 {
+		t.Fatalf("golden table covers %d distinct events, want 10: %v", len(names), names)
 	}
 }
 

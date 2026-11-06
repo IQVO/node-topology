@@ -244,14 +244,21 @@ func TestLaneFrom(t *testing.T) {
 	}
 	forbidKeys(t, wire(t, v), "closedAt")
 
+	if _, err := l.DeclareCost(320, repocontract.Now); err != nil {
+		t.Fatal(err)
+	}
+	v = views.LaneFrom(l)
+	if v.CostPerUnitCents != 320 {
+		t.Fatalf("lane = %+v, want the declared cost", v)
+	}
 	if _, err := l.Close(repocontract.Now); err != nil {
 		t.Fatal(err)
 	}
 	v = views.LaneFrom(l)
-	if v.Status != "CLOSED" || v.ClosedAt == nil {
+	if v.Status != "CLOSED" || v.ClosedAt == nil || v.CostPerUnitCents != 320 {
 		t.Fatalf("lane = %+v", v)
 	}
-	requireKeys(t, wire(t, v), "laneId", "originNodeId", "destinationNodeId", "mode", "nominalTransitMinutes", "status", "closedAt")
+	requireKeys(t, wire(t, v), "laneId", "originNodeId", "destinationNodeId", "mode", "nominalTransitMinutes", "status", "costPerUnitCents", "closedAt")
 }
 
 func TestServiceAreaAndRegionFrom(t *testing.T) {

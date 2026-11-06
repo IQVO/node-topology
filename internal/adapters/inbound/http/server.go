@@ -46,6 +46,9 @@ type (
 	closeLane interface {
 		Execute(context.Context, lane.ID) (views.Lane, error)
 	}
+	declareLaneCost interface {
+		Execute(context.Context, usecases.DeclareLaneCostCommand) (views.Lane, error)
+	}
 	listLanes interface {
 		Execute(context.Context, usecases.ListLanesQuery) ([]views.Lane, error)
 	}
@@ -77,6 +80,7 @@ type Server struct {
 	ListNodes          listNodes
 	OpenLane           openLane
 	CloseLane          closeLane
+	DeclareLaneCost    declareLaneCost
 	ListLanes          listLanes
 	AssignServiceArea  assignServiceArea
 	ResolveServiceArea resolveServiceArea

@@ -140,6 +140,14 @@ func (b openLaneBody) command() usecases.OpenLaneCommand {
 	}
 }
 
+type declareLaneCostBody struct {
+	CostPerUnitCents int64 `json:"costPerUnitCents"`
+}
+
+func (b declareLaneCostBody) command(id string) usecases.DeclareLaneCostCommand {
+	return usecases.DeclareLaneCostCommand{LaneID: lane.ID(id), CostPerUnitCents: b.CostPerUnitCents}
+}
+
 type assignServiceAreaBody struct {
 	DeliveryStationNodeID string `json:"deliveryStationNodeId"`
 	AssignmentVersion     int    `json:"assignmentVersion"`
