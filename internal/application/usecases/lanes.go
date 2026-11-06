@@ -85,3 +85,37 @@ func (uc *CloseLane) Execute(ctx context.Context, id lane.ID) (views.Lane, error
 		return views.LaneFrom(l), nil
 	})
 }
+
+// DeclareLaneCostCommand is the input of DeclareLaneCost.
+type DeclareLaneCostCommand struct {
+	LaneID           lane.ID
+	CostPerUnitCents int64
+}
+
+// DeclareLaneCost records the planner's declared cost of moving one
+// package-unit across an OPEN lane (ADR 0014).
+type DeclareLaneCost struct{ writer }
+
+// NewDeclareLaneCost builds the use case.
+func NewDeclareLaneCost(d Deps) *DeclareLaneCost { return &DeclareLaneCost{writer{d}} }
+
+// Execute declares the cost and saves the lane with LaneCostDeclared.
+func (uc *DeclareLaneCost) Execute(ctx context.Context, cmd DeclareLaneCostCommand) (views.Lane, error) {
+	return transact(ctx, uc.UoW, func(ctx context.Context) (views.Lane, error) {
+		l, err := uc.Lanes.Get(ctx, cmd.LaneID)
+		if err != nil {
+			return views.Lane{}, err
+		}
+		events, err := l.DeclareCost(cmd.CostPerUnitCents, uc.now())
+		if err != nil {
+			return views.Lane{}, err
+		}
+		if err := uc.Lanes.Save(ctx, l); err != nil {
+			return views.Lane{}, err
+		}
+		if err := uc.publish(ctx, events); err != nil {
+			return views.Lane{}, err
+		}
+		return views.LaneFrom(l), nil
+	})
+}

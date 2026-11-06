@@ -20,6 +20,9 @@ func registerLaneSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^I close the lane "([^"]*)"$`, w.closeLane)
 	sc.Step(`^the lane "([^"]*)" is (OPEN|CLOSED)$`, w.laneStatusIs)
 	sc.Step(`^listing the lanes from "([^"]*)" returns "([^"]*)"$`, w.listingLanesFrom)
+	sc.Step(`^I declare (-?\d+) cents per unit on the lane "([^"]*)"$`, w.declareLaneCost)
+	sc.Step(`^I declare (-?\d+) cents per unit on the lane id "([^"]*)"$`, w.declareLaneCostByID)
+	sc.Step(`^the lane "([^"]*)" costs (-?\d+) cents per unit$`, w.laneCosts)
 }
 
 func (w *world) openCommand(mode, origin, destination string, transit int) (usecases.OpenLaneCommand, error) {
@@ -127,6 +130,45 @@ func (w *world) listingLanesFrom(origin, want string) error {
 	}
 	if out != want {
 		return fmt.Errorf("lanes from %s: %q, want %q", origin, out, want)
+	}
+	return nil
+}
+
+func (w *world) declareLaneCost(cents int, alias string) error {
+	id, err := w.laneID(alias)
+	if err != nil {
+		return err
+	}
+	w.run(func() error {
+		_, err := usecases.NewDeclareLaneCost(w.deps).Execute(w.ctx(), usecases.DeclareLaneCostCommand{
+			LaneID: id, CostPerUnitCents: int64(cents),
+		})
+		return err
+	})
+	return nil
+}
+
+func (w *world) declareLaneCostByID(cents int, id string) error {
+	w.run(func() error {
+		_, err := usecases.NewDeclareLaneCost(w.deps).Execute(w.ctx(), usecases.DeclareLaneCostCommand{
+			LaneID: lane.ID(id), CostPerUnitCents: int64(cents),
+		})
+		return err
+	})
+	return nil
+}
+
+func (w *world) laneCosts(alias string, cents int) error {
+	id, err := w.laneID(alias)
+	if err != nil {
+		return err
+	}
+	l, err := w.deps.Lanes.Get(w.ctx(), id)
+	if err != nil {
+		return err
+	}
+	if l.CostPerUnitCents() != int64(cents) {
+		return fmt.Errorf("lane %s costs %d cents per unit, want %d", alias, l.CostPerUnitCents(), cents)
 	}
 	return nil
 }

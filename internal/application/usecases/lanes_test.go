@@ -184,3 +184,53 @@ func TestCloseLaneRetriesOnceOnAConcurrentUpdate(t *testing.T) {
 	}
 	e.assertRaised(before, "LaneClosed")
 }
+
+func TestDeclareLaneCostDeclaresOnAnOpenLane(t *testing.T) {
+	e := newEnv(t)
+	e.seedLaneEnds()
+	e.seedLane("lane-1", "n-o", "n-d", lane.ModeGround)
+	before := e.before()
+
+	got, err := usecases.NewDeclareLaneCost(e.deps).Execute(context.Background(), usecases.DeclareLaneCostCommand{
+		LaneID: "lane-1", CostPerUnitCents: 320,
+	})
+	wantErr(t, err, nil)
+
+	if got.CostPerUnitCents != 320 || got.Status != "OPEN" {
+		t.Fatalf("view = %+v", got)
+	}
+	events := e.assertRaised(before, "LaneCostDeclared")
+	if events[0].SubjectID() != "lane-1" || events[0].AggregateVersion() != 2 {
+		t.Fatalf("event = %+v", events[0])
+	}
+	stored, err := e.store.Lanes().Get(context.Background(), "lane-1")
+	wantErr(t, err, nil)
+	if stored.CostPerUnitCents() != 320 || stored.Version() != 2 {
+		t.Fatalf("stored = %d cents at v%d", stored.CostPerUnitCents(), stored.Version())
+	}
+}
+
+func TestDeclareLaneCostFailures(t *testing.T) {
+	declare := func(id lane.ID, cents int64) func(*env) error {
+		return func(e *env) error {
+			_, err := usecases.NewDeclareLaneCost(e.deps).Execute(context.Background(), usecases.DeclareLaneCostCommand{
+				LaneID: id, CostPerUnitCents: cents,
+			})
+			return err
+		}
+	}
+	open := func(set func(e *env)) func(e *env) {
+		return func(e *env) { e.seedLaneEnds(); e.seedLane("lane-1", "n-o", "n-d", lane.ModeGround); set(e) }
+	}
+	runFailCases(t, []failCase{
+		{"unknown lane", noSetup, declare("ghost", 320), ports.ErrNotFound},
+		{"already closed", func(e *env) {
+			open(noSetup)(e)
+			if _, err := usecases.NewCloseLane(e.deps).Execute(context.Background(), "lane-1"); err != nil {
+				t.Fatal(err)
+			}
+		}, declare("lane-1", 320), shared.ErrIllegalTransition},
+		{"negative cost", open(noSetup), declare("lane-1", -1), shared.ErrValidation},
+		{"cost above the ceiling", open(noSetup), declare("lane-1", lane.MaxCostPerUnitCents+1), shared.ErrValidation},
+	})
+}

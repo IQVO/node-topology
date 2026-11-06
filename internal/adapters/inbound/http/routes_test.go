@@ -146,6 +146,41 @@ func TestLaneRoutesEndToEnd(t *testing.T) {
 	}
 }
 
+func TestLaneCostDeclarationRoutesEndToEnd(t *testing.T) {
+	w := newWorld(t)
+	a := w.a
+	open := a.keyed(http.MethodPost, "/lanes", `{"originNodeId":"`+w.origin+`","destinationNodeId":"`+w.dest+`","mode":"GROUND","nominalTransitMinutes":90}`)
+	if open.status != http.StatusCreated {
+		t.Fatalf("openLane = %d %s", open.status, open.raw)
+	}
+	id := open.field("laneId")
+	if open.field("costPerUnitCents") != "0" {
+		t.Fatalf("a new lane declares no cost: %s", open.raw)
+	}
+
+	declared := a.keyed(http.MethodPost, "/lanes/"+id+"/cost-declarations", `{"costPerUnitCents":320}`)
+	if declared.status != http.StatusCreated || declared.field("costPerUnitCents") != "320" || declared.field("status") != "OPEN" {
+		t.Fatalf("declareLaneCost = %d %s", declared.status, declared.raw)
+	}
+	if again := a.keyed(http.MethodPost, "/lanes/"+id+"/cost-declarations", `{"costPerUnitCents":180}`); again.status != http.StatusCreated || again.field("costPerUnitCents") != "180" {
+		t.Fatalf("a newer declaration supersedes: %d %s", again.status, again.raw)
+	}
+
+	if outOfRange := a.keyed(http.MethodPost, "/lanes/"+id+"/cost-declarations", `{"costPerUnitCents":10000001}`); outOfRange.status != http.StatusUnprocessableEntity || outOfRange.slug() != "validation-failed" {
+		t.Fatalf("cost above the ceiling = %d %s", outOfRange.status, outOfRange.raw)
+	}
+	if zero := a.keyed(http.MethodPost, "/lanes/"+id+"/cost-declarations", `{"costPerUnitCents":0}`); zero.status != http.StatusCreated || zero.field("costPerUnitCents") != "0" {
+		t.Fatalf("zero is a legal declaration: %d %s", zero.status, zero.raw)
+	}
+
+	if close := a.keyed(http.MethodPost, "/lanes/"+id+"/closures", ""); close.status != http.StatusOK {
+		t.Fatalf("closeLane = %d %s", close.status, close.raw)
+	}
+	if onClosed := a.keyed(http.MethodPost, "/lanes/"+id+"/cost-declarations", `{"costPerUnitCents":320}`); onClosed.status != http.StatusConflict || onClosed.slug() != "illegal-transition" {
+		t.Fatalf("declaring on a CLOSED lane = %d %s", onClosed.status, onClosed.raw)
+	}
+}
+
 func TestServiceAreaRoutesEndToEnd(t *testing.T) {
 	w := newWorld(t)
 	a := w.a
@@ -211,6 +246,7 @@ func TestDomainRefusalsMapToTheirProblems(t *testing.T) {
 		{"lane endpoint unknown", http.MethodPost, "/lanes", `{"originNodeId":"node-nope","destinationNodeId":"` + w.dest + `","mode":"GROUND","nominalTransitMinutes":10}`, 404, "not-found"},
 		{"not a delivery station", http.MethodPut, "/service-areas/01310", `{"deliveryStationNodeId":"` + w.origin + `","assignmentVersion":1}`, 409, "not-a-delivery-station"},
 		{"unknown close", http.MethodPost, "/lanes/lane-nope/closures", "", 404, "not-found"},
+		{"unknown cost declaration", http.MethodPost, "/lanes/lane-nope/cost-declarations", `{"costPerUnitCents":320}`, 404, "not-found"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

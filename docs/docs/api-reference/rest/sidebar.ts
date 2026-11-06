@@ -84,6 +84,12 @@ const sidebar: SidebarsConfig = {
           label: "Close a lane (CloseLane)",
           className: "api-method post",
         },
+        {
+          type: "doc",
+          id: "api-reference/rest/declare-lane-cost",
+          label: "Declare the cost per package-unit of a lane (DeclareLaneCost)",
+          className: "api-method post",
+        },
       ],
     },
     {
