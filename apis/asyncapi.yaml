@@ -365,8 +365,9 @@ components:
       name: LaneCostDeclared
       title: Lane cost declared
       summary: The planner declared the cost of moving one package-unit across the lane.
-      description: "`type` = `com.retailnetwork.logistics.node-topology.lane.LaneCostDeclared`; subject and key = the laneId. Raised by DeclareLaneCost, on every declaration (a newer declaration supersedes the previous value). `costPerUnitCents` is the declared marginal cost of moving ONE package-unit across the lane on one departure, integer cents, 0 to 10000000; 0 is legal (zero declared marginal cost). A lane with no declaration publishes nothing. Consumed by order-sourcing, which folds the declaration into its money-denominated AssignmentCost (roadmap F7)."
+      description: "`type` = `com.retailnetwork.logistics.node-topology.lane.LaneCostDeclared`; subject and key = the laneId. Raised by DeclareLaneCost, on every declaration (a newer declaration supersedes the previous value). `costPerUnitCents` is the declared marginal cost of moving ONE package-unit across the lane on one departure, integer cents, 0 to 10000000; 0 is legal (zero declared marginal cost). A lane with no declaration publishes nothing. Not consumed yet: order-sourcing is to fold the declaration into its money-denominated AssignmentCost (roadmap F7), and no consumer exists on develop today."
       contentType: application/cloudevents+json
+      x-no-consumer-reason: "Produced ahead of its consumer: order-sourcing's AssignmentCost (roadmap F7) is the intended reader and is not built; remove this key when it is."
       tags:
         - name: lane
       payload:
