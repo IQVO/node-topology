@@ -26,11 +26,11 @@ info:
     declared operational profiles, the directed lanes between them, the regions
     and which delivery station serves which postal prefix (ADR 0001, ADR 0002).
 
-    **Published.** Nine events, all on the topic `retailnetwork.node-topology.events`,
+    **Published.** Ten events, all on the topic `retailnetwork.node-topology.events`,
     through a **transactional outbox**: the aggregate row and its already-encoded
     events are written in ONE database transaction and an always-on relay drains
     them to Kafka (at-least-once; the CloudEvents `id` is stored with the outbox
-    row, so a retry republishes the same `id`). The nine types are catalogued in
+    row, so a retry republishes the same `id`). The ten types are catalogued in
     ADR 0004.
 
     **Consumed.** None (ADR 0003). The context consumes no Kafka topic and calls
@@ -90,6 +90,8 @@ channels:
         $ref: "#/components/messages/LaneOpened"
       LaneClosed:
         $ref: "#/components/messages/LaneClosed"
+      LaneCostDeclared:
+        $ref: "#/components/messages/LaneCostDeclared"
       ServiceAreaAssigned:
         $ref: "#/components/messages/ServiceAreaAssigned"
       RegionDefined:
@@ -99,7 +101,7 @@ operations:
   publishNodeTopologyEvents:
     action: send
     title: Publish node-topology events
-    summary: Publish the nine node-topology events through the transactional outbox.
+    summary: Publish the ten node-topology events through the transactional outbox.
     description: |
       The service sends every event of its four aggregates (Node, Lane,
       ServiceArea, Region) to `retailnetwork.node-topology.events`. Consumers
@@ -116,6 +118,7 @@ operations:
       - $ref: "#/channels/nodeTopologyEvents/messages/NodeRetired"
       - $ref: "#/channels/nodeTopologyEvents/messages/LaneOpened"
       - $ref: "#/channels/nodeTopologyEvents/messages/LaneClosed"
+      - $ref: "#/channels/nodeTopologyEvents/messages/LaneCostDeclared"
       - $ref: "#/channels/nodeTopologyEvents/messages/ServiceAreaAssigned"
       - $ref: "#/channels/nodeTopologyEvents/messages/RegionDefined"
 
@@ -357,6 +360,33 @@ components:
             data:
               laneId: "lane-5c21d8"
               closedAt: "2026-11-02T10:00:00Z"
+
+    LaneCostDeclared:
+      name: LaneCostDeclared
+      title: Lane cost declared
+      summary: The planner declared the cost of moving one package-unit across the lane.
+      description: "`type` = `com.retailnetwork.logistics.node-topology.lane.LaneCostDeclared`; subject and key = the laneId. Raised by DeclareLaneCost, on every declaration (a newer declaration supersedes the previous value). `costPerUnitCents` is the declared marginal cost of moving ONE package-unit across the lane on one departure, integer cents, 0 to 10000000; 0 is legal (zero declared marginal cost). A lane with no declaration publishes nothing. Consumed by order-sourcing, which folds the declaration into its money-denominated AssignmentCost (roadmap F7)."
+      contentType: application/cloudevents+json
+      tags:
+        - name: lane
+      payload:
+        $ref: "#/components/schemas/LaneCostDeclaredEvent"
+      examples:
+        - name: laneCostDeclared
+          summary: The planner declared the cost of moving one package-unit across the lane.
+          payload:
+            specversion: "1.0"
+            id: "3f6c2a9e-8b1d-4c7a-9e55-0d2f6b7a1c4c"
+            source: "/retailnetwork/node-topology"
+            type: "com.retailnetwork.logistics.node-topology.lane.LaneCostDeclared"
+            subject: "lane-5c21d8"
+            time: "2026-11-05T09:30:00Z"
+            datacontenttype: "application/json"
+            dataschema: "urn:retailnetwork:node-topology:events:LaneCostDeclared:v1"
+            data:
+              laneId: "lane-5c21d8"
+              costPerUnitCents: 320
+              declaredAt: "2026-11-05T09:30:00Z"
 
     ServiceAreaAssigned:
       name: ServiceAreaAssigned
@@ -618,6 +648,24 @@ components:
               properties:
                 laneId: { type: string }
                 closedAt: { type: string, format: date-time }
+
+    LaneCostDeclaredEvent:
+      allOf:
+        - $ref: "#/components/schemas/CloudEventEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [laneId, costPerUnitCents, declaredAt]
+              properties:
+                laneId: { type: string }
+                costPerUnitCents:
+                  type: integer
+                  format: int64
+                  minimum: 0
+                  maximum: 10000000
+                  description: The planner's declared marginal cost of moving ONE package-unit across this lane on one departure, integer cents.
+                declaredAt: { type: string, format: date-time }
 
     ServiceAreaAssignedEvent:
       allOf:

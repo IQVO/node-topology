@@ -7,7 +7,7 @@ paths:
 
 # Cross-service integration events (Kafka)
 
-node-topology PUBLISHES nine integration events to
+node-topology PUBLISHES ten integration events to
 `retailnetwork.node-topology.events` and CONSUMES nothing (no consumer, no
 consumer group, no inbox table, no `*_CONSUMER_GROUP` variable; ADR 0003). The
 topic `retailnetwork.node-topology.analytics` is unused: no event is

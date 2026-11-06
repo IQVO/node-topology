@@ -336,6 +336,8 @@ func TestRestoreRejectsCorruptRows(t *testing.T) {
 		{"unknown mode", openLane(t).Snapshot(), func(s *Snapshot) { s.Mode = "RAIL" }},
 		{"transit zero", openLane(t).Snapshot(), func(s *Snapshot) { s.NominalTransitMinutes = 0 }},
 		{"transit too large", openLane(t).Snapshot(), func(s *Snapshot) { s.NominalTransitMinutes = MaxTransitMinutes + 1 }},
+		{"cost negative", openLane(t).Snapshot(), func(s *Snapshot) { s.CostPerUnitCents = -1 }},
+		{"cost too large", openLane(t).Snapshot(), func(s *Snapshot) { s.CostPerUnitCents = MaxCostPerUnitCents + 1 }},
 		{"no openedAt", openLane(t).Snapshot(), func(s *Snapshot) { s.OpenedAt = time.Time{} }},
 		{"version zero", openLane(t).Snapshot(), func(s *Snapshot) { s.Version = 0 }},
 		{"unknown status", openLane(t).Snapshot(), func(s *Snapshot) { s.Status = "PAUSED" }},
@@ -373,5 +375,125 @@ func TestRestoreAcceptsTheTransitRangeEdges(t *testing.T) {
 	s.NominalTransitMinutes = 0
 	if _, err := Restore(s); err == nil {
 		t.Fatal("transit 0 must be refused")
+	}
+}
+
+func TestDeclareCostTransitions(t *testing.T) {
+	l := openLane(t) // version 1
+	events, err := l.DeclareCost(250, t2.In(time.FixedZone("BRT", -3*3600)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := LaneCostDeclared{Header: shared.Header{Version: 2, At: t2}, LaneID: "lane-5c21d8", CostPerUnitCents: 250, DeclaredAt: t2}
+	if !reflect.DeepEqual(events, []shared.Event{want}) {
+		t.Fatalf("events = %+v", events)
+	}
+	ev := events[0]
+	if ev.EventName() != "LaneCostDeclared" || ev.Entity() != "lane" || ev.SubjectID() != "lane-5c21d8" || ev.AggregateVersion() != 2 ||
+		!ev.OccurredAt().Equal(t2) || ev.OccurredAt().Location() != time.UTC {
+		t.Fatalf("accessors wrong: %+v", ev)
+	}
+	if l.CostPerUnitCents() != 250 || l.Status() != StatusOpen || l.Version() != 2 {
+		t.Fatalf("unexpected lane: %+v", l.Snapshot())
+	}
+}
+
+func TestDeclareCostSupersedes(t *testing.T) {
+	l := openLane(t) // version 1
+	if _, err := l.DeclareCost(250, t2); err != nil {
+		t.Fatal(err)
+	}
+	// a newer declaration supersedes the previous value; each is a fact
+	events, err := l.DeclareCost(180, t2.Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l.CostPerUnitCents() != 180 || l.Version() != 3 || len(events) != 1 {
+		t.Fatalf("redeclaration: cost %d version %d events %d", l.CostPerUnitCents(), l.Version(), len(events))
+	}
+}
+
+func TestDeclareCostZeroIsLegal(t *testing.T) {
+	l := openLane(t)
+	events, err := l.DeclareCost(0, t2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l.CostPerUnitCents() != 0 || len(events) != 1 {
+		t.Fatalf("zero is a declaration of zero marginal cost: %+v", l.Snapshot())
+	}
+}
+
+func TestDeclareCostRejections(t *testing.T) {
+	closed := openLane(t)
+	if _, err := closed.Close(t2); err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		name string
+		lane *Lane
+		cost int64
+		want error
+	}{
+		{"negative", openLane(t), -1, shared.ErrValidation},
+		{"above the ceiling", openLane(t), MaxCostPerUnitCents + 1, shared.ErrValidation},
+		{"closed lane", closed, 250, shared.ErrIllegalTransition},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			before := tc.lane.Snapshot()
+			events, err := tc.lane.DeclareCost(tc.cost, t2)
+			if !errors.Is(err, tc.want) || events != nil {
+				t.Fatalf("want %v, got %v (%d events)", tc.want, err, len(events))
+			}
+			if !reflect.DeepEqual(tc.lane.Snapshot(), before) {
+				t.Fatalf("a refused declaration changes nothing: %+v vs %+v", tc.lane.Snapshot(), before)
+			}
+		})
+	}
+}
+
+func TestDeclareCostCheckOrder(t *testing.T) {
+	closed := openLane(t)
+	if _, err := closed.Close(t2); err != nil {
+		t.Fatal(err)
+	}
+	// values beat the transition guard, exactly as Open checks values first
+	if _, err := closed.DeclareCost(-1, t2); !errors.Is(err, shared.ErrValidation) {
+		t.Fatalf("values first: %v", err)
+	}
+}
+
+func TestDeclareCostBoundaryValues(t *testing.T) {
+	for _, cents := range []int64{0, MaxCostPerUnitCents} {
+		l := openLane(t)
+		if _, err := l.DeclareCost(cents, t2); err != nil {
+			t.Errorf("%d cents must be accepted: %v", cents, err)
+		}
+	}
+}
+
+func TestSnapshotRestoreRoundTripsTheDeclaredCost(t *testing.T) {
+	l := openLane(t)
+	if _, err := l.DeclareCost(320, t2); err != nil {
+		t.Fatal(err)
+	}
+	snap := l.Snapshot()
+	if snap.CostPerUnitCents != 320 {
+		t.Fatalf("the builder must carry the declared cost: %+v", snap)
+	}
+	back, err := Restore(snap)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if back.CostPerUnitCents() != 320 || !reflect.DeepEqual(back.Snapshot(), snap) {
+		t.Fatalf("round trip lost the declared cost: %+v vs %+v", back.Snapshot(), snap)
+	}
+	// a legacy snapshot (before the field existed) restores as 0
+	legacy := snap
+	legacy.CostPerUnitCents = 0
+	old, err := Restore(legacy)
+	if err != nil || old.CostPerUnitCents() != 0 {
+		t.Fatalf("a legacy snapshot restores cost 0: %v", err)
 	}
 }
