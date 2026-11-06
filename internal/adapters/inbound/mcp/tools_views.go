@@ -88,6 +88,7 @@ type laneView struct {
 	Mode                  string `json:"mode"`
 	NominalTransitMinutes int    `json:"nominalTransitMinutes"`
 	Status                string `json:"status"`
+	CostPerUnitCents      int64  `json:"costPerUnitCents"`
 	ClosedAt              string `json:"closedAt,omitempty"`
 }
 
@@ -183,7 +184,8 @@ func toNode(n views.Node) nodeView {
 func toLane(l views.Lane) laneView {
 	return laneView{
 		LaneID: l.LaneID, OriginNodeID: l.OriginNodeID, DestinationNodeID: l.DestinationNodeID,
-		Mode: l.Mode, NominalTransitMinutes: l.NominalTransitMinutes, Status: l.Status, ClosedAt: instant(l.ClosedAt),
+		Mode: l.Mode, NominalTransitMinutes: l.NominalTransitMinutes, Status: l.Status,
+		CostPerUnitCents: l.CostPerUnitCents, ClosedAt: instant(l.ClosedAt),
 	}
 }
 
