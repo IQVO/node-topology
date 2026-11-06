@@ -27,3 +27,4 @@ The *Status* column is copied from each ADR's own `## Status` section.
 | [0011](./0011-a2a-inbound-adapter.md) | A2A inbound adapter | Accepted (2026-10-29) |
 | [0012](./0012-adopt-the-fleet-rest-api-guideline.md) | Adopt the fleet REST API guideline | Accepted (2026-11-01) |
 | [0013](./0013-agent-authority-levels-and-complete-mcp-surface.md) | Agent authority levels and complete MCP surface | Accepted (2026-11-02) |
+| [0014](./0014-lane-cost-declaration.md) | lane cost declaration (cents, planner-declared) | Accepted (2026-11-05) |
