@@ -75,6 +75,11 @@ func (n *Node) DeclareProfile(d ProfileDeclaration, now time.Time) ([]shared.Eve
 	if d.Revision <= n.ProfileRevision() {
 		return nil, fmt.Errorf("%w: revision %d, current %d", ErrStaleProfileRevision, d.Revision, n.ProfileRevision())
 	}
+	// The capability gate runs before the value checks of ADR 0007, and only
+	// here: Restore keeps accepting stored limits (ADR 0015).
+	if d.Inbound != nil && !n.typ.Capabilities().Inbound {
+		return nil, fmt.Errorf("%w: %s has no INBOUND capability", ErrInboundLimitsNotAllowed, n.typ)
+	}
 	p, err := NewOperationalProfile(d, now)
 	if err != nil {
 		return nil, err

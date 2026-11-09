@@ -81,7 +81,7 @@ func assertRegisteredVendorNodeDetails(t *testing.T, n *Node) {
 	if !reflect.DeepEqual(n.Location(), location()) {
 		t.Fatalf("location = %+v", n.Location())
 	}
-	if n.Capabilities() != (Capabilities{Outbound: true}) {
+	if n.Capabilities() != (Capabilities{Outbound: true, Inbound: true}) {
 		t.Fatalf("capabilities must be derived from the type: %+v", n.Capabilities())
 	}
 	if _, ok := n.Profile(); ok || n.ProfileRevision() != 0 {

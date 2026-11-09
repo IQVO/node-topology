@@ -88,6 +88,7 @@ var problemCatalogue = []struct {
 	{node.ErrSubtypeNotAllowed, problem{http.StatusUnprocessableEntity, "subtype-not-allowed", "A subtype is not allowed for this node type"}},
 	{node.ErrCutoffOutsideOperatingHours, problem{http.StatusUnprocessableEntity, "cutoff-outside-operating-hours", "A cutoff falls outside the operating hours of its day"}},
 	{node.ErrSortDwellNotAllowed, problem{http.StatusUnprocessableEntity, "sort-dwell-not-allowed", "Only sorting nodes declare a sort dwell"}},
+	{node.ErrInboundLimitsNotAllowed, problem{http.StatusUnprocessableEntity, "inbound-limits-not-allowed", "Only nodes with the INBOUND capability declare inbound limits"}},
 	// Lane.
 	{lane.ErrLaneEndpointNotActive, problem{http.StatusConflict, "lane-endpoint-not-active", "Both ends of a lane must be ACTIVE nodes"}},
 	{lane.ErrDuplicateLane, problem{http.StatusConflict, "duplicate-lane", "An open lane with this origin, destination and mode exists"}},

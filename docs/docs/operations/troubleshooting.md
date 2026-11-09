@@ -83,6 +83,7 @@ Every error is `application/problem+json` with `type` (the slug), `title`, `stat
 | 422 | `subtype-not-allowed` | A `subtype` on anything but a fulfilment centre | Drop it |
 | 422 | `cutoff-outside-operating-hours` | A cutoff falls outside the operating hours of its day | Fix the profile |
 | 422 | `sort-dwell-not-allowed` | `sortDwellMinutes` on a node that does not sort | Drop it |
+| 422 | `inbound-limits-not-allowed` | `inbound` limits on a node type without the `INBOUND` capability (only fulfilment centres and inbound cross-docks receive inbound) | Drop `inbound` |
 | 422 | `lane-loop` | Origin and destination are the same node | Pick two nodes |
 | 422 | `lane-type-pair-not-allowed` | This pair of node types may not be connected | See the allowed pairs in [use cases](/docs/ddd/use-cases) |
 | 422 | `unknown-region` | `regionId` does not exist | Define the region first |

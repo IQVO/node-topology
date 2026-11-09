@@ -146,7 +146,10 @@ paths:
         AIR_HUB nodes. The optional inbound limits (maxCartonWeightG,
         maxCartonDimsMm, acceptsPallets, requiresSscc) are declared per
         revision; a revision without inbound declares none, and consumers
-        then treat inbound limits as unchecked. Publishes NodeOperationalProfileDeclared.
+        then treat inbound limits as unchecked. Only node types with the
+        INBOUND capability (FULFILLMENT_CENTER, INBOUND_CROSS_DOCK) declare
+        inbound limits; any other type is 422 inbound-limits-not-allowed.
+        Publishes NodeOperationalProfileDeclared.
       parameters:
         - $ref: '#/components/parameters/NodeId'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -210,7 +213,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
         '422':
-          description: "cutoff-outside-operating-hours (ErrCutoffOutsideOperatingHours), sort-dwell-not-allowed (ErrSortDwellNotAllowed), or validation-failed."
+          description: "cutoff-outside-operating-hours (ErrCutoffOutsideOperatingHours), sort-dwell-not-allowed (ErrSortDwellNotAllowed), inbound-limits-not-allowed (ErrInboundLimitsNotAllowed: inbound limits on a node type without the INBOUND capability), or validation-failed."
           content:
             application/problem+json:
               schema:
@@ -726,7 +729,7 @@ components:
           description: >-
             Problem type slug: the shared not-found, illegal-transition,
             concurrent-update and validation-failed, or one of this context's,
-            e.g. stale-profile-revision.
+            e.g. stale-profile-revision or inbound-limits-not-allowed.
           example: stale-profile-revision
         title:
           type: string
@@ -808,7 +811,10 @@ components:
           type: number
     NodeCapabilities:
       type: object
-      description: Derived from the node type (DefaultCapabilitiesByType), never set by a caller.
+      description: >-
+        Derived from the node type (DefaultCapabilitiesByType), never set by a
+        caller. FULFILLMENT_CENTER is outbound and inbound; INBOUND_CROSS_DOCK
+        is inbound only.
       properties:
         outbound:
           type: boolean
@@ -935,7 +941,8 @@ components:
         What the node declares about the inbound goods it receives. Every field
         is optional and an absent field means "not declared", which a consumer
         treats as unchecked; at least one field is set. Weight is in grams and
-        dimensions in millimetres, both integers.
+        dimensions in millimetres, both integers. Declared only by node types
+        with the INBOUND capability (inbound-limits-not-allowed otherwise).
       minProperties: 1
       additionalProperties: false
       properties:

@@ -3,7 +3,9 @@ Feature: Inbound limits of an operational profile
   the heaviest carton in grams, the largest carton in millimetres, whether it
   receives pallets and whether every carton must carry an SSCC. The limits are
   optional; a revision without them declares none, and consumers then treat
-  inbound limits as unchecked. Every limit is a positive integer.
+  inbound limits as unchecked. Every limit is a positive integer. Only node
+  types with the INBOUND capability (fulfillment centre and inbound cross-dock)
+  declare them (ADR 0015).
 
   Background:
     Given the region "SP" is defined
@@ -47,3 +49,27 @@ Feature: Inbound limits of an operational profile
     When I declare revision 1 of the node "fc-1" with an empty inbound declaration
     Then the command is refused with "validation-failed"
     And nothing was stored by the last command
+
+  Scenario: An inbound cross-dock declares inbound limits too
+    Given a "INBOUND_CROSS_DOCK" node "icd-1" exists in the region "SP"
+    When I declare revision 1 of the node "icd-1" with the inbound limits 25000 g, 600 x 400 x 300 mm, pallets accepted and SSCC required
+    Then the command succeeds
+    And the node "icd-1" shows the inbound limits 25000 g and 600 x 400 x 300 mm
+
+  Scenario Outline: A node type without the INBOUND capability may not declare inbound limits
+    Given a "<type>" node "n-1" exists in the region "SP"
+    When I declare revision 1 of the node "n-1" with the inbound limits 25000 g, 600 x 400 x 300 mm, pallets accepted and SSCC required
+    Then the command is refused with "inbound-limits-not-allowed"
+    And nothing was stored by the last command
+
+    Examples:
+      | type             |
+      | RETURNS_CENTER   |
+      | SORTATION_CENTER |
+      | DELIVERY_STATION |
+      | AIR_HUB          |
+
+  Scenario: The capability is checked before the values of the limits
+    Given a "SORTATION_CENTER" node "sc-1" exists in the region "SP"
+    When I declare revision 1 of the node "sc-1" with an empty inbound declaration
+    Then the command is refused with "inbound-limits-not-allowed"

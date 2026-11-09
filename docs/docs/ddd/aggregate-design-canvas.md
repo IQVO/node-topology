@@ -75,6 +75,7 @@ node) is `illegal-transition`; every command on a `RETIRED` node is
 | The node's `regionId` names a defined `Region` | `RegisterNode` → `region.ErrUnknownRegion` |
 | `subtype`, when given, is one of the node type's subtypes in `typeRules` | `RegisterNode` → `ErrSubtypeNotAllowed` |
 | `sortDwellMinutes` is declared only by `SORTATION_CENTER` and `AIR_HUB` nodes | `DeclareOperationalProfile` → `ErrSortDwellNotAllowed` |
+| `inbound` limits are declared only by node types with the `INBOUND` capability (`FULFILLMENT_CENTER`, `INBOUND_CROSS_DOCK`); checked on new declarations only | `DeclareOperationalProfile` → `ErrInboundLimitsNotAllowed` |
 | A `NETWORK` node's profile is never declared by `VENDOR` | `DeclareOperationalProfile` → `ErrValidation` (422 `validation-failed`) |
 | Every value rule of the profile (time zone, `HH:mm` times, positive cap, inbound limits) | `NewOperationalProfile` → `ErrValidation` |
 | `RETIRED` is terminal | `ActivateNode`, `SuspendNode`, `RetireNode`, `DeclareOperationalProfile` → `ErrNodeRetired` |
@@ -366,18 +367,20 @@ decided; where the network design wanted more, the text below says so.
   `MaxCartonWeightG`, `MaxCartonDimsMm{L, W, H}`, `AcceptsPallets`,
   `RequiresSscc`). Like the rest of the profile it is versioned by the profile
   revision and never edited in place.
-- The designed invariant `ErrInboundLimitsNotAllowed` (`inbound` only for nodes
-  with the `INBOUND` capability) is **not built**. The limits are value-checked
-  only, with `ErrValidation` (422 `validation-failed`): every number set is a
-  positive integer, the three `maxCartonDimsMm` edges are all-or-none, and an
-  `inbound` that declares nothing is refused. Any node type may declare them.
-- By design `FULFILLMENT_CENTER` has the `INBOUND` capability as well as
-  `OUTBOUND`, because a seller's cartons are received at the building that
-  stores them; `INBOUND_CROSS_DOCK` already had it. As built, `typeRules`
-  still gives `FULFILLMENT_CENTER` only `OUTBOUND` (`internal/domain/node/types.go`),
-  so `GET /nodes/{nodeId}` reports `inbound: false` for it, while
-  `seller-inbound` treats both types as receiving nodes (the network model's
-  gap G64).
+- The invariant `ErrInboundLimitsNotAllowed` ([ADR 0015](/docs/adr/0015-fulfillment-centres-receive-inbound)): a new
+  declaration carries `inbound` only on a node type with the `INBOUND`
+  capability; any other type is 422 `inbound-limits-not-allowed`. The gate runs
+  in `Node.DeclareProfile` before the value checks; `Restore` does not run it,
+  so a revision stored earlier with limits on such a node stays readable.
+- Then the values are checked with `ErrValidation` (422 `validation-failed`):
+  every number set is a positive integer, the three `maxCartonDimsMm` edges are
+  all-or-none, and an `inbound` that declares nothing is refused.
+- `FULFILLMENT_CENTER` has the `INBOUND` capability as well as `OUTBOUND`,
+  because a seller's cartons are received at the building that stores them;
+  `INBOUND_CROSS_DOCK` already had it (`typeRules` in
+  `internal/domain/node/types.go`). `GET /nodes/{nodeId}` therefore reports
+  `inbound: true` for both, the types `seller-inbound` treats as receiving
+  nodes. This closes the network model's gap G64.
 - `NodeOperationalProfileDeclared` carries `inbound`. `seller-inbound` keeps it
   in `NodeInboundView` and checks carton weight and size against it;
   `node-topology` does not know sellers.

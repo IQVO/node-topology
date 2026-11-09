@@ -15,7 +15,7 @@ type typeRow struct {
 // modelRows transcribes model.yaml node_types; every row is pinned.
 func modelRows() []typeRow {
 	return []typeRow{
-		{FulfillmentCenter, []Operator{OperatorVendor}, Capabilities{Outbound: true},
+		{FulfillmentCenter, []Operator{OperatorVendor}, Capabilities{Outbound: true, Inbound: true},
 			[]Subtype{SubtypeSortable, SubtypeNonSortable, SubtypeXL, SubtypeSoftLines, SubtypeSubSameDay, SubtypeFresh, SubtypeMicro}},
 		{InboundCrossDock, []Operator{OperatorVendor}, Capabilities{Inbound: true}, nil},
 		{ReturnsCenter, []Operator{OperatorVendor}, Capabilities{Returns: true}, nil},

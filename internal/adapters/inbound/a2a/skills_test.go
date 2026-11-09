@@ -138,6 +138,7 @@ type wireNode struct {
 	ProfileRevision int    `json:"profileRevision"`
 	Capabilities    struct {
 		Outbound bool `json:"outbound"`
+		Inbound  bool `json:"inbound"`
 		LastMile bool `json:"lastMile"`
 	} `json:"capabilities"`
 	Profile *struct {
@@ -359,6 +360,9 @@ func TestWireFindNodesIsCompact(t *testing.T) {
 	fc := r.env.Data.Nodes.Nodes[0]
 	if fc.NodeType != "FULFILLMENT_CENTER" || fc.Subtype != "SORTABLE" || fc.Operator != "VENDOR" || fc.ProfileRevision != 1 {
 		t.Errorf("node = %+v", fc)
+	}
+	if !fc.Capabilities.Outbound || !fc.Capabilities.Inbound || fc.Capabilities.LastMile {
+		t.Errorf("a fulfillment centre is OUTBOUND and INBOUND (ADR 0015): %+v", fc.Capabilities)
 	}
 	if fc.Profile != nil || strings.Contains(r.raw, "operationalProfile") {
 		t.Errorf("a listing carries the profile revision only, never the full profile: %s", r.raw)

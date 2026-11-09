@@ -30,6 +30,7 @@ var problems = map[string]error{
 	"cutoff-outside-operating-hours":     node.ErrCutoffOutsideOperatingHours,
 	"subtype-not-allowed":                node.ErrSubtypeNotAllowed,
 	"sort-dwell-not-allowed":             node.ErrSortDwellNotAllowed,
+	"inbound-limits-not-allowed":         node.ErrInboundLimitsNotAllowed,
 	"node-retired":                       node.ErrNodeRetired,
 	"lane-loop":                          lane.ErrLaneLoop,
 	"lane-type-pair-not-allowed":         lane.ErrLaneTypePairNotAllowed,

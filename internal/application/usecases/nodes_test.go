@@ -218,6 +218,10 @@ func TestDeclareOperationalProfileFailures(t *testing.T) {
 			d.Cutoffs = []node.CutoffSlot{{LocalTime: "23:00", Days: []node.Weekday{node.Monday}}}
 		}), node.ErrCutoffOutsideOperatingHours},
 		{"sort dwell on a node that does not sort", seed(node.FulfillmentCenter, node.StatusProposed), declare("n-1", func(d *node.ProfileDeclaration) { v := 5; d.SortDwellMinutes = &v }), node.ErrSortDwellNotAllowed},
+		{"inbound limits on a node without INBOUND", seed(node.ReturnsCenter, node.StatusProposed), declare("n-1", func(d *node.ProfileDeclaration) {
+			w := 25000
+			d.Inbound = &node.InboundLimits{MaxCartonWeightG: &w}
+		}), node.ErrInboundLimitsNotAllowed},
 		{"retired node", seed(node.FulfillmentCenter, node.StatusRetired), declare("n-1", keep), node.ErrNodeRetired},
 		{"validation failure", seed(node.FulfillmentCenter, node.StatusProposed), declare("n-1", func(d *node.ProfileDeclaration) { d.Timezone = "" }), shared.ErrValidation},
 		{"load fails", func(e *env) { e.nodes.getErr = errBoom }, declare("n-1", keep), errBoom},

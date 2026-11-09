@@ -76,8 +76,10 @@ var allTypes = []Type{
 // subtypes of every node type. TestTypeRulesPinTheModel pins each row.
 var typeRules = map[Type]TypeRule{
 	FulfillmentCenter: {
-		Operators:    []Operator{OperatorVendor},
-		Capabilities: Capabilities{Outbound: true},
+		Operators: []Operator{OperatorVendor},
+		// INBOUND: a seller's cartons are received at the building that
+		// stores them (ADR 0015).
+		Capabilities: Capabilities{Outbound: true, Inbound: true},
 		Subtypes: []Subtype{
 			SubtypeSortable, SubtypeNonSortable, SubtypeXL, SubtypeSoftLines,
 			SubtypeSubSameDay, SubtypeFresh, SubtypeMicro,

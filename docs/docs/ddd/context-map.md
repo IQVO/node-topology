@@ -110,9 +110,9 @@ published on it); the future contexts (`customer-returns`,
 
 The `seller-inbound` edge is the eighth subscriber. Inbound limits are built as
 [ADR 0007](/docs/adr/0007-inbound-limits-on-the-operational-profile) decided;
-the `INBOUND` capability of `FULFILLMENT_CENTER` and the gate
-`ErrInboundLimitsNotAllowed` are not built (the network model's gap G64), and
-the service value-checks the limits on any node type.
+since [ADR 0015](/docs/adr/0015-fulfillment-centres-receive-inbound) `FULFILLMENT_CENTER` has the `INBOUND`
+capability and the gate `ErrInboundLimitsNotAllowed` refuses limits on any type
+without it (closing the network model's gap G64).
 
 | Neighbour | Direction | Pattern | Channel | Messages | Why |
 | --- | --- | --- | --- | --- | --- |
