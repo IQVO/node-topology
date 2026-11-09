@@ -46,7 +46,7 @@ func assertNodeVendorAndLocation(t *testing.T, got map[string]any) {
 func assertNodeCapabilities(t *testing.T, got map[string]any) {
 	t.Helper()
 	caps, _ := got["capabilities"].(map[string]any)
-	if caps["outbound"] != true || caps["lastMile"] != false {
+	if caps["outbound"] != true || caps["inbound"] != true || caps["lastMile"] != false {
 		t.Fatalf("capabilities = %v", caps)
 	}
 }

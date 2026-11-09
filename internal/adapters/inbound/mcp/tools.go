@@ -153,8 +153,9 @@ func (d Deps) registerTools(server *mcp.Server) {
 		Name: "list_lanes",
 		Description: "List the directed lanes between nodes by id ascending, optionally only those leaving one origin node and/or " +
 			"arriving at one destination node (the filters combine with AND). Open and closed lanes are both listed, distinguished " +
-			"by status (OPEN or CLOSED); mode is GROUND or AIR and nominalTransitMinutes is the planned transit. Read-only; no match " +
-			"is an empty list.",
+			"by status (OPEN or CLOSED); mode is GROUND or AIR and nominalTransitMinutes is the planned transit. Each lane carries " +
+			"costPerUnitCents, the planner's declared marginal cost of moving one package-unit across it on one departure " +
+			"(integer cents; 0 means nothing declared yet). Read-only; no match is an empty list.",
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true, OpenWorldHint: &closedWorld},
 		Meta:        authorityMeta(authorityL1),
 	}, d.listLanes)

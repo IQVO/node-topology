@@ -13,7 +13,7 @@ Node Topology is upstream of everything it touches. It **consumes nothing and ca
 
 | Edge | Direction | Protocol | Contract | Pattern |
 | --- | --- | --- | --- | --- |
-| Seven or eight subscribing contexts | out | Kafka, CloudEvents 1.0 structured mode | `retailnetwork.node-topology.events`, nine event types ([Events](/docs/api-reference/events), `apis/asyncapi.yaml`) | Open Host Service + Published Language; consumers Conformist |
+| Seven or eight subscribing contexts | out | Kafka, CloudEvents 1.0 structured mode | `retailnetwork.node-topology.events`, ten event types ([Events](/docs/api-reference/events), `apis/asyncapi.yaml`) | Open Host Service + Published Language; consumers Conformist |
 | `vendor-connectivity` | in | REST, in-organisation | `POST /nodes`, `PUT /nodes/{nodeId}/operational-profile` | Customer/Supplier |
 | Network-ops planners and consoles | in | REST | the 15 operations of `apis/openapi.yaml` | UI |
 | Any context or client | in | REST, MCP, A2A | the read routes, the six MCP tools, the two A2A skills | Open Host Service |
@@ -84,5 +84,5 @@ The fleet gateway (Kong) exposes the api at `/api/node-topology`, MCP at `/api/m
 
 ## Seller-inbound and open gaps
 
-- The `inbound` object of the operational profile ([ADR 0007](/docs/adr/0007-inbound-limits-on-the-operational-profile)) is what `seller-inbound` reads. The network model's gap G64 records that `FULFILLMENT_CENTER` carries only the `OUTBOUND` capability in this service (`internal/domain/node/types.go`), so `GET /nodes/{nodeId}` reports `inbound: false` for a node that receives seller cartons, and the gate `ErrInboundLimitsNotAllowed` is not built: inbound limits are value-checked on any node type.
+- The `inbound` object of the operational profile ([ADR 0007](/docs/adr/0007-inbound-limits-on-the-operational-profile)) is what `seller-inbound` reads. Since [ADR 0015](/docs/adr/0015-fulfillment-centres-receive-inbound) `FULFILLMENT_CENTER` carries `INBOUND` beside `OUTBOUND` (`internal/domain/node/types.go`), so `GET /nodes/{nodeId}` reports `inbound: true` for a node that receives seller cartons, and `ErrInboundLimitsNotAllowed` (422 `inbound-limits-not-allowed`) refuses new inbound limits on a node type without `INBOUND`. This closes the network model's gap G64.
 - A node's suspension or retirement does not close its lanes or reassign its service areas (policy `SuspendedEndpointsUnusable`); consumers treat them as unusable while the node is not `ACTIVE`.

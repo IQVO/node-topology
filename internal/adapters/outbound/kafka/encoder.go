@@ -97,6 +97,10 @@ func payloadFor(ev shared.Event) (any, error) {
 		}, nil
 	case lane.LaneClosed:
 		return laneClosedPayload{LaneID: string(e.LaneID), ClosedAt: instant(e.ClosedAt)}, nil
+	case lane.LaneCostDeclared:
+		return laneCostDeclaredPayload{
+			LaneID: string(e.LaneID), CostPerUnitCents: e.CostPerUnitCents, DeclaredAt: instant(e.DeclaredAt),
+		}, nil
 	case servicearea.ServiceAreaAssigned:
 		return serviceAreaPayload{
 			PostalPrefix: string(e.PostalPrefix), DeliveryStationNodeID: string(e.DeliveryStationNodeID),

@@ -50,8 +50,8 @@ lets the network promise from a vendor's building it does not run
 
 **Model complexity is moderate (x ≈ 0.44).** There are four aggregates
 (`Node`, `Lane`, `ServiceArea`, `Region`), one lifecycle with four states,
-one with two, and two with a single state. There are sixteen domain errors
-(`Err...` identifiers: eight on `Node`, four on `Lane`, two each on
+one with two, and two with a single state. There are seventeen domain errors
+(`Err...` identifiers: nine on `Node`, four on `Lane`, two each on
 `ServiceArea` and `Region`). The rules are crisp (allowed operator
 per node type, allowed lane type pairs, strictly increasing revisions,
 cutoffs inside operating hours). What lifts complexity is the cross-aggregate

@@ -39,6 +39,20 @@ func laneRoundTrip(t *testing.T, f Fixture) {
 	if !reflect.DeepEqual(got.Snapshot(), l.Snapshot()) {
 		t.Fatalf("snapshot = %+v, want %+v", got.Snapshot(), l.Snapshot())
 	}
+	// a declared cost survives the round trip (the Snapshot builder, Restore
+	// and the column list must all carry it; a missed one reads back 0)
+	if _, err := got.DeclareCost(320, Now); err != nil {
+		t.Fatal(err)
+	}
+	noErr(t, f.Lanes.Save(ctx, got))
+	costly, err := f.Lanes.Get(ctx, "lane-1")
+	noErr(t, err)
+	if costly.CostPerUnitCents() != 320 || costly.Version() != 2 {
+		t.Fatalf("declared cost round trip: cost %d version %d, want 320 at version 2", costly.CostPerUnitCents(), costly.Version())
+	}
+	if !reflect.DeepEqual(costly.Snapshot(), got.Snapshot()) {
+		t.Fatalf("snapshot = %+v, want %+v", costly.Snapshot(), got.Snapshot())
+	}
 }
 
 func laneGetMiss(t *testing.T, f Fixture) {

@@ -312,3 +312,29 @@ silent on the points below; each is an assumption and is reported as a model gap
 - **A42 No Location header.** Creates answer 201 with the resource and no
   `Location` header (the OpenAPI declares none).
 
+## Amendment (lane cost declaration, ADR 0014): assumption A43
+
+- **A43 Lane cost is planner-declared cents.** The model names no cost for a
+  lane, so the least-surprising reading is a declaration: the planner's
+  marginal cost of moving ONE package-unit across the lane on one departure,
+  `costPerUnitCents`, integer cents, 0 to 10000000, no currency (the study
+  network is single-currency). 0 is a legal declaration of zero marginal
+  cost; a lane never declared on also reads 0 but publishes nothing, so a
+  consumer's sum over it is incomplete. Decided in ADR 0014; the model gap
+  stays open until the model names the field.
+
+
+## Amendment (fulfillment centres receive inbound, ADR 0015)
+
+No new assumption: the model already gives `FULFILLMENT_CENTER` the
+capabilities `[OUTBOUND, INBOUND]`, and the build had dropped `INBOUND` (the
+network model's gap G64). Decided in
+[ADR 0015](./0015-fulfillment-centres-receive-inbound.md):
+
+- `typeRules` gives `FULFILLMENT_CENTER` `Outbound` and `Inbound`; every other
+  row of the node-type table is unchanged.
+- The Node invariants gain one row: `inbound` limits only for a node type with
+  the `INBOUND` capability, `ErrInboundLimitsNotAllowed` (422
+  `inbound-limits-not-allowed`), enforced by `Node.DeclareProfile` before the
+  value checks of ADR 0007. `Restore` does not enforce it, so a revision stored
+  earlier with limits on such a node stays restorable.

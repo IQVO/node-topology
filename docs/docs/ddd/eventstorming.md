@@ -22,7 +22,7 @@ the end of the page). The domain-wide board is
 | --- | --- | --- |
 | Blue `#a5d8ff` | Command | A command use case |
 | Yellow `#ffec99` | Aggregate | `Node`, `Lane`, `ServiceArea`, `Region` |
-| Orange `#ffc078` | Domain Event | One of the nine published events |
+| Orange `#ffc078` | Domain Event | One of the ten published events |
 | Lilac `#d0bfff` | Policy | This context's policy or a neighbour's reaction |
 | Green `#b2f2bb` | Read Model | A neighbour's event-fed read model |
 | Pink `#fcc2d7` | External System | Another bounded context |
@@ -71,7 +71,8 @@ Source: `internal/domain/node/events.go`, `internal/domain/lane/events.go`, `int
 Omitted: the refusals (`ErrOperatorNotAllowedForNodeType`,
 `ErrVendorNodeCodeTaken`, `ErrStaleProfileRevision`,
 `ErrCutoffOutsideOperatingHours`, `ErrIncompleteOperationalProfile`,
-`region.ErrUnknownRegion`, `ErrSubtypeNotAllowed`, `ErrSortDwellNotAllowed`), which
+`region.ErrUnknownRegion`, `ErrSubtypeNotAllowed`, `ErrSortDwellNotAllowed`,
+`ErrInboundLimitsNotAllowed`), which
 raise no event; the downstream reactions, on board 2.
 
 ## 2. What the network does with node facts

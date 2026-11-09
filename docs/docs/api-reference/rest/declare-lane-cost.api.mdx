@@ -1,0 +1,70 @@
+---
+id: declare-lane-cost
+title: "Declare the cost per package-unit of a lane (DeclareLaneCost)"
+description: "Records the planner's declared marginal cost of moving ONE package-unit across the lane on one departure, integer cents (0..10000000). Valid on an OPEN lane only; every declaration supersedes the previous value and publishes LaneCostDeclared."
+sidebar_label: "Declare the cost per package-unit of a lane (DeclareLaneCost)"
+hide_title: true
+hide_table_of_contents: true
+api: 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
+sidebar_class_name: "post api-method"
+info_path: docs/api-reference/rest/node-topology-api
+custom_edit_url: null
+hide_send_button: true
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+import Translate from "@docusaurus/Translate";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Declare the cost per package-unit of a lane (DeclareLaneCost)"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/lanes/{laneId}/cost-declarations"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Records the planner's declared marginal cost of moving ONE package-unit across the lane on one departure, integer cents (0..10000000). Valid on an OPEN lane only; every declaration supersedes the previous value and publishes LaneCostDeclared.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+>
+  <Translate id="theme.openapi.request.title">Request</Translate>
+</Heading>
+
+<ParamsDetails
+  {...require("./declare-lane-cost.ParamsDetails.json")}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  {...require("./declare-lane-cost.RequestSchema.json")}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  {...require("./declare-lane-cost.StatusCodes.json")}
+>
+  
+</StatusCodes>
+
+
+      

@@ -404,14 +404,14 @@ Packages, under `internal/`:
 
 | Package | Contents |
 | --- | --- |
-| `internal/domain/node` | `Node`, `OperationalProfile`, `ProfileDeclaration`, `CutoffSlot`, `ThroughputCap`, `InboundLimits`, `Capabilities`, `GeoLocation`, `VendorRef`, `Type`, `Subtype`, `Operator`, `Status`, the `typeRules` table, the eight `Err...` of `Node` |
+| `internal/domain/node` | `Node`, `OperationalProfile`, `ProfileDeclaration`, `CutoffSlot`, `ThroughputCap`, `InboundLimits`, `Capabilities`, `GeoLocation`, `VendorRef`, `Type`, `Subtype`, `Operator`, `Status`, the `typeRules` table, the nine `Err...` of `Node` |
 | `internal/domain/lane` | `Lane`, `Mode`, `Status`, `Pair`, `allowedPairs`, the four `Err...` of `Lane` |
 | `internal/domain/servicearea` | `ServiceArea`, `PostalPrefix`, `ErrNotADeliveryStation`, `ErrStaleAssignmentVersion` |
 | `internal/domain/region` | `Region`, `ErrRegionCodeTaken`, `ErrUnknownRegion` |
 | `internal/domain/shared` | the `Event` interface, `Header`, `ErrValidation`, `ErrIllegalTransition`, id and text validators |
 | `internal/application/usecases` | the nine command use cases and the six query use cases |
 | `internal/application/ports` | the four repositories, `EventOutbox`, `UnitOfWork`, `Clock`, `IDGenerator`, `NodeMetrics`, `ErrNotFound`, `ErrConcurrentUpdate` |
-| `internal/adapters/inbound/http` | the fifteen REST operations, `/healthz` and `/readyz`, problem+json mapping, `Idempotency-Key` handling |
+| `internal/adapters/inbound/http` | the sixteen REST operations, `/healthz` and `/readyz`, problem+json mapping, `Idempotency-Key` handling |
 | `internal/adapters/inbound/mcp`, `inbound/a2a` | the read-only MCP tools and A2A skills, over the six query use cases |
 | `internal/adapters/outbound/postgres` | repositories, unit of work, outbox writer and drain, migrations |
 | `internal/adapters/outbound/outbox`, `outbound/kafka` | the relay loop; the Kafka writer, encoder and relay sink to `retailnetwork.node-topology.events` |

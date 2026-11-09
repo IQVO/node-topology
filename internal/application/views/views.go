@@ -115,6 +115,7 @@ type Lane struct {
 	Mode                  string     `json:"mode"`
 	NominalTransitMinutes int        `json:"nominalTransitMinutes"`
 	Status                string     `json:"status"`
+	CostPerUnitCents      int64      `json:"costPerUnitCents"`
 	ClosedAt              *time.Time `json:"closedAt,omitempty"`
 }
 
@@ -224,6 +225,7 @@ func LaneFrom(l *lane.Lane) Lane {
 		Mode:                  string(l.Mode()),
 		NominalTransitMinutes: l.NominalTransitMinutes(),
 		Status:                string(l.Status()),
+		CostPerUnitCents:      l.CostPerUnitCents(),
 		ClosedAt:              optTime(l.ClosedAt()),
 	}
 }

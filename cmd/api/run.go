@@ -135,6 +135,7 @@ func buildServer(ad adapters, readiness *inboundhttp.Readiness, logger *slog.Log
 		ListNodes:          usecases.NewListNodes(d.Nodes),
 		OpenLane:           usecases.NewOpenLane(d),
 		CloseLane:          usecases.NewCloseLane(d),
+		DeclareLaneCost:    usecases.NewDeclareLaneCost(d),
 		ListLanes:          usecases.NewListLanes(d.Lanes),
 		AssignServiceArea:  usecases.NewAssignServiceArea(d),
 		ResolveServiceArea: usecases.NewResolveServiceArea(d.ServiceAreas),

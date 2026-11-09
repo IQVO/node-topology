@@ -7,7 +7,7 @@ logistics tier): the authoritative registry of the network's nodes, their
 versioned operational profiles, lanes, regions and postal service areas. It
 owns the topology facts every other network context reads — and nothing else:
 it consumes no Kafka topic and calls no other service (an **Open Host
-Service** with its REST reads and its Published Language of nine events,
+Service** with its REST reads and its Published Language of ten events,
 ADR 0003). Its events are consumed by `delivery-promise`, `order-sourcing`,
 `vendor-connectivity` and `node-performance`, all Conformists to the profile,
 region and service-area revisions. This repository is a service of the retail
@@ -87,7 +87,7 @@ imports an outer layer or an adapter reaches sideways into its sibling.
 ## Domain events
 
 Contract: [`apis/asyncapi.yaml`](apis/asyncapi.yaml), catalogue in [ADR 0004](docs/adr/0004-cloudevents-envelope-and-type-catalogue.md).
-All nine events go to `retailnetwork.node-topology.events`, CloudEvents 1.0
+All ten events go to `retailnetwork.node-topology.events`, CloudEvents 1.0
 structured JSON (`source` `/retailnetwork/node-topology`, `dataschema`
 `urn:retailnetwork:node-topology:events:<EventName>:v1`), type
 `com.retailnetwork.logistics.node-topology.<entity>.<Event>` (`node`, `lane`,
@@ -156,7 +156,7 @@ collections (`GET /nodes`, `GET /lanes`, `GET /regions`) are keyset-paginated: `
 | `POST /nodes`, `GET /nodes?type=&region=&status=&limit=&cursor=`, `GET /nodes/{nodeId}` | register, list, read |
 | `PUT /nodes/{nodeId}/operational-profile` | declare a profile revision |
 | `POST /nodes/{nodeId}/activations`, `/suspensions`, `/retirements` | lifecycle |
-| `POST /lanes`, `GET /lanes?origin=&destination=`, `POST /lanes/{laneId}/closures` | lanes |
+| `POST /lanes`, `GET /lanes?origin=&destination=`, `POST /lanes/{laneId}/closures`, `POST /lanes/{laneId}/cost-declarations` | lanes |
 | `PUT /service-areas/{postalPrefix}`, `GET /service-areas/{postalPrefix}` | assign, resolve |
 | `POST /regions`, `GET /regions`, `GET /regions/{regionId}` | regions |
 | `GET /healthz`, `GET /readyz` | liveness, readiness |

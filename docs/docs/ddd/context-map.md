@@ -75,8 +75,8 @@ published on it); the future contexts (`customer-returns`,
 | Neighbour | Direction | Pattern | Channel | Messages | Why this pattern |
 | --- | --- | --- | --- | --- | --- |
 | `offer-availability` (Supporting) | NT upstream, OA downstream | OHS + PL / Conformist | Kafka `retailnetwork.node-topology.events` | `NodeRegistered`, `NodeActivated`, `NodeSuspended`, `NodeRetired` | OA only needs to know whether a listing's node is sellable (`NodeStatusView`, `SuppressOnNodeUnavailable`). It takes the node vocabulary as published. |
-| `delivery-promise` (Core) | NT upstream, DP downstream | OHS + PL / Conformist | Kafka `retailnetwork.node-topology.events` | all nine events | DP builds `NodeProfileView`, `RegionAndServiceAreaView` and `LaneView` locally because its hot path makes no synchronous call. The topology is a given for the promise, not a negotiation. |
-| `order-sourcing` (Core) | NT upstream, OS downstream | OHS + PL / Conformist | Kafka `retailnetwork.node-topology.events` | all nine events | OS builds `NodeProfileView` and `NetworkGraphView` to re-optimise assignments. Same reasoning as DP. |
+| `delivery-promise` (Core) | NT upstream, DP downstream | OHS + PL / Conformist | Kafka `retailnetwork.node-topology.events` | all ten events | DP builds `NodeProfileView`, `RegionAndServiceAreaView` and `LaneView` locally because its hot path makes no synchronous call. The topology is a given for the promise, not a negotiation. |
+| `order-sourcing` (Core) | NT upstream, OS downstream | OHS + PL / Conformist | Kafka `retailnetwork.node-topology.events` | all ten events | OS builds `NodeProfileView` and `NetworkGraphView` to re-optimise assignments. Same reasoning as DP. |
 | `linehaul-transportation` (Supporting) | NT upstream, LH downstream | OHS + PL / Conformist | Kafka `retailnetwork.node-topology.events` | `NodeRegistered`, `NodeOperationalProfileDeclared`, `NodeActivated`, `NodeSuspended`, `NodeRetired`, `LaneOpened`, `LaneClosed` | LH turns lanes into departures and cutoffs into pickup departures (`PickupFromCutoffs`). It conforms to the lane and cutoff definitions. |
 | `last-mile-delivery` (Supporting) | NT upstream, LM downstream | OHS + PL / Conformist | Kafka `retailnetwork.node-topology.events` | `NodeRegistered`, `ServiceAreaAssigned` | LM's `StationView` needs the stations and the prefixes each serves. |
 | `node-performance` (Supporting) | NT upstream, NP downstream | OHS + PL / Conformist | Kafka `retailnetwork.node-topology.events` | `NodeRegistered`, `NodeOperationalProfileDeclared` | NP measures a node against what it declared; it needs the declaration as published. |
@@ -91,7 +91,7 @@ published on it); the future contexts (`customer-returns`,
 ## Notes on the patterns
 
 - **Open Host Service + Published Language, every consumer Conformist.** One
-  topic, nine CloudEvents types, one schema per type
+  topic, ten CloudEvents types, one schema per type
   (`urn:retailnetwork:node-topology:events:<EventName>:v1`). With eight
   consumers, negotiating a model per consumer would cost more than it gives.
   The vocabulary is small and stable, so conforming is cheap.
@@ -110,9 +110,9 @@ published on it); the future contexts (`customer-returns`,
 
 The `seller-inbound` edge is the eighth subscriber. Inbound limits are built as
 [ADR 0007](/docs/adr/0007-inbound-limits-on-the-operational-profile) decided;
-the `INBOUND` capability of `FULFILLMENT_CENTER` and the gate
-`ErrInboundLimitsNotAllowed` are not built (the network model's gap G64), and
-the service value-checks the limits on any node type.
+since [ADR 0015](/docs/adr/0015-fulfillment-centres-receive-inbound) `FULFILLMENT_CENTER` has the `INBOUND`
+capability and the gate `ErrInboundLimitsNotAllowed` refuses limits on any type
+without it (closing the network model's gap G64).
 
 | Neighbour | Direction | Pattern | Channel | Messages | Why |
 | --- | --- | --- | --- | --- | --- |

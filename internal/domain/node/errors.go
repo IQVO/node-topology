@@ -26,6 +26,10 @@ var (
 	// ErrSortDwellNotAllowed: sortDwellMinutes is declared only by
 	// SORTATION_CENTER and AIR_HUB nodes (422).
 	ErrSortDwellNotAllowed = errors.New("sort dwell not allowed")
+	// ErrInboundLimitsNotAllowed: inbound limits are declared only by node
+	// types with the INBOUND capability (422, ADR 0015). Checked on a new
+	// declaration only; a stored revision stays restorable.
+	ErrInboundLimitsNotAllowed = errors.New("inbound limits not allowed")
 	// ErrNodeRetired: RETIRED is terminal (409).
 	ErrNodeRetired = errors.New("node retired")
 )

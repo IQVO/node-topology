@@ -133,6 +133,7 @@ var catalogue = []struct {
 	{node.ErrSubtypeNotAllowed, 422, "subtype-not-allowed"},
 	{node.ErrCutoffOutsideOperatingHours, 422, "cutoff-outside-operating-hours"},
 	{node.ErrSortDwellNotAllowed, 422, "sort-dwell-not-allowed"},
+	{node.ErrInboundLimitsNotAllowed, 422, "inbound-limits-not-allowed"},
 	{lane.ErrLaneEndpointNotActive, 409, "lane-endpoint-not-active"},
 	{lane.ErrDuplicateLane, 409, "duplicate-lane"},
 	{lane.ErrLaneLoop, 422, "lane-loop"},
@@ -191,7 +192,8 @@ func TestEveryModelErrHasItsOwnKebabSlug(t *testing.T) {
 		"ErrIncompleteOperationalProfile": node.ErrIncompleteOperationalProfile, "ErrNodeRetired": node.ErrNodeRetired,
 		"ErrOperatorNotAllowedForNodeType": node.ErrOperatorNotAllowedForNodeType, "ErrSubtypeNotAllowed": node.ErrSubtypeNotAllowed,
 		"ErrCutoffOutsideOperatingHours": node.ErrCutoffOutsideOperatingHours, "ErrSortDwellNotAllowed": node.ErrSortDwellNotAllowed,
-		"ErrLaneEndpointNotActive": lane.ErrLaneEndpointNotActive, "ErrDuplicateLane": lane.ErrDuplicateLane,
+		"ErrInboundLimitsNotAllowed": node.ErrInboundLimitsNotAllowed,
+		"ErrLaneEndpointNotActive":   lane.ErrLaneEndpointNotActive, "ErrDuplicateLane": lane.ErrDuplicateLane,
 		"ErrLaneLoop": lane.ErrLaneLoop, "ErrLaneTypePairNotAllowed": lane.ErrLaneTypePairNotAllowed,
 		"ErrNotADeliveryStation": servicearea.ErrNotADeliveryStation, "ErrStaleAssignmentVersion": servicearea.ErrStaleAssignmentVersion,
 		"ErrRegionCodeTaken": region.ErrRegionCodeTaken, "ErrUnknownRegion": region.ErrUnknownRegion,
@@ -213,8 +215,8 @@ func TestEveryModelErrHasItsOwnKebabSlug(t *testing.T) {
 		}
 		seen[got] = name
 	}
-	if len(modelErrs) != 16 {
-		t.Fatalf("the model has 16 Errs, the test lists %d", len(modelErrs))
+	if len(modelErrs) != 17 {
+		t.Fatalf("the model has 17 Errs, the test lists %d", len(modelErrs))
 	}
 }
 

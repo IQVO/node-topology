@@ -44,7 +44,27 @@ func (LaneClosed) Entity() string { return entity }
 // SubjectID returns the laneId.
 func (e LaneClosed) SubjectID() string { return string(e.LaneID) }
 
+// LaneCostDeclared is raised by DeclareCost (ADR 0014): the planner's
+// declared marginal cost of moving ONE package-unit across the lane on one
+// departure, in integer cents.
+type LaneCostDeclared struct {
+	shared.Header
+	LaneID           ID
+	CostPerUnitCents int64
+	DeclaredAt       time.Time
+}
+
+// EventName returns "LaneCostDeclared".
+func (LaneCostDeclared) EventName() string { return "LaneCostDeclared" }
+
+// Entity returns "lane".
+func (LaneCostDeclared) Entity() string { return entity }
+
+// SubjectID returns the laneId.
+func (e LaneCostDeclared) SubjectID() string { return string(e.LaneID) }
+
 var (
 	_ shared.Event = LaneOpened{}
 	_ shared.Event = LaneClosed{}
+	_ shared.Event = LaneCostDeclared{}
 )

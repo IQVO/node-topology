@@ -81,7 +81,7 @@ func TestMigrationsGoUpDownUp(t *testing.T) {
 	if err := m.Up(); err != nil {
 		t.Fatalf("up: %v", err)
 	}
-	wantVersion(t, m, 4)
+	wantVersion(t, m, 5)
 	wantTables(t, pool, allTables)
 
 	if err := m.Down(); err != nil {
@@ -93,7 +93,7 @@ func TestMigrationsGoUpDownUp(t *testing.T) {
 	if err := m.Up(); err != nil {
 		t.Fatalf("up again: %v", err)
 	}
-	wantVersion(t, m, 4)
+	wantVersion(t, m, 5)
 	wantTables(t, pool, allTables)
 }
 
@@ -118,7 +118,7 @@ func TestMigrationsStepDownOneRemovesOnlyTheInfrastructureTables(t *testing.T) {
 	if err := m.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.Steps(-3); err != nil {
+	if err := m.Steps(-4); err != nil {
 		t.Fatalf("step down: %v", err)
 	}
 	wantVersion(t, m, 1)
@@ -152,7 +152,7 @@ func TestMigration0003AddsAndDropsOnlyTheInboundColumn(t *testing.T) {
 	if present, nullable, typ := inboundColumn(t, pool); !present || !nullable || typ != "jsonb" {
 		t.Fatalf("inbound column = present %v nullable %v type %q, want a nullable jsonb column", present, nullable, typ)
 	}
-	if err := m.Steps(-2); err != nil {
+	if err := m.Steps(-3); err != nil {
 		t.Fatalf("step down: %v", err)
 	}
 	wantVersion(t, m, 2)

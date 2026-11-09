@@ -91,7 +91,9 @@ and the fleet's `network-fulfillment` translates.
 ## Inbound limits
 
 The limits are built as [ADR 0007](/docs/adr/0007-inbound-limits-on-the-operational-profile)
-decided: the service value-checks them (`ErrValidation`, 422 `validation-failed`)
-on any node type. The designed capability gate `ErrInboundLimitsNotAllowed` and
-the `INBOUND` capability of `FULFILLMENT_CENTER` are not built (the network
-model's gap G64; see [Integration](/docs/ecosystem/integration#seller-inbound-and-open-gaps)).
+decided and gated as [ADR 0015](/docs/adr/0015-fulfillment-centres-receive-inbound) decided: only a node type with the
+`INBOUND` capability (`FULFILLMENT_CENTER`, `INBOUND_CROSS_DOCK`) declares them;
+any other type is `ErrInboundLimitsNotAllowed` (422 `inbound-limits-not-allowed`),
+and the values are checked (`ErrValidation`, 422 `validation-failed`) only after
+the gate. `FULFILLMENT_CENTER` carries `INBOUND` beside `OUTBOUND`, which closes
+the network model's gap G64 (see [Integration](/docs/ecosystem/integration#seller-inbound-and-open-gaps)).

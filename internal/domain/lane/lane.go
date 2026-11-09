@@ -3,7 +3,9 @@
 // belong to linehaul-transportation.
 //
 // States: OPEN, CLOSED; transition OPEN -> CLOSED (CloseLane); no reopen, a
-// new lane is opened instead. Invariants: origin and destination differ
+// new lane is opened instead. DeclareCost records the planner's declared
+// cost per package-unit in cents on an OPEN lane (ADR 0014). Invariants:
+// origin and destination differ
 // (ErrLaneLoop); the (origin type, destination type) pair is in the model's
 // lane_rules (ErrLaneTypePairNotAllowed); both ends are ACTIVE when opening
 // (ErrLaneEndpointNotActive); at most one OPEN lane per (origin, destination,
@@ -60,6 +62,10 @@ const (
 // MaxTransitMinutes is the Postgres integer ceiling for a nominal transit.
 const MaxTransitMinutes = 2147483647
 
+// MaxCostPerUnitCents is the ceiling of a declared cost per package-unit
+// (integer cents, ADR 0014): 10,000,000 cents.
+const MaxCostPerUnitCents = 10000000
+
 // Pair is an (origin type, destination type) pair of lane_rules.
 type Pair struct {
 	Origin      node.Type
@@ -98,7 +104,11 @@ type Lane struct {
 	status      Status
 	openedAt    time.Time
 	closedAt    time.Time
-	version     int64
+	// costPerUnitCents is the planner's declared marginal cost of moving ONE
+	// package-unit across the lane on one departure, integer cents (ADR 0014).
+	// 0 is the default and means no declared cost yet.
+	costPerUnitCents int64
+	version          int64
 }
 
 // Snapshot is the persisted form of a lane. Restore validates it.
@@ -111,6 +121,7 @@ type Snapshot struct {
 	Status                Status
 	OpenedAt              time.Time
 	ClosedAt              time.Time
+	CostPerUnitCents      int64
 	Version               int64
 }
 
@@ -167,7 +178,7 @@ func Restore(s Snapshot) (*Lane, error) {
 	return &Lane{
 		id: s.ID, origin: s.OriginNodeID, destination: s.DestinationNodeID, mode: s.Mode,
 		transit: s.NominalTransitMinutes, status: s.Status, openedAt: shared.UTC(s.OpenedAt),
-		closedAt: shared.UTC(s.ClosedAt), version: s.Version,
+		closedAt: shared.UTC(s.ClosedAt), costPerUnitCents: s.CostPerUnitCents, version: s.Version,
 	}, nil
 }
 
@@ -184,9 +195,18 @@ func checkSnapshot(s Snapshot) error {
 	if s.NominalTransitMinutes < 1 || s.NominalTransitMinutes > MaxTransitMinutes {
 		return errors.New("nominalTransitMinutes is out of range")
 	}
+	if s.CostPerUnitCents < 0 || s.CostPerUnitCents > MaxCostPerUnitCents {
+		return errors.New("costPerUnitCents is out of range")
+	}
 	if s.OpenedAt.IsZero() || s.Version < 1 {
 		return errors.New("openedAt and a version of at least 1 are required")
 	}
+	return checkStatus(s)
+}
+
+// checkStatus validates the lifecycle fields: OPEN has no closedAt, CLOSED
+// needs one.
+func checkStatus(s Snapshot) error {
 	switch s.Status {
 	case StatusOpen:
 		if !s.ClosedAt.IsZero() {
@@ -203,7 +223,7 @@ func checkSnapshot(s Snapshot) error {
 }
 
 // Close moves an OPEN lane to CLOSED and raises LaneClosed. Closing needs no
-// ACTIVE endpoint.
+// ACTIVE endpoint. A declared cost survives as history.
 func (l *Lane) Close(now time.Time) ([]shared.Event, error) {
 	if l.status != StatusOpen {
 		return nil, fmt.Errorf("%w: lane %s is %s", shared.ErrIllegalTransition, l.id, l.status)
@@ -212,6 +232,29 @@ func (l *Lane) Close(now time.Time) ([]shared.Event, error) {
 	l.closedAt = shared.UTC(now)
 	l.version++
 	ev := LaneClosed{Header: shared.Header{Version: l.version, At: l.closedAt}, LaneID: l.id, ClosedAt: l.closedAt}
+	return []shared.Event{ev}, nil
+}
+
+// DeclareCost records the planner's declared marginal cost of moving ONE
+// package-unit across this lane on one departure, in integer cents, and raises
+// LaneCostDeclared (ADR 0014). Valid on an OPEN lane only; every declaration
+// is a fact (declared, never re-derived) and supersedes the previous value.
+// 0 is legal: zero declared marginal cost. An undeclared lane also reads 0,
+// but only a declaration publishes the event.
+func (l *Lane) DeclareCost(costPerUnitCents int64, now time.Time) ([]shared.Event, error) {
+	if costPerUnitCents < 0 || costPerUnitCents > MaxCostPerUnitCents {
+		return nil, shared.Invalid("costPerUnitCents must be between 0 and %d", MaxCostPerUnitCents)
+	}
+	if l.status != StatusOpen {
+		return nil, fmt.Errorf("%w: lane %s is %s", shared.ErrIllegalTransition, l.id, l.status)
+	}
+	l.costPerUnitCents = costPerUnitCents
+	l.version++
+	at := shared.UTC(now)
+	ev := LaneCostDeclared{
+		Header: shared.Header{Version: l.version, At: at}, LaneID: l.id,
+		CostPerUnitCents: costPerUnitCents, DeclaredAt: at,
+	}
 	return []shared.Event{ev}, nil
 }
 
@@ -239,6 +282,10 @@ func (l *Lane) OpenedAt() time.Time { return l.openedAt }
 // ClosedAt returns when the lane was closed (zero while OPEN).
 func (l *Lane) ClosedAt() time.Time { return l.closedAt }
 
+// CostPerUnitCents returns the declared cost of moving one package-unit
+// across the lane on one departure (integer cents; 0 when never declared).
+func (l *Lane) CostPerUnitCents() int64 { return l.costPerUnitCents }
+
 // Version returns the aggregate version.
 func (l *Lane) Version() int64 { return l.version }
 
@@ -246,6 +293,7 @@ func (l *Lane) Version() int64 { return l.version }
 func (l *Lane) Snapshot() Snapshot {
 	return Snapshot{
 		ID: l.id, OriginNodeID: l.origin, DestinationNodeID: l.destination, Mode: l.mode,
-		NominalTransitMinutes: l.transit, Status: l.status, OpenedAt: l.openedAt, ClosedAt: l.closedAt, Version: l.version,
+		NominalTransitMinutes: l.transit, Status: l.status, OpenedAt: l.openedAt, ClosedAt: l.closedAt,
+		CostPerUnitCents: l.costPerUnitCents, Version: l.version,
 	}
 }
