@@ -80,9 +80,11 @@ Feature: Node registration
     Given a "FULFILLMENT_CENTER" node "fc-1" exists in the region "SP"
     And a "DELIVERY_STATION" node "ds-1" exists in the region "SP"
     Then the node "fc-1" has the capability "outbound"
+    And the node "fc-1" has the capability "inbound"
     And the node "fc-1" lacks the capability "lastMile"
     And the node "ds-1" has the capability "lastMile"
     And the node "ds-1" lacks the capability "outbound"
+    And the node "ds-1" lacks the capability "inbound"
 
   Scenario: Listing nodes by type, status and region
     Given the region "RJ" is defined
