@@ -71,7 +71,8 @@ Source: `internal/domain/node/events.go`, `internal/domain/lane/events.go`, `int
 Omitted: the refusals (`ErrOperatorNotAllowedForNodeType`,
 `ErrVendorNodeCodeTaken`, `ErrStaleProfileRevision`,
 `ErrCutoffOutsideOperatingHours`, `ErrIncompleteOperationalProfile`,
-`region.ErrUnknownRegion`, `ErrSubtypeNotAllowed`, `ErrSortDwellNotAllowed`), which
+`region.ErrUnknownRegion`, `ErrSubtypeNotAllowed`, `ErrSortDwellNotAllowed`,
+`ErrInboundLimitsNotAllowed`), which
 raise no event; the downstream reactions, on board 2.
 
 ## 2. What the network does with node facts

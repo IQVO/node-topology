@@ -284,6 +284,3 @@ Still open:
   suspended or retired, its lanes stay `OPEN` and the prefixes assigned to a
   retired delivery station stay `ASSIGNED` (policy `SuspendedEndpointsUnusable`).
   Nothing closes or reassigns them; consumers must treat them as unusable.
-- **The `INBOUND` capability of `FULFILLMENT_CENTER`** and the gate
-  `ErrInboundLimitsNotAllowed` are not built (gap G64; see the
-  [Aggregate Design Canvas](/docs/ddd/aggregate-design-canvas#inbound-limits-and-the-inbound-capability)).

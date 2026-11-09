@@ -404,7 +404,7 @@ Packages, under `internal/`:
 
 | Package | Contents |
 | --- | --- |
-| `internal/domain/node` | `Node`, `OperationalProfile`, `ProfileDeclaration`, `CutoffSlot`, `ThroughputCap`, `InboundLimits`, `Capabilities`, `GeoLocation`, `VendorRef`, `Type`, `Subtype`, `Operator`, `Status`, the `typeRules` table, the eight `Err...` of `Node` |
+| `internal/domain/node` | `Node`, `OperationalProfile`, `ProfileDeclaration`, `CutoffSlot`, `ThroughputCap`, `InboundLimits`, `Capabilities`, `GeoLocation`, `VendorRef`, `Type`, `Subtype`, `Operator`, `Status`, the `typeRules` table, the nine `Err...` of `Node` |
 | `internal/domain/lane` | `Lane`, `Mode`, `Status`, `Pair`, `allowedPairs`, the four `Err...` of `Lane` |
 | `internal/domain/servicearea` | `ServiceArea`, `PostalPrefix`, `ErrNotADeliveryStation`, `ErrStaleAssignmentVersion` |
 | `internal/domain/region` | `Region`, `ErrRegionCodeTaken`, `ErrUnknownRegion` |

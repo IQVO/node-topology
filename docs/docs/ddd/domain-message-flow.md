@@ -90,7 +90,7 @@ sequenceDiagram
 Source: `apis/openapi.yaml`, `apis/asyncapi.yaml`, `internal/application/usecases/*.go`, `internal/adapters/outbound/kafka/encoder.go`.
 
 Omitted: `ErrCutoffOutsideOperatingHours`, `region.ErrUnknownRegion`,
-`ErrSubtypeNotAllowed` and `ErrSortDwellNotAllowed` (all 422, same shape as
+`ErrSubtypeNotAllowed`, `ErrSortDwellNotAllowed` and `ErrInboundLimitsNotAllowed` (all 422, same shape as
 the first branch), and `ErrVendorNodeCodeTaken` (409, same shape as the stale
 revision branch). The same incomplete-profile refusal (`ErrIncompleteOperationalProfile`) also
 stops a later revision of an `ACTIVE` fulfillment centre that drops every

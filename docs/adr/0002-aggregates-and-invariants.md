@@ -323,3 +323,18 @@ silent on the points below; each is an assumption and is reported as a model gap
   consumer's sum over it is incomplete. Decided in ADR 0014; the model gap
   stays open until the model names the field.
 
+
+## Amendment (fulfillment centres receive inbound, ADR 0015)
+
+No new assumption: the model already gives `FULFILLMENT_CENTER` the
+capabilities `[OUTBOUND, INBOUND]`, and the build had dropped `INBOUND` (the
+network model's gap G64). Decided in
+[ADR 0015](./0015-fulfillment-centres-receive-inbound.md):
+
+- `typeRules` gives `FULFILLMENT_CENTER` `Outbound` and `Inbound`; every other
+  row of the node-type table is unchanged.
+- The Node invariants gain one row: `inbound` limits only for a node type with
+  the `INBOUND` capability, `ErrInboundLimitsNotAllowed` (422
+  `inbound-limits-not-allowed`), enforced by `Node.DeclareProfile` before the
+  value checks of ADR 0007. `Restore` does not enforce it, so a revision stored
+  earlier with limits on such a node stays restorable.
