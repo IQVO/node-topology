@@ -125,11 +125,25 @@ type laneCostDeclaredPayload struct {
 	DeclaredAt       string `json:"declaredAt"`
 }
 
+// carrierOptionPayload is one declared carrier option of a CARRIER_HANDOFF
+// service area (ADR 0016).
+type carrierOptionPayload struct {
+	CarrierID           string `json:"carrierId"`
+	HandoffNodeID       string `json:"handoffNodeId"`
+	CostPerPackageCents int64  `json:"costPerPackageCents"`
+	TransitMinutes      int    `json:"transitMinutes"`
+}
+
+// serviceAreaPayload: deliveryMode and carriers are omitted when the area is
+// a NETWORK_ROUTE area, so a consumer that predates the delivery mode (ADR
+// 0016) keeps decoding the event with its old meaning.
 type serviceAreaPayload struct {
-	PostalPrefix          string `json:"postalPrefix"`
-	DeliveryStationNodeID string `json:"deliveryStationNodeId"`
-	RegionID              string `json:"regionId"`
-	AssignmentVersion     int    `json:"assignmentVersion"`
+	PostalPrefix          string                 `json:"postalPrefix"`
+	DeliveryStationNodeID string                 `json:"deliveryStationNodeId"`
+	RegionID              string                 `json:"regionId"`
+	AssignmentVersion     int                    `json:"assignmentVersion"`
+	DeliveryMode          string                 `json:"deliveryMode,omitempty"`
+	Carriers              []carrierOptionPayload `json:"carriers,omitempty"`
 }
 
 type regionPayload struct {

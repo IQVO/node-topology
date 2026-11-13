@@ -96,11 +96,20 @@ type laneListView struct {
 	Lanes []laneView `json:"lanes"`
 }
 
+type carrierOptionView struct {
+	CarrierID           string `json:"carrierId"`
+	HandoffNodeID       string `json:"handoffNodeId"`
+	CostPerPackageCents int64  `json:"costPerPackageCents"`
+	TransitMinutes      int    `json:"transitMinutes"`
+}
+
 type serviceAreaView struct {
-	PostalPrefix          string `json:"postalPrefix"`
-	DeliveryStationNodeID string `json:"deliveryStationNodeId"`
-	RegionID              string `json:"regionId"`
-	AssignmentVersion     int    `json:"assignmentVersion"`
+	PostalPrefix          string              `json:"postalPrefix"`
+	DeliveryStationNodeID string              `json:"deliveryStationNodeId"`
+	RegionID              string              `json:"regionId"`
+	AssignmentVersion     int                 `json:"assignmentVersion"`
+	DeliveryMode          string              `json:"deliveryMode,omitempty"`
+	Carriers              []carrierOptionView `json:"carriers,omitempty"`
 }
 
 type regionView struct {
@@ -190,10 +199,21 @@ func toLane(l views.Lane) laneView {
 }
 
 func toServiceArea(a views.ServiceArea) serviceAreaView {
-	return serviceAreaView{
+	out := serviceAreaView{
 		PostalPrefix: a.PostalPrefix, DeliveryStationNodeID: a.DeliveryStationNodeID,
 		RegionID: a.RegionID, AssignmentVersion: a.AssignmentVersion,
 	}
+	if a.DeliveryMode != "" && a.DeliveryMode != "NETWORK_ROUTE" {
+		out.DeliveryMode = a.DeliveryMode
+		out.Carriers = make([]carrierOptionView, len(a.Carriers))
+		for i, o := range a.Carriers {
+			out.Carriers[i] = carrierOptionView{
+				CarrierID: o.CarrierID, HandoffNodeID: o.HandoffNodeID,
+				CostPerPackageCents: o.CostPerPackageCents, TransitMinutes: o.TransitMinutes,
+			}
+		}
+	}
+	return out
 }
 
 func toRegion(r views.Region) regionView {

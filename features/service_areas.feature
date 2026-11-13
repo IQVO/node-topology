@@ -63,3 +63,39 @@ Feature: Service areas
     Given the postal prefix "013" is assigned to the station "ds-sp" with assignment version 1
     Then the postal prefix "01" is not assigned
     And the postal prefix "0130" is not assigned
+
+  Scenario: Assigning a carrier-handoff area with two declared options
+    Given an active "SORTATION_CENTER" node "sc-1" exists in the region "SP"
+    When I assign the postal prefix "013" to the station "ds-sp" with assignment version 1 and delivery mode "CARRIER_HANDOFF" and carriers "carrier-a@sc-1:320:95,carrier-b@ds-rj:400:60"
+    Then the command succeeds
+    And the last command published the event "ServiceAreaAssigned"
+    And the postal prefix "013" resolves in mode "CARRIER_HANDOFF" with the carriers "carrier-a@sc-1:320:95,carrier-b@ds-rj:400:60"
+
+  Scenario: A route area carries no mode or options
+    When I assign the postal prefix "013" to the station "ds-sp" with assignment version 1
+    Then the command succeeds
+    And the postal prefix "013" resolves with no delivery mode
+
+  Scenario: The handoff node must be an ACTIVE delivery station or sortation centre
+    Given a "SORTATION_CENTER" node "sc-2" exists in the region "SP"
+    And I suspend the node "sc-2" because "audit"
+    When I assign the postal prefix "013" to the station "ds-sp" with assignment version 1 and delivery mode "CARRIER_HANDOFF" and carriers "carrier-a@sc-2:320:95"
+    Then the command is refused with "handoff-node-not-usable"
+    And nothing was stored by the last command
+
+  Scenario: A carrier area declares at least one option
+    When I assign the postal prefix "013" to the station "ds-sp" with assignment version 1 and delivery mode "CARRIER_HANDOFF" and carriers ""
+    Then the command is refused with "carrier-options-invalid"
+
+  Scenario: A route area declares no options
+    When I assign the postal prefix "013" to the station "ds-sp" with assignment version 1 and delivery mode "NETWORK_ROUTE" and carriers "carrier-a@ds-sp:320:95"
+    Then the command is refused with "carrier-options-invalid"
+
+  Scenario: A carrier id is declared once per area
+    Given an active "SORTATION_CENTER" node "sc-1" exists in the region "SP"
+    When I assign the postal prefix "013" to the station "ds-sp" with assignment version 1 and delivery mode "CARRIER_HANDOFF" and carriers "carrier-a@sc-1:320:95,carrier-a@ds-rj:400:60"
+    Then the command is refused with "carrier-options-invalid"
+
+  Scenario: An unknown handoff node is not found
+    When I assign the postal prefix "013" to the station "ds-sp" with assignment version 1 and delivery mode "CARRIER_HANDOFF" and carriers "carrier-a@node-404:320:95"
+    Then the command is refused with "not-found"

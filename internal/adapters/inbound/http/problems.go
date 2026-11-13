@@ -97,6 +97,8 @@ var problemCatalogue = []struct {
 	// ServiceArea.
 	{servicearea.ErrNotADeliveryStation, problem{http.StatusConflict, "not-a-delivery-station", "The node is not an ACTIVE delivery station"}},
 	{servicearea.ErrStaleAssignmentVersion, problem{http.StatusConflict, "stale-assignment-version", "The assignment version is not newer than the current one"}},
+	{servicearea.ErrHandoffNodeNotUsable, problem{http.StatusConflict, "handoff-node-not-usable", "A carrier option's handoff node is not an ACTIVE delivery station or sortation centre"}},
+	{servicearea.ErrCarrierOptionsInvalid, problem{http.StatusUnprocessableEntity, "carrier-options-invalid", "The carrier options do not match the delivery mode"}},
 	// Region.
 	{region.ErrRegionCodeTaken, problem{http.StatusConflict, "region-code-taken", "A region with this code exists"}},
 	{region.ErrUnknownRegion, problem{http.StatusUnprocessableEntity, "unknown-region", "The region does not exist"}},

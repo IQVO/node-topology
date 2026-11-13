@@ -72,6 +72,21 @@ func goldenCases() []goldenCase {
 			"servicearea", "01310", `{"postalPrefix":"01310","deliveryStationNodeId":"node-9","regionId":"region-1","assignmentVersion":2}`,
 		},
 		{
+			"ServiceAreaAssigned carrier handoff (deliveryMode and carriers present)",
+			servicearea.ServiceAreaAssigned{
+				Header: header, PostalPrefix: "01310", DeliveryStationNodeID: "node-9", RegionID: "region-1", AssignmentVersion: 3,
+				DeliveryMode: servicearea.ModeCarrierHandoff,
+				Carriers: []servicearea.CarrierOption{
+					{CarrierID: "carrier-a", HandoffNodeID: "node-sc", CostPerPackageCents: 320, TransitMinutes: 95},
+					{CarrierID: "carrier-b", HandoffNodeID: "node-9", CostPerPackageCents: 400, TransitMinutes: 60},
+				},
+			},
+			"servicearea", "01310",
+			`{"postalPrefix":"01310","deliveryStationNodeId":"node-9","regionId":"region-1","assignmentVersion":3,` +
+				`"deliveryMode":"CARRIER_HANDOFF","carriers":[{"carrierId":"carrier-a","handoffNodeId":"node-sc","costPerPackageCents":320,"transitMinutes":95},` +
+				`{"carrierId":"carrier-b","handoffNodeId":"node-9","costPerPackageCents":400,"transitMinutes":60}]}`,
+		},
+		{
 			"RegionDefined", region.RegionDefined{Header: header, RegionID: "region-1", Code: "SE", Name: "Southeast"},
 			"region", "region-1", `{"regionId":"region-1","code":"SE","name":"Southeast"}`,
 		},

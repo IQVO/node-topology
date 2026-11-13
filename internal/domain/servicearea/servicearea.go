@@ -61,6 +61,8 @@ type ServiceArea struct {
 	assignment int
 	assignedAt time.Time
 	version    int64
+	mode       DeliveryMode
+	carriers   []CarrierOption
 }
 
 // Snapshot is the persisted form of a service area. Restore validates it.
@@ -71,17 +73,20 @@ type Snapshot struct {
 	AssignmentVersion     int
 	AssignedAt            time.Time
 	Version               int64
+	DeliveryMode          DeliveryMode
+	Carriers              []CarrierOption
 }
 
 // Assign creates the first assignment of a prefix (aggregate version 1) and
 // raises ServiceAreaAssigned. station and reg are the aggregates the use case
-// loaded (read only).
-func Assign(prefix PostalPrefix, assignmentVersion int, station *node.Node, reg *region.Region, now time.Time) (*ServiceArea, []shared.Event, error) {
+// loaded (read only); carrier is the delivery mode with its options and the
+// loaded handoff nodes, and its zero value is NETWORK_ROUTE (ADR 0016).
+func Assign(prefix PostalPrefix, assignmentVersion int, station *node.Node, reg *region.Region, carrier CarrierDelivery, now time.Time) (*ServiceArea, []shared.Event, error) {
 	if !prefix.Valid() {
 		return nil, nil, shared.Invalid("postalPrefix %q must be 1 to %d characters from A-Z 0-9 -", prefix, MaxPrefix)
 	}
 	sa := &ServiceArea{prefix: prefix}
-	events, err := sa.assign(assignmentVersion, station, reg, now)
+	events, err := sa.assign(assignmentVersion, station, reg, carrier, now)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -90,12 +95,12 @@ func Assign(prefix PostalPrefix, assignmentVersion int, station *node.Node, reg 
 
 // Reassign serves the prefix from another (or the same) station under a
 // strictly higher assignment version and raises ServiceAreaAssigned.
-func (s *ServiceArea) Reassign(assignmentVersion int, station *node.Node, reg *region.Region, now time.Time) ([]shared.Event, error) {
-	return s.assign(assignmentVersion, station, reg, now)
+func (s *ServiceArea) Reassign(assignmentVersion int, station *node.Node, reg *region.Region, carrier CarrierDelivery, now time.Time) ([]shared.Event, error) {
+	return s.assign(assignmentVersion, station, reg, carrier, now)
 }
 
 // assign applies one AssignServiceArea. It changes the receiver only on success.
-func (s *ServiceArea) assign(assignmentVersion int, station *node.Node, reg *region.Region, now time.Time) ([]shared.Event, error) {
+func (s *ServiceArea) assign(assignmentVersion int, station *node.Node, reg *region.Region, carrier CarrierDelivery, now time.Time) ([]shared.Event, error) {
 	if assignmentVersion < 1 || assignmentVersion > MaxAssignmentVersion {
 		return nil, shared.Invalid("assignmentVersion must be between 1 and %d", MaxAssignmentVersion)
 	}
@@ -108,12 +113,18 @@ func (s *ServiceArea) assign(assignmentVersion int, station *node.Node, reg *reg
 	if reg == nil || reg.ID() != station.RegionID() {
 		return nil, fmt.Errorf("%w: station %s is in region %q", region.ErrUnknownRegion, station.ID(), station.RegionID())
 	}
+	mode, options, err := checkCarrierDelivery(carrier)
+	if err != nil {
+		return nil, err
+	}
 	s.station, s.region, s.assignment = station.ID(), reg.ID(), assignmentVersion
 	s.assignedAt = shared.UTC(now)
 	s.version++
+	s.mode, s.carriers = mode, options
 	ev := ServiceAreaAssigned{
 		Header:       shared.Header{Version: s.version, At: s.assignedAt},
 		PostalPrefix: s.prefix, DeliveryStationNodeID: s.station, RegionID: s.region, AssignmentVersion: s.assignment,
+		DeliveryMode: s.mode, Carriers: cloneCarriers(s.carriers),
 	}
 	return []shared.Event{ev}, nil
 }
@@ -123,9 +134,11 @@ func Restore(snap Snapshot) (*ServiceArea, error) {
 	if err := checkSnapshot(snap); err != nil {
 		return nil, shared.Corrupt("service area %q: %v", snap.PostalPrefix, err)
 	}
+	snap.DeliveryMode = normalizeMode(snap.DeliveryMode)
 	return &ServiceArea{
 		prefix: snap.PostalPrefix, station: snap.DeliveryStationNodeID, region: snap.RegionID,
 		assignment: snap.AssignmentVersion, assignedAt: shared.UTC(snap.AssignedAt), version: snap.Version,
+		mode: snap.DeliveryMode, carriers: cloneCarriers(snap.Carriers),
 	}, nil
 }
 
@@ -142,6 +155,11 @@ func checkSnapshot(s Snapshot) error {
 	if s.AssignedAt.IsZero() || s.Version < 1 {
 		return errors.New("assignedAt and a version of at least 1 are required")
 	}
+	mode, options, err := checkDelivery(CarrierDelivery{Mode: normalizeMode(s.DeliveryMode), Carriers: s.Carriers})
+	if err != nil {
+		return err
+	}
+	s.DeliveryMode, s.Carriers = mode, options
 	return nil
 }
 
@@ -163,10 +181,18 @@ func (s *ServiceArea) AssignedAt() time.Time { return s.assignedAt }
 // Version returns the aggregate version (one per saved assignment).
 func (s *ServiceArea) Version() int64 { return s.version }
 
+// DeliveryMode returns how the area's last mile is served (ADR 0016).
+func (s *ServiceArea) DeliveryMode() DeliveryMode { return s.mode }
+
+// Carriers returns a copy of the declared carrier options, empty when the
+// area is a NETWORK_ROUTE area.
+func (s *ServiceArea) Carriers() []CarrierOption { return cloneCarriers(s.carriers) }
+
 // Snapshot returns the persisted form.
 func (s *ServiceArea) Snapshot() Snapshot {
 	return Snapshot{
 		PostalPrefix: s.prefix, DeliveryStationNodeID: s.station, RegionID: s.region,
 		AssignmentVersion: s.assignment, AssignedAt: s.assignedAt, Version: s.version,
+		DeliveryMode: s.mode, Carriers: cloneCarriers(s.carriers),
 	}
 }

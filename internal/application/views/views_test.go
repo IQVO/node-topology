@@ -265,7 +265,7 @@ func TestServiceAreaAndRegionFrom(t *testing.T) {
 	reg := repocontract.NewRegion(t, "r-1", "SP")
 	st := repocontract.NewActiveNode(t, reg, node.DeliveryStation, "n-s", "")
 	a := views.ServiceAreaFrom(repocontract.NewServiceArea(t, "013", st, reg, 3))
-	if a != (views.ServiceArea{PostalPrefix: "013", DeliveryStationNodeID: "n-s", RegionID: "r-1", AssignmentVersion: 3}) {
+	if !reflect.DeepEqual(a, views.ServiceArea{PostalPrefix: "013", DeliveryStationNodeID: "n-s", RegionID: "r-1", AssignmentVersion: 3}) {
 		t.Fatalf("service area = %+v", a)
 	}
 	requireKeys(t, wire(t, a), "postalPrefix", "deliveryStationNodeId", "regionId", "assignmentVersion")

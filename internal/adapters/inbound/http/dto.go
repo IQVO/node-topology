@@ -148,16 +148,35 @@ func (b declareLaneCostBody) command(id string) usecases.DeclareLaneCostCommand 
 	return usecases.DeclareLaneCostCommand{LaneID: lane.ID(id), CostPerUnitCents: b.CostPerUnitCents}
 }
 
+type carrierOptionBody struct {
+	CarrierID           string `json:"carrierId"`
+	HandoffNodeID       string `json:"handoffNodeId"`
+	CostPerPackageCents int64  `json:"costPerPackageCents"`
+	TransitMinutes      int    `json:"transitMinutes"`
+}
+
 type assignServiceAreaBody struct {
-	DeliveryStationNodeID string `json:"deliveryStationNodeId"`
-	AssignmentVersion     int    `json:"assignmentVersion"`
+	DeliveryStationNodeID string              `json:"deliveryStationNodeId"`
+	AssignmentVersion     int                 `json:"assignmentVersion"`
+	DeliveryMode          string              `json:"deliveryMode"`
+	Carriers              []carrierOptionBody `json:"carriers"`
 }
 
 func (b assignServiceAreaBody) command(prefix string) usecases.AssignServiceAreaCommand {
-	return usecases.AssignServiceAreaCommand{
-		PostalPrefix: servicearea.PostalPrefix(prefix), DeliveryStationNodeID: node.ID(b.DeliveryStationNodeID),
-		AssignmentVersion: b.AssignmentVersion,
+	cmd := usecases.AssignServiceAreaCommand{
+		PostalPrefix:          servicearea.PostalPrefix(prefix),
+		DeliveryStationNodeID: node.ID(b.DeliveryStationNodeID),
+		AssignmentVersion:     b.AssignmentVersion,
+		DeliveryMode:          servicearea.DeliveryMode(b.DeliveryMode),
+		Carriers:              make([]usecases.CarrierOptionCommand, len(b.Carriers)),
 	}
+	for i, o := range b.Carriers {
+		cmd.Carriers[i] = usecases.CarrierOptionCommand{
+			CarrierID: o.CarrierID, HandoffNodeID: node.ID(o.HandoffNodeID),
+			CostPerPackageCents: o.CostPerPackageCents, TransitMinutes: o.TransitMinutes,
+		}
+	}
+	return cmd
 }
 
 type defineRegionBody struct {
