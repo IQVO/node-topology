@@ -211,10 +211,10 @@ func TestMigration0006AddsAndDropsOnlyTheServiceAreaColumns(t *testing.T) {
 	if mode, options := serviceAreaModeColumns(t, pool); !mode || !options {
 		t.Fatal("the delivery-mode columns of migration 0006 are missing")
 	}
-	if err := m.Steps(-1); err != nil {
+	if err := m.Steps(-2); err != nil { // down through 0007, then 0006 itself
 		t.Fatalf("step down: %v", err)
 	}
-	wantVersion(t, m, latestMigration-1)
+	wantVersion(t, m, latestMigration-2)
 	if mode, options := serviceAreaModeColumns(t, pool); mode || options {
 		t.Fatal("the down migration left a delivery-mode column behind")
 	}
