@@ -29,12 +29,13 @@ type GeoLocation struct {
 
 // Capabilities are what a node can do.
 type Capabilities struct {
-	Outbound bool `json:"outbound"`
-	Inbound  bool `json:"inbound"`
-	Returns  bool `json:"returns"`
-	Sort     bool `json:"sort"`
-	LastMile bool `json:"lastMile"`
-	Air      bool `json:"air"`
+	Outbound   bool `json:"outbound"`
+	Inbound    bool `json:"inbound"`
+	Returns    bool `json:"returns"`
+	Sort       bool `json:"sort"`
+	LastMile   bool `json:"lastMile"`
+	Air        bool `json:"air"`
+	Collection bool `json:"collection"`
 }
 
 // DayHours is the opening interval of one weekday.
@@ -90,21 +91,22 @@ type OperationalProfile struct {
 
 // Node is a node with its current operational profile.
 type Node struct {
-	NodeID             string              `json:"nodeId"`
-	NodeType           string              `json:"nodeType"`
-	Subtype            string              `json:"subtype,omitempty"`
-	Operator           string              `json:"operator"`
-	VendorRef          *VendorRef          `json:"vendorRef,omitempty"`
-	RegionID           string              `json:"regionId"`
-	Timezone           string              `json:"timezone"`
-	Location           GeoLocation         `json:"location"`
-	Capabilities       Capabilities        `json:"capabilities"`
-	Status             string              `json:"status"`
-	OperationalProfile *OperationalProfile `json:"operationalProfile,omitempty"`
-	ActivatedAt        *time.Time          `json:"activatedAt,omitempty"`
-	SuspendedAt        *time.Time          `json:"suspendedAt,omitempty"`
-	SuspendReason      string              `json:"suspendReason,omitempty"`
-	RetiredAt          *time.Time          `json:"retiredAt,omitempty"`
+	NodeID               string              `json:"nodeId"`
+	NodeType             string              `json:"nodeType"`
+	Subtype              string              `json:"subtype,omitempty"`
+	Operator             string              `json:"operator"`
+	VendorRef            *VendorRef          `json:"vendorRef,omitempty"`
+	ServingStationNodeID string              `json:"servingStationNodeId,omitempty"`
+	RegionID             string              `json:"regionId"`
+	Timezone             string              `json:"timezone"`
+	Location             GeoLocation         `json:"location"`
+	Capabilities         Capabilities        `json:"capabilities"`
+	Status               string              `json:"status"`
+	OperationalProfile   *OperationalProfile `json:"operationalProfile,omitempty"`
+	ActivatedAt          *time.Time          `json:"activatedAt,omitempty"`
+	SuspendedAt          *time.Time          `json:"suspendedAt,omitempty"`
+	SuspendReason        string              `json:"suspendReason,omitempty"`
+	RetiredAt            *time.Time          `json:"retiredAt,omitempty"`
 }
 
 // Lane is a directed connection between two nodes.
@@ -160,13 +162,14 @@ func NodeFrom(n *node.Node) Node {
 		Location: GeoLocation{PostalCode: loc.PostalCode, CountryCode: loc.CountryCode, Lat: loc.Lat, Lon: loc.Lon},
 		Capabilities: Capabilities{
 			Outbound: caps.Outbound, Inbound: caps.Inbound, Returns: caps.Returns,
-			Sort: caps.Sort, LastMile: caps.LastMile, Air: caps.Air,
+			Sort: caps.Sort, LastMile: caps.LastMile, Air: caps.Air, Collection: caps.Collection,
 		},
-		Status:        string(n.Status()),
-		SuspendReason: n.SuspendReason(),
-		ActivatedAt:   optTime(n.ActivatedAt()),
-		SuspendedAt:   optTime(n.SuspendedAt()),
-		RetiredAt:     optTime(n.RetiredAt()),
+		ServingStationNodeID: string(n.ServingStationNodeID()),
+		Status:               string(n.Status()),
+		SuspendReason:        n.SuspendReason(),
+		ActivatedAt:          optTime(n.ActivatedAt()),
+		SuspendedAt:          optTime(n.SuspendedAt()),
+		RetiredAt:            optTime(n.RetiredAt()),
 	}
 	if ref, ok := n.Vendor(); ok {
 		v.VendorRef = &VendorRef{VendorID: ref.VendorID, VendorNodeCode: ref.VendorNodeCode}

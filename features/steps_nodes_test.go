@@ -18,7 +18,9 @@ func registerNodeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^a "([A-Z_]+)" node "([^"]*)" exists in the region "([^"]*)"$`, w.givenNode)
 	sc.Step(`^an active "([A-Z_]+)" node "([^"]*)" exists in the region "([^"]*)"$`, w.givenActiveNode)
 	sc.Step(`^I register a "([A-Z_]+)" node "([^"]*)" in the region "([^"]*)"$`, w.registerDefaultOperator)
-	sc.Step(`^I register a "([A-Z_]+)" node "([^"]*)" operated by "(NETWORK|VENDOR)" in the region "([^"]*)"$`, w.registerOperatedBy)
+	sc.Step(`^I register a "([A-Z_]+)" node "([^"]*)" operated by "(NETWORK|VENDOR|PARTNER)" in the region "([^"]*)"$`, w.registerOperatedBy)
+	sc.Step(`^I register a "PICKUP_POINT" node "([^"]*)" served by "([^"]*)" in the region "([^"]*)"$`, w.registerPickupPoint)
+	sc.Step(`^I register a "PICKUP_POINT" node "([^"]*)" without a serving station in the region "([^"]*)"$`, w.registerPickupPointWithoutStation)
 	sc.Step(`^the vendor "([^"]*)" registers a "([A-Z_]+)" node "([^"]*)" with the vendor code "([^"]*)" in the region "([^"]*)"$`, w.registerVendorCode)
 	sc.Step(`^I register a "([A-Z_]+)" node "([^"]*)" in an unknown region$`, w.registerUnknownRegion)
 	sc.Step(`^I register a "([A-Z_]+)" node "([^"]*)" with the subtype "([A-Z_]+)" in the region "([^"]*)"$`, w.registerSubtype)
@@ -62,6 +64,25 @@ func (w *world) defaultCommand(typ, alias, regionCode string) (usecases.Register
 		return w.command(typ, regionCode, node.OperatorVendor, &node.VendorRef{VendorID: "vendor-1", VendorNodeCode: alias})
 	}
 	return w.command(typ, regionCode, node.OperatorNetwork, nil)
+}
+
+// registerPickupPoint registers a pickup point naming its serving station.
+func (w *world) registerPickupPoint(alias, stationAlias, regionCode string) error {
+	return w.registerWith(alias, func() (usecases.RegisterNodeCommand, error) {
+		cmd, err := w.command("PICKUP_POINT", regionCode, node.OperatorNetwork, nil)
+		if err != nil {
+			return cmd, err
+		}
+		cmd.ServingStationNodeID = string(w.nodes[stationAlias])
+		return cmd, nil
+	})
+}
+
+// registerPickupPointWithoutStation omits the serving station.
+func (w *world) registerPickupPointWithoutStation(alias, regionCode string) error {
+	return w.registerWith(alias, func() (usecases.RegisterNodeCommand, error) {
+		return w.command("PICKUP_POINT", regionCode, node.OperatorNetwork, nil)
+	})
 }
 
 func (w *world) givenNode(typ, alias, regionCode string) error {
@@ -217,6 +238,8 @@ func capability(c views.Capabilities, name string) (bool, error) {
 		return c.LastMile, nil
 	case "air":
 		return c.Air, nil
+	case "collection":
+		return c.Collection, nil
 	}
 	return false, fmt.Errorf("unknown capability %q", name)
 }

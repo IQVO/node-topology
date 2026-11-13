@@ -147,7 +147,7 @@ func TestNodeFromCarriesSortDwellAndCoordinates(t *testing.T) {
 	n, _, err := node.Register(node.Registration{
 		ID: "n-2", Type: node.SortationCenter, Operator: node.OperatorNetwork, RegionID: reg.ID(), Timezone: "America/Sao_Paulo",
 		Location: node.GeoLocation{PostalCode: "01310", CountryCode: "BR", Lat: &lat, Lon: &lon},
-	}, reg, repocontract.Now)
+	}, reg, nil, repocontract.Now)
 	if err != nil {
 		t.Fatal(err)
 	}

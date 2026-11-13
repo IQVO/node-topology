@@ -38,7 +38,7 @@ func mkNode(t *testing.T, id string, typ node.Type, status node.Status) *node.No
 		in.Operator = node.OperatorVendor
 		in.Vendor = &node.VendorRef{VendorID: "vendor-77", VendorNodeCode: "code-" + id}
 	}
-	n, _, err := node.Register(in, se(t), t0)
+	n, _, err := node.Register(in, se(t), nil, t0)
 	if err != nil {
 		t.Fatal(err)
 	}

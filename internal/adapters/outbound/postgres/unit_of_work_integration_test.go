@@ -81,7 +81,7 @@ func TestEncodeFailureWritesNoOutboxRowOfTheBatch(t *testing.T) {
 	_, registered, err := node.Register(node.Registration{
 		ID: "node-2", Type: node.DeliveryStation, Operator: node.OperatorNetwork, RegionID: reg.ID(),
 		Timezone: "America/Sao_Paulo", Location: node.GeoLocation{PostalCode: "01310", CountryCode: "BR"},
-	}, reg, repocontract.Now)
+	}, reg, nil, repocontract.Now)
 	noErr(t, err)
 	activated, err := n.Activate(repocontract.Now)
 	noErr(t, err)

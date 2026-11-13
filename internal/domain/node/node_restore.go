@@ -10,7 +10,8 @@ import (
 // fromSnapshot copies a validated snapshot into a node.
 func fromSnapshot(s Snapshot) *Node {
 	n := &Node{
-		id: s.ID, typ: s.Type, subtype: s.Subtype, operator: s.Operator, regionID: s.RegionID,
+		id: s.ID, typ: s.Type, subtype: s.Subtype, operator: s.Operator,
+		servingStation: s.ServingStationNodeID, regionID: s.RegionID,
 		timezone: s.Timezone, location: s.Location.clone(), status: s.Status,
 		activatedAt: shared.UTC(s.ActivatedAt), suspendedAt: shared.UTC(s.SuspendedAt),
 		suspendReason: s.SuspendReason, retiredAt: shared.UTC(s.RetiredAt), version: s.Version,

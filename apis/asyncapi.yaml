@@ -128,7 +128,7 @@ components:
       name: NodeRegistered
       title: Node registered
       summary: A node was registered in state PROPOSED.
-      description: "`type` = `com.retailnetwork.logistics.node-topology.node.NodeRegistered`; subject and key = the nodeId. Raised by RegisterNode. Capabilities are not on the wire: derive them from `nodeType` (policy DefaultCapabilitiesByType). `subtype`, `vendorId` and `vendorNodeCode` are null when not applicable (network-operated nodes have no vendor)."
+      description: "`type` = `com.retailnetwork.logistics.node-topology.node.NodeRegistered`; subject and key = the nodeId. Raised by RegisterNode. Capabilities are not on the wire: derive them from `nodeType` (policy DefaultCapabilitiesByType). `subtype`, `vendorId` and `vendorNodeCode` are null when not applicable (network-operated nodes have no vendor). `servingStationNodeId` is null unless the node is a PICKUP_POINT (ADR 0017)."
       contentType: application/cloudevents+json
       tags:
         - name: node
@@ -485,7 +485,7 @@ components:
 
     NodeType:
       type: string
-      enum: [FULFILLMENT_CENTER, INBOUND_CROSS_DOCK, RETURNS_CENTER, SORTATION_CENTER, DELIVERY_STATION, AIR_HUB]
+      enum: [FULFILLMENT_CENTER, INBOUND_CROSS_DOCK, RETURNS_CENTER, SORTATION_CENTER, DELIVERY_STATION, AIR_HUB, PICKUP_POINT]
 
     NodeSubtype:
       type: string
@@ -493,7 +493,7 @@ components:
 
     NodeOperator:
       type: string
-      enum: [NETWORK, VENDOR]
+      enum: [NETWORK, VENDOR, PARTNER]
 
     LaneMode:
       type: string
@@ -551,7 +551,7 @@ components:
           properties:
             data:
               type: object
-              required: [nodeId, nodeType, subtype, operator, vendorId, vendorNodeCode, regionId, timezone, postalCode, countryCode]
+              required: [nodeId, nodeType, subtype, operator, vendorId, vendorNodeCode, servingStationNodeId, regionId, timezone, postalCode, countryCode]
               properties:
                 nodeId: { type: string }
                 nodeType: { $ref: "#/components/schemas/NodeType" }
@@ -563,6 +563,7 @@ components:
                 operator: { $ref: "#/components/schemas/NodeOperator" }
                 vendorId: { type: [string, "null"], description: Set when operator is VENDOR; null otherwise. }
                 vendorNodeCode: { type: [string, "null"], description: The vendor's own code of the node; set when operator is VENDOR; null otherwise. }
+                servingStationNodeId: { type: [string, "null"], description: The serving delivery station of a PICKUP_POINT; null for every other node type (ADR 0017). }
                 regionId: { type: string }
                 timezone: { type: string, description: IANA time zone of the building. }
                 postalCode: { type: string }

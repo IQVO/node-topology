@@ -9,6 +9,8 @@ var (
 	// vendor may register only FULFILLMENT_CENTER, INBOUND_CROSS_DOCK or
 	// RETURNS_CENTER nodes (422).
 	ErrOperatorNotAllowedForNodeType = errors.New("operator not allowed for node type")
+	ErrServingStationNotAllowed      = errors.New("serving station not allowed")
+	ErrPointPrefixNotLabellable      = errors.New("pickup point postal code is not labellable")
 	// ErrVendorNodeCodeTaken: vendorNodeCode is unique per vendor (409). Raised
 	// by the repository on its unique index (ADR 0002, A10).
 	ErrVendorNodeCodeTaken = errors.New("vendor node code taken")
