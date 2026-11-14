@@ -267,14 +267,14 @@ func assertRow(t *testing.T, msg outbox.Message, tc goldenCase) {
 }
 
 // TestEncoderCoversEveryPublishedEvent keeps the golden table in step with
-// the catalogue: ten events, ten distinct names.
+// the catalogue: eleven events, eleven distinct names.
 func TestEncoderCoversEveryPublishedEvent(t *testing.T) {
 	names := map[string]bool{}
 	for _, tc := range goldenCases() {
 		names[tc.event.EventName()] = true
 	}
-	if len(names) != 10 {
-		t.Fatalf("golden table covers %d distinct events, want 10: %v", len(names), names)
+	if len(names) != 11 {
+		t.Fatalf("golden table covers %d distinct events, want 11: %v", len(names), names)
 	}
 }
 
