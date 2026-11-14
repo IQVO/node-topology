@@ -21,7 +21,7 @@ Three binaries are built into one image (`Dockerfile` loops over `cmd/*/`; `ENTR
 
 REST, MCP and A2A are unauthenticated by fleet decision; reachability is the cluster and gateway boundary.
 
-- **REST** (`internal/adapters/inbound/http/server.go`): the 15 operations of `apis/openapi.yaml` on a chi router plus `/healthz` and `/readyz`; every state-changing route sits behind the `Idempotency-Key` middleware (24 h replay window, table `idempotency_keys`). Errors are RFC 9457 problems.
+- **REST** (`internal/adapters/inbound/http/server.go`): the 16 operations of `apis/openapi.yaml` on a chi router plus `/healthz` and `/readyz`; every state-changing route sits behind the `Idempotency-Key` middleware (24 h replay window, table `idempotency_keys`). Errors are RFC 9457 problems.
 - **The outbox relay** (`internal/adapters/outbound/outbox/relay.go`, started in `cmd/api/relay.go`): the always-on loop that drains unpublished `outbox_events` rows to Kafka every `OUTBOX_RELAY_INTERVAL` (batch 100, one send at a time in `id` order, `FOR UPDATE SKIP LOCKED` claims in `internal/adapters/outbound/postgres/outbox_drain.go`). A full batch is followed immediately by another pass. Only `cmd/api` runs it; `cmd/mcp` and `cmd/a2a` have no write use case wired and cannot append to the outbox.
 - **No consumers.** There is no Kafka consumer, no consumer group, no inbox table and no `*_CONSUMER_GROUP` variable: the service is the root producer of the network's shared event streams.
 
@@ -71,7 +71,7 @@ An empty `image.tag` resolves to `v<appVersion>`, the tag the `release` job publ
 
 | Direction | Topic | Notes |
 | --- | --- | --- |
-| produced | `retailnetwork.node-topology.events` | all nine event types; key and CloudEvents `subject` are the aggregate id; `acks=all`, hash balancer |
+| produced | `retailnetwork.node-topology.events` | all ten event types; key and CloudEvents `subject` are the aggregate id; `acks=all`, hash balancer |
 | consumed | none | no consumer group exists |
 
 There is no dead-letter topic: nothing is consumed. The producer-side equivalent is the outbox attempt cap, below.
