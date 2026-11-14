@@ -31,6 +31,8 @@ func registerRulesSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the last command published an? "([A-Za-z]+)" event whose "([A-Za-z.]+)" is "([^"]*)"$`, w.eventFieldIs)
 	sc.Step(`^the outbox holds (\d+) "([A-Za-z]+)" events? in total$`, w.outboxHolds)
 
+	registerProfileRuleSteps(sc, w)
+
 	sc.Step(`^the next cursor of the response is remembered$`, w.rememberCursor)
 	sc.Step(`^a GET request is sent to "([^"]*)" with the remembered cursor$`, w.getWithCursor)
 }
