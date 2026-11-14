@@ -16,9 +16,11 @@ type RegisterNodeCommand struct {
 	Subtype  node.Subtype
 	Operator node.Operator
 	Vendor   *node.VendorRef
-	RegionID region.ID
-	Timezone string
-	Location node.GeoLocation
+	// ServingStationNodeID is required when Type is PICKUP_POINT (ADR 0017).
+	ServingStationNodeID string
+	RegionID             region.ID
+	Timezone             string
+	Location             node.GeoLocation
 }
 
 // RegisterNode registers a node in PROPOSED.
@@ -44,10 +46,15 @@ func (uc *RegisterNode) register(ctx context.Context, cmd RegisterNodeCommand) (
 		if err != nil {
 			return views.Node{}, err
 		}
+		station, err := uc.servingStation(ctx, cmd)
+		if err != nil {
+			return views.Node{}, err
+		}
 		n, events, err := node.Register(node.Registration{
 			ID: uc.IDs.NewNodeID(), Type: cmd.Type, Subtype: cmd.Subtype, Operator: cmd.Operator,
-			Vendor: cmd.Vendor, RegionID: cmd.RegionID, Timezone: cmd.Timezone, Location: cmd.Location,
-		}, reg, uc.now())
+			Vendor: cmd.Vendor, ServingStationNodeID: node.ID(cmd.ServingStationNodeID),
+			RegionID: cmd.RegionID, Timezone: cmd.Timezone, Location: cmd.Location,
+		}, reg, station, uc.now())
 		if err != nil {
 			return views.Node{}, err
 		}
@@ -142,4 +149,20 @@ func (uc *RetireNode) Execute(ctx context.Context, id node.ID) (views.Node, erro
 	return uc.mutateNode(ctx, id, func(n *node.Node, now time.Time) ([]shared.Event, error) {
 		return n.Retire(now)
 	})
+}
+
+// servingStation loads the serving delivery station of a PICKUP_POINT: the
+// same ACTIVE-DELIVERY_STATION invariant the service area enforces (ADR 0017).
+func (uc *RegisterNode) servingStation(ctx context.Context, cmd RegisterNodeCommand) (*node.Node, error) {
+	if cmd.Type != node.PickupPoint {
+		return nil, nil
+	}
+	if !shared.ValidID(cmd.ServingStationNodeID) {
+		return nil, node.ErrServingStationNotAllowed
+	}
+	st, err := uc.Nodes.Get(ctx, node.ID(cmd.ServingStationNodeID))
+	if err != nil {
+		return nil, err
+	}
+	return st, nil
 }

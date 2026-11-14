@@ -56,13 +56,17 @@ type skillDTO struct {
 	summary        string
 }
 
-// servingStation is the composed read DTO of the serving_station skill.
+// servingStation is the composed read DTO of the serving_station skill. The
+// delivery mode and the carrier options appear only on a CARRIER_HANDOFF
+// area (ADR 0016).
 type servingStation struct {
-	PostalPrefix          string   `json:"postalPrefix"`
-	DeliveryStationNodeID string   `json:"deliveryStationNodeId"`
-	RegionID              string   `json:"regionId"`
-	AssignmentVersion     int      `json:"assignmentVersion"`
-	Station               nodeView `json:"station"`
+	PostalPrefix          string              `json:"postalPrefix"`
+	DeliveryStationNodeID string              `json:"deliveryStationNodeId"`
+	RegionID              string              `json:"regionId"`
+	AssignmentVersion     int                 `json:"assignmentVersion"`
+	DeliveryMode          string              `json:"deliveryMode,omitempty"`
+	Carriers              []carrierOptionView `json:"carriers,omitempty"`
+	Station               nodeView            `json:"station"`
 }
 
 // nodeList is the DTO of the find_nodes skill.
@@ -72,12 +76,22 @@ type nodeList struct {
 }
 
 type capabilitiesView struct {
-	Outbound bool `json:"outbound"`
-	Inbound  bool `json:"inbound"`
-	Returns  bool `json:"returns"`
-	Sort     bool `json:"sort"`
-	LastMile bool `json:"lastMile"`
-	Air      bool `json:"air"`
+	Outbound   bool `json:"outbound"`
+	Inbound    bool `json:"inbound"`
+	Returns    bool `json:"returns"`
+	Sort       bool `json:"sort"`
+	LastMile   bool `json:"lastMile"`
+	Air        bool `json:"air"`
+	Collection bool `json:"collection"`
+}
+
+// carrierOptionView is one declared carrier option of a CARRIER_HANDOFF
+// service area (ADR 0016).
+type carrierOptionView struct {
+	CarrierID           string `json:"carrierId"`
+	HandoffNodeID       string `json:"handoffNodeId"`
+	CostPerPackageCents int64  `json:"costPerPackageCents"`
+	TransitMinutes      int    `json:"transitMinutes"`
 }
 
 type dayHoursView struct {
@@ -114,18 +128,19 @@ type profileView struct {
 // where the skill asks for it (serving_station); find_nodes carries the
 // profile revision alone, so a listing stays small.
 type nodeView struct {
-	NodeID          string           `json:"nodeId"`
-	NodeType        string           `json:"nodeType"`
-	Subtype         string           `json:"subtype,omitempty"`
-	Operator        string           `json:"operator"`
-	RegionID        string           `json:"regionId"`
-	Timezone        string           `json:"timezone"`
-	PostalCode      string           `json:"postalCode"`
-	CountryCode     string           `json:"countryCode"`
-	Capabilities    capabilitiesView `json:"capabilities"`
-	Status          string           `json:"status"`
-	ProfileRevision int              `json:"profileRevision,omitempty"`
-	Profile         *profileView     `json:"operationalProfile,omitempty"`
+	NodeID               string           `json:"nodeId"`
+	NodeType             string           `json:"nodeType"`
+	Subtype              string           `json:"subtype,omitempty"`
+	Operator             string           `json:"operator"`
+	ServingStationNodeID string           `json:"servingStationNodeId,omitempty"`
+	RegionID             string           `json:"regionId"`
+	Timezone             string           `json:"timezone"`
+	PostalCode           string           `json:"postalCode"`
+	CountryCode          string           `json:"countryCode"`
+	Capabilities         capabilitiesView `json:"capabilities"`
+	Status               string           `json:"status"`
+	ProfileRevision      int              `json:"profileRevision,omitempty"`
+	Profile              *profileView     `json:"operationalProfile,omitempty"`
 }
 
 // instant formats an instant as RFC 3339 UTC; the zero time is "".
@@ -161,11 +176,13 @@ func toProfile(p views.OperationalProfile) profileView {
 func toNode(n views.Node, withProfile bool) nodeView {
 	out := nodeView{
 		NodeID: n.NodeID, NodeType: n.NodeType, Subtype: n.Subtype, Operator: n.Operator,
-		RegionID: n.RegionID, Timezone: n.Timezone,
+		ServingStationNodeID: n.ServingStationNodeID,
+		RegionID:             n.RegionID, Timezone: n.Timezone,
 		PostalCode: n.Location.PostalCode, CountryCode: n.Location.CountryCode,
 		Capabilities: capabilitiesView{
 			Outbound: n.Capabilities.Outbound, Inbound: n.Capabilities.Inbound, Returns: n.Capabilities.Returns,
 			Sort: n.Capabilities.Sort, LastMile: n.Capabilities.LastMile, Air: n.Capabilities.Air,
+			Collection: n.Capabilities.Collection,
 		},
 		Status: n.Status,
 	}
@@ -179,13 +196,25 @@ func toNode(n views.Node, withProfile bool) nodeView {
 	return out
 }
 
-// toServingStation composes the service area and its station node.
+// toServingStation composes the service area and its station node. The mode
+// and the carrier options ride along on a CARRIER_HANDOFF area (ADR 0016).
 func toServingStation(area views.ServiceArea, station views.Node) servingStation {
-	return servingStation{
+	out := servingStation{
 		PostalPrefix: area.PostalPrefix, DeliveryStationNodeID: area.DeliveryStationNodeID,
 		RegionID: area.RegionID, AssignmentVersion: area.AssignmentVersion,
 		Station: toNode(station, true),
 	}
+	if area.DeliveryMode != "" && area.DeliveryMode != "NETWORK_ROUTE" {
+		out.DeliveryMode = area.DeliveryMode
+		out.Carriers = make([]carrierOptionView, len(area.Carriers))
+		for i, o := range area.Carriers {
+			out.Carriers[i] = carrierOptionView{
+				CarrierID: o.CarrierID, HandoffNodeID: o.HandoffNodeID,
+				CostPerPackageCents: o.CostPerPackageCents, TransitMinutes: o.TransitMinutes,
+			}
+		}
+	}
+	return out
 }
 
 // summary is the one-line text of a serving_station answer.

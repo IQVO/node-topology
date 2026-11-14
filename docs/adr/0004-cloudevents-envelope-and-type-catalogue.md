@@ -62,7 +62,7 @@ type: com.retailnetwork.logistics.node-topology.region.RegionDefined stream: eve
 | `LaneOpened` | `laneId` | OpenLane is saved | `{laneId, originNodeId, destinationNodeId, mode, nominalTransitMinutes}` |
 | `LaneClosed` | `laneId` | CloseLane is saved | `{laneId, closedAt}` |
 | `LaneCostDeclared` | `laneId` | DeclareLaneCost is saved (every declaration, ADR 0014) | `{laneId, costPerUnitCents, declaredAt}` |
-| `ServiceAreaAssigned` | `postalPrefix` | each saved assignment version | `{postalPrefix, deliveryStationNodeId, regionId, assignmentVersion}` |
+| `ServiceAreaAssigned` | `postalPrefix` | each saved assignment version | `{postalPrefix, deliveryStationNodeId, regionId, assignmentVersion, deliveryMode?, carriers?}` |
 | `RegionDefined` | `regionId` | DefineRegion is saved | `{regionId, code, name}` |
 
 Payload rules:
@@ -70,6 +70,9 @@ Payload rules:
 - The `data` field lists are exactly the model's `publishes[].data` lists. Wire
   types and the nullability below are an implementation decision recorded in
   `apis/asyncapi.yaml` (see ADR 0002, assumption A9).
+- `ServiceAreaAssigned` carries `deliveryMode` and `carriers` only on a CARRIER_HANDOFF area (ADR 0016); both are
+  omitted on a NETWORK_ROUTE area, so a consumer that predates the delivery mode decodes the event with its old
+  meaning. Same type and dataschema: the change is additive v1 on the existing event.
 - `NodeRegistered` carries `subtype`, `vendorId` and `vendorNodeCode` as JSON
   `null` when they do not apply. Capabilities are not on the wire: consumers
   derive them from `nodeType` (policy DefaultCapabilitiesByType).

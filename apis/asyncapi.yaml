@@ -128,7 +128,7 @@ components:
       name: NodeRegistered
       title: Node registered
       summary: A node was registered in state PROPOSED.
-      description: "`type` = `com.retailnetwork.logistics.node-topology.node.NodeRegistered`; subject and key = the nodeId. Raised by RegisterNode. Capabilities are not on the wire: derive them from `nodeType` (policy DefaultCapabilitiesByType). `subtype`, `vendorId` and `vendorNodeCode` are null when not applicable (network-operated nodes have no vendor)."
+      description: "`type` = `com.retailnetwork.logistics.node-topology.node.NodeRegistered`; subject and key = the nodeId. Raised by RegisterNode. Capabilities are not on the wire: derive them from `nodeType` (policy DefaultCapabilitiesByType). `subtype`, `vendorId` and `vendorNodeCode` are null when not applicable (network-operated nodes have no vendor). `servingStationNodeId` is null unless the node is a PICKUP_POINT (ADR 0017)."
       contentType: application/cloudevents+json
       tags:
         - name: node
@@ -392,7 +392,7 @@ components:
       name: ServiceAreaAssigned
       title: Service area assigned
       summary: A postal prefix was assigned to a delivery station under a new assignment version.
-      description: "`type` = `com.retailnetwork.logistics.node-topology.servicearea.ServiceAreaAssigned`; subject and key = the postalPrefix. Raised by AssignServiceArea, on first assignment and on every reassignment. Subject and Kafka key are the postalPrefix. `assignmentVersion` strictly increases per prefix; consumers keep the highest. `regionId` is the station's region."
+      description: "`type` = `com.retailnetwork.logistics.node-topology.servicearea.ServiceAreaAssigned`; subject and key = the postalPrefix. Raised by AssignServiceArea, on first assignment and on every reassignment. Subject and Kafka key are the postalPrefix. `assignmentVersion` strictly increases per prefix; consumers keep the highest. `regionId` is the station's region. `deliveryMode` and `carriers` are optional (ADR 0016): omitted on a NETWORK_ROUTE area, so a consumer that predates the delivery mode decodes the event with its old meaning; a CARRIER_HANDOFF area carries 1 to 4 options, each with carrierId, handoffNodeId, costPerPackageCents and transitMinutes, the handoff node an ACTIVE DELIVERY_STATION or SORTATION_CENTER."
       contentType: application/cloudevents+json
       tags:
         - name: servicearea
@@ -415,6 +415,32 @@ components:
               deliveryStationNodeId: "node-9b7e02"
               regionId: "region-se"
               assignmentVersion: 2
+        - name: serviceAreaAssignedCarrierHandoff
+          summary: A postal prefix was assigned for carrier handoff with two declared options (ADR 0016).
+          payload:
+            specversion: "1.0"
+            id: "7a1c4e8b-2d4f-4a63-9e55-1b0c9a4e5f21"
+            source: "/retailnetwork/node-topology"
+            type: "com.retailnetwork.logistics.node-topology.servicearea.ServiceAreaAssigned"
+            subject: "01310"
+            time: "2026-11-13T09:00:00Z"
+            datacontenttype: "application/json"
+            dataschema: "urn:retailnetwork:node-topology:events:ServiceAreaAssigned:v1"
+            data:
+              postalPrefix: "01310"
+              deliveryStationNodeId: "node-9b7e02"
+              regionId: "region-se"
+              assignmentVersion: 3
+              deliveryMode: "CARRIER_HANDOFF"
+              carriers:
+                - carrierId: "carrier-a"
+                  handoffNodeId: "node-5c21d8"
+                  costPerPackageCents: 320
+                  transitMinutes: 95
+                - carrierId: "carrier-b"
+                  handoffNodeId: "node-9b7e02"
+                  costPerPackageCents: 400
+                  transitMinutes: 60
 
     RegionDefined:
       name: RegionDefined
@@ -459,7 +485,7 @@ components:
 
     NodeType:
       type: string
-      enum: [FULFILLMENT_CENTER, INBOUND_CROSS_DOCK, RETURNS_CENTER, SORTATION_CENTER, DELIVERY_STATION, AIR_HUB]
+      enum: [FULFILLMENT_CENTER, INBOUND_CROSS_DOCK, RETURNS_CENTER, SORTATION_CENTER, DELIVERY_STATION, AIR_HUB, PICKUP_POINT]
 
     NodeSubtype:
       type: string
@@ -467,7 +493,7 @@ components:
 
     NodeOperator:
       type: string
-      enum: [NETWORK, VENDOR]
+      enum: [NETWORK, VENDOR, PARTNER]
 
     LaneMode:
       type: string
@@ -525,7 +551,7 @@ components:
           properties:
             data:
               type: object
-              required: [nodeId, nodeType, subtype, operator, vendorId, vendorNodeCode, regionId, timezone, postalCode, countryCode]
+              required: [nodeId, nodeType, subtype, operator, vendorId, vendorNodeCode, servingStationNodeId, regionId, timezone, postalCode, countryCode]
               properties:
                 nodeId: { type: string }
                 nodeType: { $ref: "#/components/schemas/NodeType" }
@@ -537,6 +563,7 @@ components:
                 operator: { $ref: "#/components/schemas/NodeOperator" }
                 vendorId: { type: [string, "null"], description: Set when operator is VENDOR; null otherwise. }
                 vendorNodeCode: { type: [string, "null"], description: The vendor's own code of the node; set when operator is VENDOR; null otherwise. }
+                servingStationNodeId: { type: [string, "null"], description: The serving delivery station of a PICKUP_POINT; null for every other node type (ADR 0017). }
                 regionId: { type: string }
                 timezone: { type: string, description: IANA time zone of the building. }
                 postalCode: { type: string }
@@ -680,6 +707,24 @@ components:
                 deliveryStationNodeId: { type: string, description: The DELIVERY_STATION that serves the prefix. }
                 regionId: { type: string }
                 assignmentVersion: { type: integer, minimum: 1 }
+                deliveryMode:
+                  type: string
+                  enum: [NETWORK_ROUTE, CARRIER_HANDOFF]
+                  description: How the area's last mile is served (ADR 0016); omitted on a NETWORK_ROUTE area, which a consumer decodes as the mode it always assumed.
+                carriers:
+                  type: array
+                  description: The declared carrier options of a CARRIER_HANDOFF area; omitted on a NETWORK_ROUTE area.
+                  items: { $ref: "#/components/schemas/CarrierOption" }
+
+    CarrierOption:
+      type: object
+      description: One declared external carrier of a CARRIER_HANDOFF service area (ADR 0016).
+      required: [carrierId, handoffNodeId, costPerPackageCents, transitMinutes]
+      properties:
+        carrierId: { type: string, description: The carrier's own identifier, unique within the area. }
+        handoffNodeId: { type: string, description: An ACTIVE DELIVERY_STATION or SORTATION_CENTER the network hands packages over at. }
+        costPerPackageCents: { type: integer, minimum: 0, maximum: 10000000, description: The carrier's declared cost of delivering one package, integer cents. }
+        transitMinutes: { type: integer, minimum: 1, description: The carrier's declared transit from the handoff node to the doorstep, in minutes. }
 
     RegionDefinedEvent:
       allOf:

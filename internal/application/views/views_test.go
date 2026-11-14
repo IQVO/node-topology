@@ -147,7 +147,7 @@ func TestNodeFromCarriesSortDwellAndCoordinates(t *testing.T) {
 	n, _, err := node.Register(node.Registration{
 		ID: "n-2", Type: node.SortationCenter, Operator: node.OperatorNetwork, RegionID: reg.ID(), Timezone: "America/Sao_Paulo",
 		Location: node.GeoLocation{PostalCode: "01310", CountryCode: "BR", Lat: &lat, Lon: &lon},
-	}, reg, repocontract.Now)
+	}, reg, nil, repocontract.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -265,7 +265,7 @@ func TestServiceAreaAndRegionFrom(t *testing.T) {
 	reg := repocontract.NewRegion(t, "r-1", "SP")
 	st := repocontract.NewActiveNode(t, reg, node.DeliveryStation, "n-s", "")
 	a := views.ServiceAreaFrom(repocontract.NewServiceArea(t, "013", st, reg, 3))
-	if a != (views.ServiceArea{PostalPrefix: "013", DeliveryStationNodeID: "n-s", RegionID: "r-1", AssignmentVersion: 3}) {
+	if !reflect.DeepEqual(a, views.ServiceArea{PostalPrefix: "013", DeliveryStationNodeID: "n-s", RegionID: "r-1", AssignmentVersion: 3}) {
 		t.Fatalf("service area = %+v", a)
 	}
 	requireKeys(t, wire(t, a), "postalPrefix", "deliveryStationNodeId", "regionId", "assignmentVersion")

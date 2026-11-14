@@ -10,6 +10,9 @@ import (
 	"github.com/claudioed/node-topology/internal/domain/servicearea"
 )
 
+// testTimezone is the IANA zone every builder registers with.
+const testTimezone = "America/Sao_Paulo"
+
 // Now is the instant every builder stamps its aggregates with.
 var Now = time.Date(2026, 10, 23, 12, 0, 0, 0, time.UTC)
 
@@ -42,7 +45,7 @@ func NewRegion(t testing.TB, id region.ID, code string) *region.Region {
 func Declaration(revision int) node.ProfileDeclaration {
 	return node.ProfileDeclaration{
 		Revision:            revision,
-		Timezone:            "America/Sao_Paulo",
+		Timezone:            testTimezone,
 		OperatingHours:      node.OperatingHours{node.Monday: {Start: "06:00", End: "22:00"}},
 		HandlingTimeMinutes: 30,
 		Cutoffs:             []node.CutoffSlot{{LocalTime: "14:00", Days: []node.Weekday{node.Monday}, MaxOrders: 10}},
@@ -58,13 +61,13 @@ func NewNode(t testing.TB, reg *region.Region, typ node.Type, id node.ID, code s
 	t.Helper()
 	in := node.Registration{
 		ID: id, Type: typ, Operator: node.OperatorNetwork, RegionID: reg.ID(),
-		Timezone: "America/Sao_Paulo", Location: node.GeoLocation{PostalCode: "01310", CountryCode: "BR"},
+		Timezone: testTimezone, Location: node.GeoLocation{PostalCode: "01310", CountryCode: "BR"},
 	}
 	if typ.AllowsOperator(node.OperatorVendor) {
 		in.Operator = node.OperatorVendor
 		in.Vendor = &node.VendorRef{VendorID: "vendor-1", VendorNodeCode: code}
 	}
-	n, _, err := node.Register(in, reg, Now)
+	n, _, err := node.Register(in, reg, nil, Now)
 	if err != nil {
 		t.Fatalf("register node %s: %v", id, err)
 	}
@@ -99,7 +102,7 @@ func NewLane(t testing.TB, id lane.ID, origin, destination *node.Node, mode lane
 // NewServiceArea assigns a prefix to an ACTIVE delivery station.
 func NewServiceArea(t testing.TB, prefix servicearea.PostalPrefix, station *node.Node, reg *region.Region, version int) *servicearea.ServiceArea {
 	t.Helper()
-	a, _, err := servicearea.Assign(prefix, version, station, reg, Now)
+	a, _, err := servicearea.Assign(prefix, version, station, reg, servicearea.CarrierDelivery{}, Now)
 	if err != nil {
 		t.Fatalf("assign %s: %v", prefix, err)
 	}

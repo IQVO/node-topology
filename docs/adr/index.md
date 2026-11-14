@@ -29,3 +29,5 @@ The *Status* column is copied from each ADR's own `## Status` section.
 | [0013](./0013-agent-authority-levels-and-complete-mcp-surface.md) | Agent authority levels and complete MCP surface | Accepted (2026-11-02) |
 | [0014](./0014-lane-cost-declaration.md) | lane cost declaration (cents, planner-declared) | Accepted (2026-11-05) |
 | [0015](./0015-fulfillment-centres-receive-inbound.md) | Fulfillment centres receive inbound | Accepted (2026-11-08) |
+| [0016](./0016-service-area-delivery-mode.md) | Service-area delivery mode and declared carrier options | Accepted (2026-11-13) |
+| [0017](./0017-pickup-points.md) | Pickup points and their serving delivery station | Accepted (2026-11-13) |

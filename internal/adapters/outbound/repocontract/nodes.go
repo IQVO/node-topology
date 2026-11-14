@@ -13,6 +13,7 @@ import (
 
 var nodeCases = []named{
 	{"save then get round-trips the snapshot with its profile", nodeRoundTrip},
+	{"a pickup point round-trips its serving station and PARTNER operator", pickupPointRoundTrip},
 	{unknownIDMiss, nodeGetMiss},
 	{"a loaded node does not alias stored state", nodeNoAliasing},
 	{"find by vendor reference hits and misses", nodeFindByVendorRef},
@@ -52,6 +53,32 @@ func saveActive(t *testing.T, f Fixture, reg *region.Region, typ node.Type, id n
 	got, err := f.Nodes.Get(ctx, id)
 	noErr(t, err)
 	return got
+}
+
+// pickupPointRoundTrip proves the serving station and the PARTNER operator
+// survive a save/read cycle on both repository twins (ADR 0017).
+func pickupPointRoundTrip(t *testing.T, f Fixture) {
+	t.Helper()
+	ctx := context.Background()
+	reg := seedRegion(t, f, regionOne, "SP")
+	st := saveActive(t, f, reg, node.DeliveryStation, "node-sta-1", "")
+	in := node.Registration{
+		ID: "node-pnt-1", Type: node.PickupPoint, Operator: node.OperatorPartner,
+		Vendor:               &node.VendorRef{VendorID: "partner-9", VendorNodeCode: "PP-1"},
+		ServingStationNodeID: st.ID(), RegionID: reg.ID(),
+		Timezone: testTimezone, Location: node.GeoLocation{PostalCode: "01310", CountryCode: "BR"},
+	}
+	n, _, err := node.Register(in, reg, st, Now)
+	noErr(t, err)
+	noErr(t, f.Nodes.Save(ctx, n))
+	got, err := f.Nodes.Get(ctx, n.ID())
+	noErr(t, err)
+	if got.ServingStationNodeID() != st.ID() {
+		t.Fatalf("serving station = %q, want %q", got.ServingStationNodeID(), st.ID())
+	}
+	if got.Type() != node.PickupPoint || got.Operator() != node.OperatorPartner {
+		t.Fatalf("type/operator = %s/%s", got.Type(), got.Operator())
+	}
 }
 
 func nodeRoundTrip(t *testing.T, f Fixture) {

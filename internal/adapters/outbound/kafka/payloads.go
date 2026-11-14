@@ -6,21 +6,23 @@ import (
 
 // Wire payloads (CloudEvents `data`, camelCase JSON), exactly the ones pinned
 // in apis/asyncapi.yaml. Optional fields are omitted when unset, except the
-// three nullable NodeRegistered fields (subtype, vendorId, vendorNodeCode),
-// which are always present and null when they do not apply (ADR 0004).
+// four nullable NodeRegistered fields (subtype, vendorId, vendorNodeCode,
+// servingStationNodeId), which are always present and null when they do not
+// apply (ADR 0004, ADR 0017).
 // Arrays are always present. Instants are RFC 3339 UTC strings.
 
 type registeredPayload struct {
-	NodeID         string  `json:"nodeId"`
-	NodeType       string  `json:"nodeType"`
-	Subtype        *string `json:"subtype"`
-	Operator       string  `json:"operator"`
-	VendorID       *string `json:"vendorId"`
-	VendorNodeCode *string `json:"vendorNodeCode"`
-	RegionID       string  `json:"regionId"`
-	Timezone       string  `json:"timezone"`
-	PostalCode     string  `json:"postalCode"`
-	CountryCode    string  `json:"countryCode"`
+	NodeID               string  `json:"nodeId"`
+	NodeType             string  `json:"nodeType"`
+	Subtype              *string `json:"subtype"`
+	Operator             string  `json:"operator"`
+	VendorID             *string `json:"vendorId"`
+	VendorNodeCode       *string `json:"vendorNodeCode"`
+	ServingStationNodeID *string `json:"servingStationNodeId"`
+	RegionID             string  `json:"regionId"`
+	Timezone             string  `json:"timezone"`
+	PostalCode           string  `json:"postalCode"`
+	CountryCode          string  `json:"countryCode"`
 }
 
 type dayHoursPayload struct {
@@ -125,11 +127,25 @@ type laneCostDeclaredPayload struct {
 	DeclaredAt       string `json:"declaredAt"`
 }
 
+// carrierOptionPayload is one declared carrier option of a CARRIER_HANDOFF
+// service area (ADR 0016).
+type carrierOptionPayload struct {
+	CarrierID           string `json:"carrierId"`
+	HandoffNodeID       string `json:"handoffNodeId"`
+	CostPerPackageCents int64  `json:"costPerPackageCents"`
+	TransitMinutes      int    `json:"transitMinutes"`
+}
+
+// serviceAreaPayload: deliveryMode and carriers are omitted when the area is
+// a NETWORK_ROUTE area, so a consumer that predates the delivery mode (ADR
+// 0016) keeps decoding the event with its old meaning.
 type serviceAreaPayload struct {
-	PostalPrefix          string `json:"postalPrefix"`
-	DeliveryStationNodeID string `json:"deliveryStationNodeId"`
-	RegionID              string `json:"regionId"`
-	AssignmentVersion     int    `json:"assignmentVersion"`
+	PostalPrefix          string                 `json:"postalPrefix"`
+	DeliveryStationNodeID string                 `json:"deliveryStationNodeId"`
+	RegionID              string                 `json:"regionId"`
+	AssignmentVersion     int                    `json:"assignmentVersion"`
+	DeliveryMode          string                 `json:"deliveryMode,omitempty"`
+	Carriers              []carrierOptionPayload `json:"carriers,omitempty"`
 }
 
 type regionPayload struct {
@@ -150,7 +166,8 @@ func nullable[S ~string](s S) *string {
 func registeredData(e node.NodeRegistered) registeredPayload {
 	return registeredPayload{
 		NodeID: string(e.NodeID), NodeType: string(e.NodeType), Subtype: nullable(e.Subtype), Operator: string(e.Operator),
-		VendorID: nullable(e.VendorID), VendorNodeCode: nullable(e.VendorNodeCode), RegionID: string(e.RegionID),
+		VendorID: nullable(e.VendorID), VendorNodeCode: nullable(e.VendorNodeCode),
+		ServingStationNodeID: nullable(string(e.ServingStationNodeID)), RegionID: string(e.RegionID),
 		Timezone: e.Timezone, PostalCode: e.PostalCode, CountryCode: e.CountryCode,
 	}
 }

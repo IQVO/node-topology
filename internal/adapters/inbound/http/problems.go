@@ -85,6 +85,8 @@ var problemCatalogue = []struct {
 	{node.ErrIncompleteOperationalProfile, problem{http.StatusConflict, "incomplete-operational-profile", "The operational profile is incomplete"}},
 	{node.ErrNodeRetired, problem{http.StatusConflict, "node-retired", "The node is retired"}},
 	{node.ErrOperatorNotAllowedForNodeType, problem{http.StatusUnprocessableEntity, "operator-not-allowed-for-node-type", "This operator may not run this node type"}},
+	{node.ErrServingStationNotAllowed, problem{http.StatusUnprocessableEntity, "serving-station-not-allowed", "A pickup point needs an active delivery station as its serving station; other node types carry none"}},
+	{node.ErrPointPrefixNotLabellable, problem{http.StatusUnprocessableEntity, "pickup-point-postal-code-not-labellable", "A pickup point's postal code must be uppercase letters and digits only (the label charset)"}},
 	{node.ErrSubtypeNotAllowed, problem{http.StatusUnprocessableEntity, "subtype-not-allowed", "A subtype is not allowed for this node type"}},
 	{node.ErrCutoffOutsideOperatingHours, problem{http.StatusUnprocessableEntity, "cutoff-outside-operating-hours", "A cutoff falls outside the operating hours of its day"}},
 	{node.ErrSortDwellNotAllowed, problem{http.StatusUnprocessableEntity, "sort-dwell-not-allowed", "Only sorting nodes declare a sort dwell"}},
@@ -97,6 +99,8 @@ var problemCatalogue = []struct {
 	// ServiceArea.
 	{servicearea.ErrNotADeliveryStation, problem{http.StatusConflict, "not-a-delivery-station", "The node is not an ACTIVE delivery station"}},
 	{servicearea.ErrStaleAssignmentVersion, problem{http.StatusConflict, "stale-assignment-version", "The assignment version is not newer than the current one"}},
+	{servicearea.ErrHandoffNodeNotUsable, problem{http.StatusConflict, "handoff-node-not-usable", "A carrier option's handoff node is not an ACTIVE delivery station or sortation centre"}},
+	{servicearea.ErrCarrierOptionsInvalid, problem{http.StatusUnprocessableEntity, "carrier-options-invalid", "The carrier options do not match the delivery mode"}},
 	// Region.
 	{region.ErrRegionCodeTaken, problem{http.StatusConflict, "region-code-taken", "A region with this code exists"}},
 	{region.ErrUnknownRegion, problem{http.StatusUnprocessableEntity, "unknown-region", "The region does not exist"}},

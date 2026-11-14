@@ -5,7 +5,7 @@ import "slices"
 // Type is a node type of the model's node_types table.
 type Type string
 
-// The six node types.
+// The seven node types.
 const (
 	FulfillmentCenter Type = "FULFILLMENT_CENTER"
 	InboundCrossDock  Type = "INBOUND_CROSS_DOCK"
@@ -13,15 +13,17 @@ const (
 	SortationCenter   Type = "SORTATION_CENTER"
 	DeliveryStation   Type = "DELIVERY_STATION"
 	AirHub            Type = "AIR_HUB"
+	PickupPoint       Type = "PICKUP_POINT"
 )
 
 // Operator says who runs the building.
 type Operator string
 
-// The two operators.
+// The three operators. PARTNER is allowed only on a PICKUP_POINT (ADR 0017).
 const (
 	OperatorNetwork Operator = "NETWORK"
 	OperatorVendor  Operator = "VENDOR"
+	OperatorPartner Operator = "PARTNER"
 )
 
 // Subtype refines a FULFILLMENT_CENTER.
@@ -52,12 +54,13 @@ const (
 // Capabilities are what a node can do, derived from its type
 // (policy DefaultCapabilitiesByType) and never set by a caller.
 type Capabilities struct {
-	Outbound bool
-	Inbound  bool
-	Returns  bool
-	Sort     bool
-	LastMile bool
-	Air      bool
+	Outbound   bool
+	Inbound    bool
+	Returns    bool
+	Sort       bool
+	LastMile   bool
+	Air        bool
+	Collection bool
 }
 
 // TypeRule is one row of the model's node_types table.
@@ -69,7 +72,7 @@ type TypeRule struct {
 
 // allTypes lists the types in the model's order.
 var allTypes = []Type{
-	FulfillmentCenter, InboundCrossDock, ReturnsCenter, SortationCenter, DeliveryStation, AirHub,
+	FulfillmentCenter, InboundCrossDock, ReturnsCenter, SortationCenter, DeliveryStation, AirHub, PickupPoint,
 }
 
 // typeRules embeds the model's node_types: operator_allowed, capabilities and
@@ -90,12 +93,15 @@ var typeRules = map[Type]TypeRule{
 	SortationCenter:  {Operators: []Operator{OperatorNetwork}, Capabilities: Capabilities{Sort: true}},
 	DeliveryStation:  {Operators: []Operator{OperatorNetwork}, Capabilities: Capabilities{LastMile: true}},
 	AirHub:           {Operators: []Operator{OperatorNetwork}, Capabilities: Capabilities{Sort: true, Air: true}},
+	// A pickup point is run by the network or a partner; it collects
+	// packages, it is never a lane endpoint (ADR 0017).
+	PickupPoint: {Operators: []Operator{OperatorNetwork, OperatorPartner}, Capabilities: Capabilities{Collection: true}},
 }
 
 // Types returns every node type in the model's order.
 func Types() []Type { return slices.Clone(allTypes) }
 
-// Valid reports whether t is one of the six node types.
+// Valid reports whether t is one of the seven node types.
 func (t Type) Valid() bool {
 	_, ok := typeRules[t]
 	return ok
@@ -121,8 +127,10 @@ func (t Type) AllowsOperator(o Operator) bool { return slices.Contains(typeRules
 // AllowsSubtype reports whether s is one of the type's subtypes.
 func (t Type) AllowsSubtype(s Subtype) bool { return slices.Contains(typeRules[t].Subtypes, s) }
 
-// Valid reports whether o is NETWORK or VENDOR.
-func (o Operator) Valid() bool { return o == OperatorNetwork || o == OperatorVendor }
+// Valid reports whether o is NETWORK, VENDOR or PARTNER.
+func (o Operator) Valid() bool {
+	return o == OperatorNetwork || o == OperatorVendor || o == OperatorPartner
+}
 
 // Valid reports whether s is one of the four states.
 func (s Status) Valid() bool {

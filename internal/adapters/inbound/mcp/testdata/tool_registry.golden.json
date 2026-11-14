@@ -35,6 +35,9 @@
             "air": {
               "type": "boolean"
             },
+            "collection": {
+              "type": "boolean"
+            },
             "inbound": {
               "type": "boolean"
             },
@@ -57,7 +60,8 @@
             "returns",
             "sort",
             "lastMile",
-            "air"
+            "air",
+            "collection"
           ],
           "type": "object"
         },
@@ -221,6 +225,9 @@
           "type": "string"
         },
         "retiredAt": {
+          "type": "string"
+        },
+        "servingStationNodeId": {
           "type": "string"
         },
         "status": {
@@ -441,6 +448,9 @@
                   "air": {
                     "type": "boolean"
                   },
+                  "collection": {
+                    "type": "boolean"
+                  },
                   "inbound": {
                     "type": "boolean"
                   },
@@ -463,7 +473,8 @@
                   "returns",
                   "sort",
                   "lastMile",
-                  "air"
+                  "air",
+                  "collection"
                 ],
                 "type": "object"
               },
@@ -629,6 +640,9 @@
               "retiredAt": {
                 "type": "string"
               },
+              "servingStationNodeId": {
+                "type": "string"
+              },
               "status": {
                 "type": "string"
               },
@@ -748,7 +762,7 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
-    "description": "Resolve which delivery station serves a postal prefix: the prefix (matched exactly), the deliveryStationNodeId, the station's regionId and the assignmentVersion. Read-only; an unassigned prefix fails with not-found.",
+    "description": "Resolve which delivery station serves a postal prefix: the prefix (matched exactly), the deliveryStationNodeId, the station's regionId, the assignmentVersion, and — when the area's last mile is a carrier handoff — the deliveryMode (CARRIER_HANDOFF) and the declared carrier options (carrierId, handoffNodeId, costPerPackageCents, transitMinutes); an area served by the network's own route carries no mode or options. Read-only; an unassigned prefix fails with not-found.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -768,6 +782,39 @@
       "properties": {
         "assignmentVersion": {
           "type": "integer"
+        },
+        "carriers": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "carrierId": {
+                "type": "string"
+              },
+              "costPerPackageCents": {
+                "type": "integer"
+              },
+              "handoffNodeId": {
+                "type": "string"
+              },
+              "transitMinutes": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "carrierId",
+              "handoffNodeId",
+              "costPerPackageCents",
+              "transitMinutes"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "deliveryMode": {
+          "type": "string"
         },
         "deliveryStationNodeId": {
           "type": "string"

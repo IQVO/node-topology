@@ -37,7 +37,7 @@ func mkNode(t *testing.T, id string, typ node.Type, regionID string, status node
 		in.Operator = node.OperatorVendor
 		in.Vendor = &node.VendorRef{VendorID: "vendor-77", VendorNodeCode: "code-" + id}
 	}
-	n, _, err := node.Register(in, mkRegion(t, regionID), t0)
+	n, _, err := node.Register(in, mkRegion(t, regionID), nil, t0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func station(t *testing.T) *node.Node {
 
 func firstAssignment(t *testing.T) *ServiceArea {
 	t.Helper()
-	sa, _, err := Assign("01310", 1, station(t), mkRegion(t, "region-se"), t0)
+	sa, _, err := Assign("01310", 1, station(t), mkRegion(t, "region-se"), CarrierDelivery{}, t0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func firstAssignment(t *testing.T) *ServiceArea {
 
 func TestAssignFirstAssignment(t *testing.T) {
 	brt := time.FixedZone("BRT", -3*3600)
-	sa, events, err := Assign("01310", 1, station(t), mkRegion(t, "region-se"), t0.In(brt))
+	sa, events, err := Assign("01310", 1, station(t), mkRegion(t, "region-se"), CarrierDelivery{}, t0.In(brt))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,6 +97,7 @@ func TestAssignFirstAssignment(t *testing.T) {
 	want := ServiceAreaAssigned{
 		Header: shared.Header{Version: 1, At: t0}, PostalPrefix: "01310", DeliveryStationNodeID: "node-9b7e02",
 		RegionID: "region-se", AssignmentVersion: 1,
+		DeliveryMode: ModeNetworkRoute,
 	}
 	if !reflect.DeepEqual(events, []shared.Event{want}) {
 		t.Fatalf("events = %+v", events)
@@ -146,7 +147,7 @@ func TestAssignRejectionsOnFirstAssignment(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			sa, events, err := Assign(tc.prefix, tc.version, tc.station(t), tc.region(t), t0)
+			sa, events, err := Assign(tc.prefix, tc.version, tc.station(t), tc.region(t), CarrierDelivery{}, t0)
 			if !errors.Is(err, tc.want) {
 				t.Fatalf("want %v, got %v", tc.want, err)
 			}
@@ -159,7 +160,7 @@ func TestAssignRejectionsOnFirstAssignment(t *testing.T) {
 
 func TestAssignBoundaryValues(t *testing.T) {
 	for _, v := range []int{1, MaxAssignmentVersion} {
-		if _, _, err := Assign("01310", v, station(t), mkRegion(t, "region-se"), t0); err != nil {
+		if _, _, err := Assign("01310", v, station(t), mkRegion(t, "region-se"), CarrierDelivery{}, t0); err != nil {
 			t.Errorf("version %d must be accepted: %v", v, err)
 		}
 	}
@@ -177,17 +178,17 @@ func TestAssignBoundaryValues(t *testing.T) {
 
 func TestAssignCheckOrder(t *testing.T) {
 	// values beat the station
-	if _, _, err := Assign("", 1, nil, nil, t0); !errors.Is(err, shared.ErrValidation) {
+	if _, _, err := Assign("", 1, nil, nil, CarrierDelivery{}, t0); !errors.Is(err, shared.ErrValidation) {
 		t.Fatalf("values first: %v", err)
 	}
 	// the station beats a stale version and the region
 	sa := firstAssignment(t)
 	bad := mkNode(t, "n1", node.SortationCenter, "region-se", node.StatusActive)
-	if _, err := sa.Reassign(1, bad, nil, t1); !errors.Is(err, ErrNotADeliveryStation) {
+	if _, err := sa.Reassign(1, bad, nil, CarrierDelivery{}, t1); !errors.Is(err, ErrNotADeliveryStation) {
 		t.Fatalf("station before version: %v", err)
 	}
 	// the version beats the region
-	if _, err := sa.Reassign(1, station(t), nil, t1); !errors.Is(err, ErrStaleAssignmentVersion) {
+	if _, err := sa.Reassign(1, station(t), nil, CarrierDelivery{}, t1); !errors.Is(err, ErrStaleAssignmentVersion) {
 		t.Fatalf("version before region: %v", err)
 	}
 }
@@ -195,13 +196,14 @@ func TestAssignCheckOrder(t *testing.T) {
 func TestReassignEmitsTheNewAssignment(t *testing.T) {
 	sa := firstAssignment(t)
 	other := mkNode(t, "node-other", node.DeliveryStation, "region-ne", node.StatusActive)
-	events, err := sa.Reassign(2, other, mkRegion(t, "region-ne"), t1)
+	events, err := sa.Reassign(2, other, mkRegion(t, "region-ne"), CarrierDelivery{}, t1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := ServiceAreaAssigned{
 		Header: shared.Header{Version: 2, At: t1}, PostalPrefix: "01310", DeliveryStationNodeID: "node-other",
 		RegionID: "region-ne", AssignmentVersion: 2,
+		DeliveryMode: ModeNetworkRoute,
 	}
 	if !reflect.DeepEqual(events, []shared.Event{want}) {
 		t.Fatalf("events = %+v", events)
@@ -214,12 +216,12 @@ func TestReassignEmitsTheNewAssignment(t *testing.T) {
 func TestReassignRefusesNonIncreasingVersions(t *testing.T) {
 	sa := firstAssignment(t)
 	other := mkNode(t, "node-other", node.DeliveryStation, "region-ne", node.StatusActive)
-	if _, err := sa.Reassign(2, other, mkRegion(t, "region-ne"), t1); err != nil {
+	if _, err := sa.Reassign(2, other, mkRegion(t, "region-ne"), CarrierDelivery{}, t1); err != nil {
 		t.Fatal(err)
 	}
 	for _, v := range []int{-1, 0, 1, 2} {
 		before := sa.Snapshot()
-		events, err := sa.Reassign(v, other, mkRegion(t, "region-ne"), t2)
+		events, err := sa.Reassign(v, other, mkRegion(t, "region-ne"), CarrierDelivery{}, t2)
 		wantErr := ErrStaleAssignmentVersion
 		if v < 1 {
 			wantErr = shared.ErrValidation
@@ -233,10 +235,10 @@ func TestReassignRefusesNonIncreasingVersions(t *testing.T) {
 func TestReassignMayJumpVersionsAndNameTheSameStationAgain(t *testing.T) {
 	sa := firstAssignment(t)
 	other := mkNode(t, "node-other", node.DeliveryStation, "region-ne", node.StatusActive)
-	if _, err := sa.Reassign(2, other, mkRegion(t, "region-ne"), t1); err != nil {
+	if _, err := sa.Reassign(2, other, mkRegion(t, "region-ne"), CarrierDelivery{}, t1); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := sa.Reassign(10, other, mkRegion(t, "region-ne"), t2); err != nil {
+	if _, err := sa.Reassign(10, other, mkRegion(t, "region-ne"), CarrierDelivery{}, t2); err != nil {
 		t.Fatalf("a higher version is enough: %v", err)
 	}
 	if sa.AssignmentVersion() != 10 || sa.Version() != 3 {
@@ -248,10 +250,10 @@ func TestReassignRefusalsLeaveTheAssignmentAlone(t *testing.T) {
 	sa := firstAssignment(t)
 	before := sa.Snapshot()
 	suspended := mkNode(t, "node-susp", node.DeliveryStation, "region-se", node.StatusSuspended)
-	if events, err := sa.Reassign(2, suspended, mkRegion(t, "region-se"), t1); !errors.Is(err, ErrNotADeliveryStation) || events != nil {
+	if events, err := sa.Reassign(2, suspended, mkRegion(t, "region-se"), CarrierDelivery{}, t1); !errors.Is(err, ErrNotADeliveryStation) || events != nil {
 		t.Fatalf("want ErrNotADeliveryStation, got %v", err)
 	}
-	if events, err := sa.Reassign(2, station(t), mkRegion(t, "region-ne"), t1); !errors.Is(err, region.ErrUnknownRegion) || events != nil {
+	if events, err := sa.Reassign(2, station(t), mkRegion(t, "region-ne"), CarrierDelivery{}, t1); !errors.Is(err, region.ErrUnknownRegion) || events != nil {
 		t.Fatalf("want ErrUnknownRegion, got %v", err)
 	}
 	if !reflect.DeepEqual(sa.Snapshot(), before) {
@@ -262,13 +264,19 @@ func TestReassignRefusalsLeaveTheAssignmentAlone(t *testing.T) {
 func TestSnapshotRestoreRoundTrip(t *testing.T) {
 	sa := firstAssignment(t)
 	snap := sa.Snapshot()
-	want := Snapshot{PostalPrefix: "01310", DeliveryStationNodeID: "node-9b7e02", RegionID: "region-se", AssignmentVersion: 1, AssignedAt: t0, Version: 1}
-	if snap != want {
+	want := Snapshot{PostalPrefix: "01310", DeliveryStationNodeID: "node-9b7e02", RegionID: "region-se", AssignmentVersion: 1, AssignedAt: t0, Version: 1, DeliveryMode: ModeNetworkRoute}
+	if !reflect.DeepEqual(snap, want) {
 		t.Fatalf("snapshot = %+v", snap)
 	}
 	back, err := Restore(snap)
-	if err != nil || back.Snapshot() != snap {
+	if err != nil || !reflect.DeepEqual(back.Snapshot(), snap) {
 		t.Fatalf("round trip: %v %+v", err, back)
+	}
+	legacy := snap
+	legacy.DeliveryMode = ""
+	legacyBack, err := Restore(legacy)
+	if err != nil || legacyBack.DeliveryMode() != ModeNetworkRoute {
+		t.Fatalf("a snapshot without a mode restores as NETWORK_ROUTE: %v %s", err, legacyBack.DeliveryMode())
 	}
 	brt := time.FixedZone("BRT", -3*3600)
 	snap.AssignedAt = snap.AssignedAt.In(brt)
