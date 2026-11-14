@@ -53,6 +53,19 @@ func laneRoundTrip(t *testing.T, f Fixture) {
 	if !reflect.DeepEqual(costly.Snapshot(), got.Snapshot()) {
 		t.Fatalf("snapshot = %+v, want %+v", costly.Snapshot(), got.Snapshot())
 	}
+	// a declared emission survives the round trip the same way (ADR 0018)
+	if _, err := costly.DeclareEmission(410, Now); err != nil {
+		t.Fatal(err)
+	}
+	noErr(t, f.Lanes.Save(ctx, costly))
+	emitting, err := f.Lanes.Get(ctx, "lane-1")
+	noErr(t, err)
+	if emitting.EmissionPerUnitG() != 410 || emitting.Version() != 3 {
+		t.Fatalf("declared emission round trip: emission %d version %d, want 410 at version 3", emitting.EmissionPerUnitG(), emitting.Version())
+	}
+	if !reflect.DeepEqual(emitting.Snapshot(), costly.Snapshot()) {
+		t.Fatalf("snapshot = %+v, want %+v", emitting.Snapshot(), costly.Snapshot())
+	}
 }
 
 func laneGetMiss(t *testing.T, f Fixture) {

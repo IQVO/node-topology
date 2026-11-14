@@ -258,7 +258,7 @@ func TestLaneFrom(t *testing.T) {
 	if v.Status != "CLOSED" || v.ClosedAt == nil || v.CostPerUnitCents != 320 {
 		t.Fatalf("lane = %+v", v)
 	}
-	requireKeys(t, wire(t, v), "laneId", "originNodeId", "destinationNodeId", "mode", "nominalTransitMinutes", "status", "costPerUnitCents", "closedAt")
+	requireKeys(t, wire(t, v), "laneId", "originNodeId", "destinationNodeId", "mode", "nominalTransitMinutes", "status", "costPerUnitCents", "emissionPerUnitG", "closedAt")
 }
 
 func TestServiceAreaAndRegionFrom(t *testing.T) {

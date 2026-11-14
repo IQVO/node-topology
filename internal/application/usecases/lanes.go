@@ -86,6 +86,40 @@ func (uc *CloseLane) Execute(ctx context.Context, id lane.ID) (views.Lane, error
 	})
 }
 
+// DeclareLaneEmissionCommand is the input of DeclareLaneEmission.
+type DeclareLaneEmissionCommand struct {
+	LaneID       lane.ID
+	GCo2ePerUnit int64
+}
+
+// DeclareLaneEmission records the planner's declared carbon emission of
+// moving one package-unit across an OPEN lane (ADR 0018).
+type DeclareLaneEmission struct{ writer }
+
+// NewDeclareLaneEmission builds the use case.
+func NewDeclareLaneEmission(d Deps) *DeclareLaneEmission { return &DeclareLaneEmission{writer{d}} }
+
+// Execute declares the emission and saves the lane with LaneEmissionDeclared.
+func (uc *DeclareLaneEmission) Execute(ctx context.Context, cmd DeclareLaneEmissionCommand) (views.Lane, error) {
+	return transact(ctx, uc.UoW, func(ctx context.Context) (views.Lane, error) {
+		l, err := uc.Lanes.Get(ctx, cmd.LaneID)
+		if err != nil {
+			return views.Lane{}, err
+		}
+		events, err := l.DeclareEmission(cmd.GCo2ePerUnit, uc.now())
+		if err != nil {
+			return views.Lane{}, err
+		}
+		if err := uc.Lanes.Save(ctx, l); err != nil {
+			return views.Lane{}, err
+		}
+		if err := uc.publish(ctx, events); err != nil {
+			return views.Lane{}, err
+		}
+		return views.LaneFrom(l), nil
+	})
+}
+
 // DeclareLaneCostCommand is the input of DeclareLaneCost.
 type DeclareLaneCostCommand struct {
 	LaneID           lane.ID

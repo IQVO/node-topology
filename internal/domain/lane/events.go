@@ -63,8 +63,28 @@ func (LaneCostDeclared) Entity() string { return entity }
 // SubjectID returns the laneId.
 func (e LaneCostDeclared) SubjectID() string { return string(e.LaneID) }
 
+// LaneEmissionDeclared is raised by DeclareEmission (ADR 0018): the
+// planner's declared carbon emission of moving ONE package-unit across
+// the lane on one departure, in grams of CO2-equivalent.
+type LaneEmissionDeclared struct {
+	shared.Header
+	LaneID       ID
+	GCo2ePerUnit int64
+	DeclaredAt   time.Time
+}
+
+// EventName returns "LaneEmissionDeclared".
+func (LaneEmissionDeclared) EventName() string { return "LaneEmissionDeclared" }
+
+// Entity returns "lane".
+func (LaneEmissionDeclared) Entity() string { return entity }
+
+// SubjectID returns the laneId.
+func (e LaneEmissionDeclared) SubjectID() string { return string(e.LaneID) }
+
 var (
 	_ shared.Event = LaneOpened{}
 	_ shared.Event = LaneClosed{}
 	_ shared.Event = LaneCostDeclared{}
+	_ shared.Event = LaneEmissionDeclared{}
 )

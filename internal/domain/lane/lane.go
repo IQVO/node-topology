@@ -4,7 +4,9 @@
 //
 // States: OPEN, CLOSED; transition OPEN -> CLOSED (CloseLane); no reopen, a
 // new lane is opened instead. DeclareCost records the planner's declared
-// cost per package-unit in cents on an OPEN lane (ADR 0014). Invariants:
+// cost per package-unit in cents on an OPEN lane (ADR 0014); DeclareEmission
+// the declared carbon emission in grams of CO2-equivalent (ADR 0018).
+// Invariants:
 // origin and destination differ
 // (ErrLaneLoop); the (origin type, destination type) pair is in the model's
 // lane_rules (ErrLaneTypePairNotAllowed); both ends are ACTIVE when opening
@@ -66,6 +68,10 @@ const MaxTransitMinutes = 2147483647
 // (integer cents, ADR 0014): 10,000,000 cents.
 const MaxCostPerUnitCents = 10000000
 
+// MaxEmissionPerUnitG is the ceiling of a declared emission per
+// package-unit (grams of CO2-equivalent, ADR 0018): 10,000,000 gCo2e.
+const MaxEmissionPerUnitG = 10000000
+
 // Pair is an (origin type, destination type) pair of lane_rules.
 type Pair struct {
 	Origin      node.Type
@@ -108,6 +114,11 @@ type Lane struct {
 	// package-unit across the lane on one departure, integer cents (ADR 0014).
 	// 0 is the default and means no declared cost yet.
 	costPerUnitCents int64
+	// emissionPerUnitG is the planner's declared carbon emission of moving
+	// ONE package-unit across the lane on one departure, grams of
+	// CO2-equivalent (ADR 0018). 0 is the default and means no declared
+	// emission yet.
+	emissionPerUnitG int64
 	version          int64
 }
 
@@ -122,6 +133,7 @@ type Snapshot struct {
 	OpenedAt              time.Time
 	ClosedAt              time.Time
 	CostPerUnitCents      int64
+	EmissionPerUnitG      int64
 	Version               int64
 }
 
@@ -178,7 +190,7 @@ func Restore(s Snapshot) (*Lane, error) {
 	return &Lane{
 		id: s.ID, origin: s.OriginNodeID, destination: s.DestinationNodeID, mode: s.Mode,
 		transit: s.NominalTransitMinutes, status: s.Status, openedAt: shared.UTC(s.OpenedAt),
-		closedAt: shared.UTC(s.ClosedAt), costPerUnitCents: s.CostPerUnitCents, version: s.Version,
+		closedAt: shared.UTC(s.ClosedAt), costPerUnitCents: s.CostPerUnitCents, emissionPerUnitG: s.EmissionPerUnitG, version: s.Version,
 	}, nil
 }
 
@@ -197,6 +209,9 @@ func checkSnapshot(s Snapshot) error {
 	}
 	if s.CostPerUnitCents < 0 || s.CostPerUnitCents > MaxCostPerUnitCents {
 		return errors.New("costPerUnitCents is out of range")
+	}
+	if s.EmissionPerUnitG < 0 || s.EmissionPerUnitG > MaxEmissionPerUnitG {
+		return errors.New("emissionPerUnitG is out of range")
 	}
 	if s.OpenedAt.IsZero() || s.Version < 1 {
 		return errors.New("openedAt and a version of at least 1 are required")
@@ -258,6 +273,29 @@ func (l *Lane) DeclareCost(costPerUnitCents int64, now time.Time) ([]shared.Even
 	return []shared.Event{ev}, nil
 }
 
+// DeclareEmission records the planner's declared carbon emission of moving
+// ONE package-unit across this lane on one departure, in grams of
+// CO2-equivalent, and raises LaneEmissionDeclared (ADR 0018). Valid on an
+// OPEN lane only; every declaration is a fact (declared, never re-derived)
+// and supersedes the previous value. 0 is legal: zero declared emission. An
+// undeclared lane also reads 0, but only a declaration publishes the event.
+func (l *Lane) DeclareEmission(gCo2ePerUnit int64, now time.Time) ([]shared.Event, error) {
+	if gCo2ePerUnit < 0 || gCo2ePerUnit > MaxEmissionPerUnitG {
+		return nil, shared.Invalid("gCo2ePerUnit must be between 0 and %d", MaxEmissionPerUnitG)
+	}
+	if l.status != StatusOpen {
+		return nil, fmt.Errorf("%w: lane %s is %s", shared.ErrIllegalTransition, l.id, l.status)
+	}
+	l.emissionPerUnitG = gCo2ePerUnit
+	l.version++
+	at := shared.UTC(now)
+	ev := LaneEmissionDeclared{
+		Header: shared.Header{Version: l.version, At: at}, LaneID: l.id,
+		GCo2ePerUnit: gCo2ePerUnit, DeclaredAt: at,
+	}
+	return []shared.Event{ev}, nil
+}
+
 // ID returns the lane id.
 func (l *Lane) ID() ID { return l.id }
 
@@ -286,6 +324,11 @@ func (l *Lane) ClosedAt() time.Time { return l.closedAt }
 // across the lane on one departure (integer cents; 0 when never declared).
 func (l *Lane) CostPerUnitCents() int64 { return l.costPerUnitCents }
 
+// EmissionPerUnitG returns the declared carbon emission of moving one
+// package-unit across the lane on one departure (grams of CO2-equivalent;
+// 0 when never declared).
+func (l *Lane) EmissionPerUnitG() int64 { return l.emissionPerUnitG }
+
 // Version returns the aggregate version.
 func (l *Lane) Version() int64 { return l.version }
 
@@ -294,6 +337,6 @@ func (l *Lane) Snapshot() Snapshot {
 	return Snapshot{
 		ID: l.id, OriginNodeID: l.origin, DestinationNodeID: l.destination, Mode: l.mode,
 		NominalTransitMinutes: l.transit, Status: l.status, OpenedAt: l.openedAt, ClosedAt: l.closedAt,
-		CostPerUnitCents: l.costPerUnitCents, Version: l.version,
+		CostPerUnitCents: l.costPerUnitCents, EmissionPerUnitG: l.emissionPerUnitG, Version: l.version,
 	}
 }

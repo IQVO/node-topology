@@ -234,3 +234,53 @@ func TestDeclareLaneCostFailures(t *testing.T) {
 		{"cost above the ceiling", open(noSetup), declare("lane-1", lane.MaxCostPerUnitCents+1), shared.ErrValidation},
 	})
 }
+
+func TestDeclareLaneEmissionDeclaresOnAnOpenLane(t *testing.T) {
+	e := newEnv(t)
+	e.seedLaneEnds()
+	e.seedLane("lane-1", "n-o", "n-d", lane.ModeGround)
+	before := e.before()
+
+	got, err := usecases.NewDeclareLaneEmission(e.deps).Execute(context.Background(), usecases.DeclareLaneEmissionCommand{
+		LaneID: "lane-1", GCo2ePerUnit: 410,
+	})
+	wantErr(t, err, nil)
+
+	if got.EmissionPerUnitG != 410 || got.Status != "OPEN" {
+		t.Fatalf("view = %+v", got)
+	}
+	events := e.assertRaised(before, "LaneEmissionDeclared")
+	if events[0].SubjectID() != "lane-1" || events[0].AggregateVersion() != 2 {
+		t.Fatalf("event = %+v", events[0])
+	}
+	stored, err := e.store.Lanes().Get(context.Background(), "lane-1")
+	wantErr(t, err, nil)
+	if stored.EmissionPerUnitG() != 410 || stored.Version() != 2 {
+		t.Fatalf("stored = %d gCo2e at v%d", stored.EmissionPerUnitG(), stored.Version())
+	}
+}
+
+func TestDeclareLaneEmissionFailures(t *testing.T) {
+	declare := func(id lane.ID, grams int64) func(*env) error {
+		return func(e *env) error {
+			_, err := usecases.NewDeclareLaneEmission(e.deps).Execute(context.Background(), usecases.DeclareLaneEmissionCommand{
+				LaneID: id, GCo2ePerUnit: grams,
+			})
+			return err
+		}
+	}
+	open := func(set func(e *env)) func(e *env) {
+		return func(e *env) { e.seedLaneEnds(); e.seedLane("lane-1", "n-o", "n-d", lane.ModeGround); set(e) }
+	}
+	runFailCases(t, []failCase{
+		{"unknown lane", noSetup, declare("ghost", 410), ports.ErrNotFound},
+		{"already closed", func(e *env) {
+			open(noSetup)(e)
+			if _, err := usecases.NewCloseLane(e.deps).Execute(context.Background(), "lane-1"); err != nil {
+				t.Fatal(err)
+			}
+		}, declare("lane-1", 410), shared.ErrIllegalTransition},
+		{"negative emission", open(noSetup), declare("lane-1", -1), shared.ErrValidation},
+		{"emission above the ceiling", open(noSetup), declare("lane-1", lane.MaxEmissionPerUnitG+1), shared.ErrValidation},
+	})
+}
