@@ -318,3 +318,31 @@ func TestOperationalProfileInboundRefusals(t *testing.T) {
 		})
 	}
 }
+
+func TestLaneEmissionDeclarationRoutesEndToEnd(t *testing.T) {
+	w := newWorld(t)
+	a := w.a
+	open := a.keyed(http.MethodPost, "/lanes", `{"originNodeId":"`+w.origin+`","destinationNodeId":"`+w.dest+`","mode":"GROUND","nominalTransitMinutes":90}`)
+	if open.status != http.StatusCreated {
+		t.Fatalf("openLane = %d %s", open.status, open.raw)
+	}
+	id := open.field("laneId")
+	if open.field("emissionPerUnitG") != "0" {
+		t.Fatalf("a new lane declares no emission: %s", open.raw)
+	}
+
+	declared := a.keyed(http.MethodPost, "/lanes/"+id+"/emission-declarations", `{"gCo2ePerUnit":410}`)
+	if declared.status != http.StatusCreated || declared.field("emissionPerUnitG") != "410" || declared.field("status") != "OPEN" {
+		t.Fatalf("declareLaneEmission = %d %s", declared.status, declared.raw)
+	}
+	if again := a.keyed(http.MethodPost, "/lanes/"+id+"/emission-declarations", `{"gCo2ePerUnit":260}`); again.status != http.StatusCreated || again.field("emissionPerUnitG") != "260" {
+		t.Fatalf("a newer declaration supersedes: %d %s", again.status, again.raw)
+	}
+
+	if outOfRange := a.keyed(http.MethodPost, "/lanes/"+id+"/emission-declarations", `{"gCo2ePerUnit":10000001}`); outOfRange.status != http.StatusUnprocessableEntity || outOfRange.slug() != "validation-failed" {
+		t.Fatalf("emission above the ceiling = %d %s", outOfRange.status, outOfRange.raw)
+	}
+	if zero := a.keyed(http.MethodPost, "/lanes/"+id+"/emission-declarations", `{"gCo2ePerUnit":0}`); zero.status != http.StatusCreated || zero.field("emissionPerUnitG") != "0" {
+		t.Fatalf("zero is a legal declaration: %d %s", zero.status, zero.raw)
+	}
+}

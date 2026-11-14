@@ -68,6 +68,10 @@ func goldenCases() []goldenCase {
 			"lane", "lane-1", `{"laneId":"lane-1","costPerUnitCents":320,"declaredAt":"2026-10-08T12:00:00Z"}`,
 		},
 		{
+			"LaneEmissionDeclared", lane.LaneEmissionDeclared{Header: header, LaneID: "lane-1", GCo2ePerUnit: 410, DeclaredAt: at},
+			"lane", "lane-1", `{"laneId":"lane-1","gCo2ePerUnit":410,"declaredAt":"2026-10-08T12:00:00Z"}`,
+		},
+		{
 			"ServiceAreaAssigned", servicearea.ServiceAreaAssigned{Header: header, PostalPrefix: "01310", DeliveryStationNodeID: "node-9", RegionID: "region-1", AssignmentVersion: 2},
 			"servicearea", "01310", `{"postalPrefix":"01310","deliveryStationNodeId":"node-9","regionId":"region-1","assignmentVersion":2}`,
 		},
