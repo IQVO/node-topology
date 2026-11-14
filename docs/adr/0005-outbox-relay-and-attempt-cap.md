@@ -70,3 +70,10 @@ poison row can block forever.
 - Postgres integration tests prove Drain (order, failure recording, the cap and
   re-arming, concurrent drains); a Kafka integration test proves that the outbox
   rows become exactly the CloudEvents on the topic.
+
+## Addendum 2026-11-13: current state
+
+Item 7 names nine events. `kafka.Encoder` now encodes ten: `lane.LaneCostDeclared` was
+added by ADR 0014 (`internal/adapters/outbound/kafka/encoder.go`, `case lane.LaneCostDeclared`).
+All ten go to `retailnetwork.node-topology.events`; nothing is analytics-only. The relay,
+the attempt cap and the envelope rules are unchanged.

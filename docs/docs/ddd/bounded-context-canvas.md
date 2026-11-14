@@ -10,7 +10,7 @@ description: The ddd-crew Bounded Context Canvas v5 for Node Topology, with ever
 Following the ddd-crew [Bounded Context Canvas v5](https://github.com/ddd-crew/bounded-context-canvas).
 Every inbound row comes from the operations of `apis/openapi.yaml` and the
 routes in `internal/adapters/inbound/http/server.go`; every outbound row from
-the nine event types of `apis/asyncapi.yaml`, with the subscribers taken from
+the ten event types of `apis/asyncapi.yaml`, with the subscribers taken from
 the network model (this repository cannot see its consumers).
 
 ## Canvas at a glance
@@ -49,7 +49,7 @@ flowchart LR
     end
     in0 -->|"cmd - REST in-org<br/>RegisterNode,<br/>DeclareOperational<br/>Profile"| BC
     in1 -->|"cmd - REST<br/>RegisterNode,<br/>ActivateNode,<br/>SuspendNode,<br/>RetireNode"| BC
-    in1 -->|"cmd - REST<br/>OpenLane, CloseLane,<br/>AssignServiceArea,<br/>DefineRegion"| BC
+    in1 -->|"cmd - REST<br/>OpenLane, CloseLane,<br/>DeclareLaneCost,<br/>AssignServiceArea,<br/>DefineRegion"| BC
     in2 -.->|"qry - REST, MCP, A2A<br/>GetNode, ListNodes, ListLanes,<br/>ResolveServiceArea,<br/>GetRegion, ListRegions"| BC
     linkStyle 0 stroke:#1971c2,stroke-width:1.5px
     linkStyle 1 stroke:#1971c2,stroke-width:1.5px
@@ -84,8 +84,8 @@ flowchart LR
         out6["node-performance"]:::ctx
         out7["seller-inbound"]:::ctx
     end
-    BC ==>|"evt - all nine: NodeRegistered,<br/>NodeOperationalProfileDeclared,<br/>NodeActivated, NodeSuspended,<br/>NodeRetired, LaneOpened, LaneClosed,<br/>ServiceAreaAssigned, RegionDefined"| out0
-    BC ==>|"evt - the same nine events"| out1
+    BC ==>|"evt - nine (all but LaneCostDeclared):<br/>NodeRegistered,<br/>NodeOperationalProfileDeclared,<br/>NodeActivated, NodeSuspended,<br/>NodeRetired, LaneOpened, LaneClosed,<br/>ServiceAreaAssigned, RegionDefined"| out0
+    BC ==>|"evt - all ten: the same nine and<br/>LaneCostDeclared"| out1
     BC ==>|"evt - NodeRegistered,<br/>NodeOperationalProfileDeclared,<br/>NodeActivated, NodeSuspended,<br/>NodeRetired, LaneOpened, LaneClosed"| out2
     BC ==>|"evt - NodeRegistered, NodeActivated,<br/>NodeSuspended, NodeRetired"| out3
     BC ==>|"evt - NodeRegistered, NodeActivated,<br/>NodeSuspended, NodeRetired,<br/>NodeOperationalProfileDeclared"| out4
@@ -142,7 +142,7 @@ It holds declared facts. It does not schedule, promise, assign or measure.
 | --- | --- | --- |
 | **Specification** | Yes, primary | It specifies the shape every other logistics decision works within: node types, allowed lane pairs, service areas. |
 | **Gateway for declared capability (owner)** | Yes | Vendors' declarations (`DeclareOperationalProfile`, `declaredBy: VENDOR`) arrive here, through `vendor-connectivity`, and leave as `NodeOperationalProfileDeclared`. |
-| **Master data** | Yes | Low write rate, many readers: nine events, eight subscribing contexts, six read operations for any caller. |
+| **Master data** | Yes | Low write rate, many readers: ten events, eight subscribing contexts, six read operations for any caller. |
 | Execution, Analysis, Enforcer | No | It makes no per-order decision and measures nothing. |
 
 ## Inbound Communication
@@ -157,6 +157,7 @@ It holds declared facts. It does not schedule, promise, assign or measure.
 | network-ops planner | `RetireNode` | Command | REST `POST /nodes/{nodeId}/retirements` | UI |
 | network-ops planner | `OpenLane` | Command | REST `POST /lanes` | UI |
 | network-ops planner | `CloseLane` | Command | REST `POST /lanes/{laneId}/closures` | UI |
+| network-ops planner | `DeclareLaneCost` | Command | REST `POST /lanes/{laneId}/cost-declarations` | UI |
 | network-ops planner | `AssignServiceArea` | Command | REST `PUT /service-areas/{postalPrefix}` | UI |
 | network-ops planner | `DefineRegion` | Command | REST `POST /regions` | UI |
 | Any context | `GetNode` | Query | REST `GET /nodes/{nodeId}` | Open Host Service |
@@ -185,6 +186,7 @@ Every event goes to topic `retailnetwork.node-topology.events`, source
 | `offer-availability`, `delivery-promise`, `order-sourcing`, `linehaul-transportation`, `vendor-connectivity`, `seller-inbound` | `NodeRetired` | Event | `retailnetwork.node-topology.events`, `com.retailnetwork.logistics.node-topology.node.NodeRetired` | OHS + PL (Conformist) |
 | `linehaul-transportation`, `delivery-promise`, `order-sourcing` | `LaneOpened` | Event | `retailnetwork.node-topology.events`, `com.retailnetwork.logistics.node-topology.lane.LaneOpened` | OHS + PL (Conformist) |
 | `linehaul-transportation`, `delivery-promise`, `order-sourcing` | `LaneClosed` | Event | `retailnetwork.node-topology.events`, `com.retailnetwork.logistics.node-topology.lane.LaneClosed` | OHS + PL (Conformist) |
+| `order-sourcing` | `LaneCostDeclared` | Event | `retailnetwork.node-topology.events`, `com.retailnetwork.logistics.node-topology.lane.LaneCostDeclared` | OHS + PL (Conformist) |
 | `delivery-promise`, `order-sourcing`, `last-mile-delivery` | `ServiceAreaAssigned` | Event | `retailnetwork.node-topology.events`, `com.retailnetwork.logistics.node-topology.servicearea.ServiceAreaAssigned` | OHS + PL (Conformist) |
 | `delivery-promise`, `order-sourcing` | `RegionDefined` | Event | `retailnetwork.node-topology.events`, `com.retailnetwork.logistics.node-topology.region.RegionDefined` | OHS + PL (Conformist) |
 

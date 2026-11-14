@@ -31,15 +31,15 @@ Copied from the network's classification table:
 
 | Context | Classification | Tier | Relationship to `node-topology` |
 | --- | --- | --- | --- |
-| `delivery-promise` | <span class="badge-core">Core</span> | `commerce` | Downstream: subscribes to all ten events |
+| `delivery-promise` | <span class="badge-core">Core</span> | `commerce` | Downstream: subscribes to nine of the ten events (all but `LaneCostDeclared`) |
 | `order-sourcing` | <span class="badge-core">Core</span> | `commerce` | Downstream: subscribes to all ten events |
 | `offer-availability` | <span class="badge-supporting">Supporting</span> | `commerce` | Downstream: node status events |
 | `vendor-connectivity` | <span class="badge-supporting">Supporting</span> | `partner` | Downstream (events) and Customer of the two write routes |
 | `linehaul-transportation` | <span class="badge-supporting">Supporting</span> | `logistics` | Downstream: node and lane events |
 | `last-mile-delivery` | <span class="badge-supporting">Supporting</span> | `logistics` | Downstream: `NodeRegistered`, `ServiceAreaAssigned` |
-| `node-performance` | <span class="badge-supporting">Supporting</span> | `partner` | Downstream: `NodeRegistered`, `NodeOperationalProfileDeclared` |
+| `node-performance` | <span class="badge-supporting">Supporting</span> | `partner` | Downstream: `NodeRegistered`, `NodeOperationalProfileDeclared` (consumed without effect) |
 | `seller-inbound` | <span class="badge-supporting">Supporting</span> | `partner` | Downstream: node events including the inbound limits |
 | `customer-ordering` | <span class="badge-generic">Generic</span> | `commerce` | none (Separate Ways) |
 | `shipping-and-tracking` | <span class="badge-generic">Generic</span> | `logistics` | none (Separate Ways) |
 
-The network has two Core, seven Supporting and two Generic contexts in that table. The two Core contexts are consumers of this one: the strongest dependency in the network points at a Supporting context, which is why its contract (nine events, schema URNs, `v1` types that change only by a new `.v2` type) is treated as a published language.
+The network has two Core, seven Supporting and two Generic contexts in that table. The two Core contexts are consumers of this one: the strongest dependency in the network points at a Supporting context, which is why its contract (ten events, schema URNs, `v1` types that change only by a new `.v2` type) is treated as a published language.

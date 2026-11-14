@@ -64,7 +64,7 @@ flowchart TB
         a2a["inbound/a2a<br/>2 read skills, Agent Card"]
     end
     subgraph core["shared by the binaries"]
-        uc["application/usecases<br/>9 commands, 6 reads"]
+        uc["application/usecases<br/>10 commands, 6 reads"]
         dom["domain<br/>node, lane, servicearea, region"]
         pgad["outbound/postgres<br/>repositories, unit of work, outbox"]
     end

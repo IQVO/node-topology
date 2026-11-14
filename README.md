@@ -38,7 +38,7 @@ Page map (paths under `https://iqvo.github.io/node-topology/docs/`):
 | DDD artifacts | [Core domain chart](https://iqvo.github.io/node-topology/docs/ddd/core-domain-chart), [Bounded context canvas](https://iqvo.github.io/node-topology/docs/ddd/bounded-context-canvas), [Context map](https://iqvo.github.io/node-topology/docs/ddd/context-map), [Aggregate design canvas](https://iqvo.github.io/node-topology/docs/ddd/aggregate-design-canvas), [Domain message flow](https://iqvo.github.io/node-topology/docs/ddd/domain-message-flow), [EventStorming](https://iqvo.github.io/node-topology/docs/ddd/eventstorming), [Class diagram](https://iqvo.github.io/node-topology/docs/ddd/class-diagram), [Entity-relationship](https://iqvo.github.io/node-topology/docs/ddd/entity-relationship), [Sequence diagrams](https://iqvo.github.io/node-topology/docs/ddd/sequence-diagrams), [Domain events](https://iqvo.github.io/node-topology/docs/ddd/domain-events) |
 | API reference | [Overview](https://iqvo.github.io/node-topology/docs/api-reference) (REST, MCP, A2A), [Event catalogue](https://iqvo.github.io/node-topology/docs/api-reference/events), generated REST reference |
 | Ecosystem | [Integration](https://iqvo.github.io/node-topology/docs/ecosystem/integration), [MCP tools](https://iqvo.github.io/node-topology/docs/mcp/tools) |
-| Decisions | [ADR index](https://iqvo.github.io/node-topology/docs/adr) (11 ADRs, also in [`docs/adr/`](docs/adr/)) |
+| Decisions | [ADR index](https://iqvo.github.io/node-topology/docs/adr) (17 ADRs, also in [`docs/adr/`](docs/adr/index.md)) |
 
 ## What it does
 
@@ -93,7 +93,7 @@ structured JSON (`source` `/retailnetwork/node-topology`, `dataschema`
 `com.retailnetwork.logistics.node-topology.<entity>.<Event>` (`node`, `lane`,
 `servicearea`, `region`), `subject` and Kafka key = aggregate id:
 `NodeRegistered`, `NodeOperationalProfileDeclared`, `NodeActivated`,
-`NodeSuspended`, `NodeRetired`, `LaneOpened`, `LaneClosed`,
+`NodeSuspended`, `NodeRetired`, `LaneOpened`, `LaneClosed`, `LaneCostDeclared`,
 `ServiceAreaAssigned`, `RegionDefined`. Delivery is at-least-once with a
 stable event id ([ADR 0005](docs/adr/0005-outbox-relay-and-attempt-cap.md)).
 Nothing is consumed (ADR 0003); downstream consumers include
@@ -260,13 +260,16 @@ on pre-commit and `make check` on pre-push.
 
 ## Architecture Decision Records
 
-Index: [`docs/adr/index.md`](docs/adr/index.md) — 11 ADRs (0001–0011): the
+Index: [`docs/adr/index.md`](docs/adr/index.md) — 17 ADRs (0001–0017): the
 bounded context (0001), aggregates and invariants (0002), no consumed
 contracts and OHS reads (0003), the CloudEvents catalogue (0004), the outbox
 relay and attempt cap (0005), the HTTP adapter, idempotency and readiness
 (0006), inbound limits on the operational profile (0007), the MCP server
 (0008), the console remote (0009), the fleet observability standard (0010),
-the A2A inbound adapter (0011).
+the A2A inbound adapter (0011), the fleet REST API guideline (0012), agent
+authority levels and the complete MCP surface (0013), the lane cost
+declaration (0014), fulfillment centres receiving inbound (0015), the service
+area delivery mode (0016), pickup points (0017).
 
 ## License
 

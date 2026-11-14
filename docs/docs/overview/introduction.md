@@ -46,12 +46,12 @@ Three binaries are built from one module and one image: `cmd/api` (REST, migrati
 
 1. Register nodes (`POST /nodes`), vendor nodes through `vendor-connectivity` and parcel nodes by a network-ops planner, with the operator, subtype and region rules enforced.
 2. Declare operational profile revisions (`PUT /nodes/{nodeId}/operational-profile`), and move nodes through activate, suspend and retire.
-3. Open and close lanes, define regions and assign postal prefixes to delivery stations under a strictly increasing `assignmentVersion`.
+3. Open and close lanes, declare the cost of a lane, define regions and assign postal prefixes to delivery stations under a strictly increasing `assignmentVersion`.
 4. Answer the reads of the network: `GET /nodes`, `GET /nodes/{nodeId}`, `GET /lanes`, `GET /service-areas/{postalPrefix}`, `GET /regions`, over REST, MCP tools and two A2A skills.
-5. Publish the nine events of the four aggregates, at least once and in order per aggregate, through the transactional outbox.
+5. Publish the ten events of the four aggregates, at least once and in order per aggregate, through the transactional outbox.
 6. Make every write retry-safe with the `Idempotency-Key` header (24 h).
 
-Nine commands change state ([Use cases](/docs/ddd/use-cases)); everything else is a read.
+Ten commands change state ([Use cases](/docs/ddd/use-cases)); everything else is a read.
 
 ## Where to go next
 
