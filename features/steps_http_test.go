@@ -38,6 +38,9 @@ type httpWorld struct {
 	status int
 	body   []byte
 	doc    any // parsed body, lazily
+	// cursor is the nextCursor a paging scenario remembered
+	// (steps_rules_test.go).
+	cursor string
 }
 
 // passthroughIdempotency is the double for the DB-backed Idempotency-Key
