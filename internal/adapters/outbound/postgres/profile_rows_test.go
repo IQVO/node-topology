@@ -132,8 +132,8 @@ func TestProfileRowRejectsCorruptRows(t *testing.T) {
 
 func TestProfileRowDestMatchesColumns(t *testing.T) {
 	row := &profileRow{}
-	if got := len(row.dest()); got != 13 {
-		t.Fatalf("dest() has %d targets, want 13 (one per column of profileColumns)", got)
+	if got := len(row.dest()); got != 14 {
+		t.Fatalf("dest() has %d targets, want 14 (one per column of profileColumns)", got)
 	}
 }
 
