@@ -93,7 +93,7 @@ structured JSON (`source` `/retailnetwork/node-topology`, `dataschema`
 `com.retailnetwork.logistics.node-topology.<entity>.<Event>` (`node`, `lane`,
 `servicearea`, `region`), `subject` and Kafka key = aggregate id:
 `NodeRegistered`, `NodeOperationalProfileDeclared`, `NodeActivated`,
-`NodeSuspended`, `NodeRetired`, `LaneOpened`, `LaneClosed`,
+`NodeSuspended`, `NodeRetired`, `LaneOpened`, `LaneClosed`, `LaneCostDeclared`,
 `ServiceAreaAssigned`, `RegionDefined`. Delivery is at-least-once with a
 stable event id ([ADR 0005](docs/adr/0005-outbox-relay-and-attempt-cap.md)).
 Nothing is consumed (ADR 0003); downstream consumers include

@@ -2,12 +2,12 @@
 id: events
 title: Event catalogue
 sidebar_label: Events
-description: "The nine CloudEvents Node Topology publishes on retailnetwork.node-topology.events: types, keys, payload fields, delivery guarantees and consumer rules."
+description: "The ten CloudEvents Node Topology publishes on retailnetwork.node-topology.events: types, keys, payload fields, delivery guarantees and consumer rules."
 ---
 
 # Event catalogue
 
-Node Topology publishes nine events and consumes none. The contract is `apis/asyncapi.yaml` (AsyncAPI 3.0.0); the types are catalogued in [ADR 0004](/docs/adr/0004-cloudevents-envelope-and-type-catalogue) and `TestEventCatalogueMatchesContract` fails the build if the two drift. Every field with its example is on [Domain events](/docs/ddd/domain-events); this page is the reference for consumers.
+Node Topology publishes ten events and consumes none. The contract is `apis/asyncapi.yaml` (AsyncAPI 3.0.0); the types are catalogued in [ADR 0004](/docs/adr/0004-cloudevents-envelope-and-type-catalogue) and `TestEventCatalogueMatchesContract` fails the build if the two drift. Every field with its example is on [Domain events](/docs/ddd/domain-events); this page is the reference for consumers.
 
 ## Channel and envelope
 
@@ -35,6 +35,7 @@ Sources: `internal/adapters/kafka/cloudevents/cloudevents.go`, `internal/adapter
 | `NodeRetired` | `com.retailnetwork.logistics.node-topology.node.NodeRetired` | `nodeId` | `RetireNode` | `nodeId`, `retiredAt` |
 | `LaneOpened` | `com.retailnetwork.logistics.node-topology.lane.LaneOpened` | `laneId` | `OpenLane` | `laneId`, `originNodeId`, `destinationNodeId`, `mode`, `nominalTransitMinutes` |
 | `LaneClosed` | `com.retailnetwork.logistics.node-topology.lane.LaneClosed` | `laneId` | `CloseLane` | `laneId`, `closedAt` |
+| `LaneCostDeclared` | `com.retailnetwork.logistics.node-topology.lane.LaneCostDeclared` | `laneId` | `DeclareLaneCost` | `laneId`, `costPerUnitCents`, `declaredAt` |
 | `ServiceAreaAssigned` | `com.retailnetwork.logistics.node-topology.servicearea.ServiceAreaAssigned` | `postalPrefix` | `AssignServiceArea` | `postalPrefix`, `deliveryStationNodeId`, `regionId`, `assignmentVersion` |
 | `RegionDefined` | `com.retailnetwork.logistics.node-topology.region.RegionDefined` | `regionId` | `DefineRegion` | `regionId`, `code`, `name` |
 
@@ -47,6 +48,7 @@ Sources: `internal/adapters/kafka/cloudevents/cloudevents.go`, `internal/adapter
 - `inbound` is present only when the revision declares inbound limits; every limit inside it is optional: `maxCartonWeightG` (grams), `maxCartonDimsMm{l, w, h}` (millimetres), `acceptsPallets`, `requiresSscc`. Absent means unchecked. See [ADR 0007](/docs/adr/0007-inbound-limits-on-the-operational-profile).
 - `NodeSuspended` and `NodeRetired` do not close the node's lanes or service areas (policy `SuspendedEndpointsUnusable`): consumers treat them as unusable while the node is not `ACTIVE`.
 - `LaneClosed` is final: there is no reopen event; a new lane raises a new `LaneOpened`.
+- `LaneCostDeclared` carries `costPerUnitCents`, integer cents from 0 to 10000000 (0 is a legal declaration); each declaration supersedes the previous value, so keep the latest per `laneId`. A lane never declared on publishes nothing. See [ADR 0014](/docs/adr/0014-lane-cost-declaration).
 
 ## Delivery guarantees and consumer rules
 
