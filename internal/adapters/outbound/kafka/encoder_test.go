@@ -183,7 +183,7 @@ func profileMinimalCase() goldenCase {
 }
 
 func profileInboundCase() goldenCase {
-	weight, yes, no := 25000, true, false
+	weight, yes, no, volume := 25000, true, false, 400000
 	return goldenCase{
 		"NodeOperationalProfileDeclared with every inbound limit",
 		node.NodeOperationalProfileDeclared{
@@ -193,7 +193,7 @@ func profileInboundCase() goldenCase {
 			ThroughputCap: node.ThroughputCap{Value: 50, TimeUnit: node.TimeUnitHour, Unit: node.UnitOrder},
 			Inbound: &node.InboundLimits{
 				MaxCartonWeightG: &weight, MaxCartonDimsMm: &node.CartonDims{L: 600, W: 400, H: 300},
-				AcceptsPallets: &yes, RequiresSscc: &no,
+				AcceptsPallets: &yes, RequiresSscc: &no, MonthlyVolumeDm3: &volume,
 			},
 			DeclaredBy: node.DeclaredByVendor,
 		},
@@ -202,7 +202,7 @@ func profileInboundCase() goldenCase {
 			`"operatingHoursByDay":{"monday":{"start":"06:00","end":"22:00"}},` +
 			`"holidays":[],"handlingTimeMinutes":60,"cutoffs":[{"localTime":"12:00"}],` +
 			`"throughputCap":{"value":50,"timeUnit":"HOUR","unit":"ORDER"},` +
-			`"inbound":{"maxCartonWeightG":25000,"maxCartonDimsMm":{"l":600,"w":400,"h":300},"acceptsPallets":true,"requiresSscc":false},` +
+			`"inbound":{"maxCartonWeightG":25000,"maxCartonDimsMm":{"l":600,"w":400,"h":300},"acceptsPallets":true,"requiresSscc":false,"monthlyVolumeDm3":400000},` +
 			`"declaredBy":"VENDOR"}`,
 	}
 }

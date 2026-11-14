@@ -269,13 +269,14 @@ func TestDomainRefusalsMapToTheirProblems(t *testing.T) {
 func TestOperationalProfileInboundLimits(t *testing.T) {
 	w := newWorld(t)
 	const path = "/operational-profile"
-	good := `,"inbound":{"maxCartonWeightG":25000,"maxCartonDimsMm":{"l":600,"w":400,"h":300},"acceptsPallets":true,"requiresSscc":false}`
+	good := `,"inbound":{"maxCartonWeightG":25000,"maxCartonDimsMm":{"l":600,"w":400,"h":300},"acceptsPallets":true,"requiresSscc":false,"monthlyVolumeDm3":400000}`
 	r := w.a.keyed(http.MethodPut, "/nodes/"+w.origin+path, revision2(profileWith(good)))
 	if r.status != http.StatusOK {
 		t.Fatalf("declare with inbound: %d %s", r.status, r.raw)
 	}
 	in := r.decoded.(map[string]any)["operationalProfile"].(map[string]any)["inbound"].(map[string]any)
 	if in["maxCartonWeightG"] != float64(25000) || in["acceptsPallets"] != true || in["requiresSscc"] != false ||
+		in["monthlyVolumeDm3"] != float64(400000) ||
 		in["maxCartonDimsMm"].(map[string]any)["h"] != float64(300) {
 		t.Fatalf("inbound echoed as %v", in)
 	}

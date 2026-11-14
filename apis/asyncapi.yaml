@@ -615,6 +615,7 @@ components:
             h: { type: integer, minimum: 1 }
         acceptsPallets: { type: boolean, description: Whether the node receives pallets. }
         requiresSscc: { type: boolean, description: Whether every inbound carton must carry an SSCC. }
+        monthlyVolumeDm3: { type: integer, minimum: 1, description: "The inbound volume the node accepts per calendar month, in cubic decimetres (ADR 0019); absent means not declared." }
 
     NodeOperationalProfileDeclaredEvent:
       allOf:

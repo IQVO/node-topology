@@ -24,12 +24,12 @@ var allTables = []string{
 }
 
 // latestMigration is the highest migration number; every ceiling below
-// follows it (currently 0008, the lane emission).
-const latestMigration = 8
+// follows it (currently 0009, the inbound monthly volume).
+const latestMigration = 9
 
 // coreTables are the tables of migration 0001; 0002 adds the other two, 0003
-// adds a column to node_profile_revisions only, and 0005, 0006 and 0008 add
-// columns to lanes and service_areas.
+// and 0009 add columns to node_profile_revisions only, and 0005, 0006 and 0008
+// add columns to lanes and service_areas.
 var coreTables = []string{"lanes", "node_profile_revisions", "nodes", "regions", "service_areas"}
 
 func tables(t *testing.T, pool *pgxpool.Pool) []string {
@@ -211,10 +211,10 @@ func TestMigration0006AddsAndDropsOnlyTheServiceAreaColumns(t *testing.T) {
 	if mode, options := serviceAreaModeColumns(t, pool); !mode || !options {
 		t.Fatal("the delivery-mode columns of migration 0006 are missing")
 	}
-	if err := m.Steps(-3); err != nil { // down through 0008 and 0007, then 0006 itself
+	if err := m.Steps(-4); err != nil { // down through 0009, 0008 and 0007, then 0006 itself
 		t.Fatalf("step down: %v", err)
 	}
-	wantVersion(t, m, latestMigration-3)
+	wantVersion(t, m, latestMigration-4)
 	if mode, options := serviceAreaModeColumns(t, pool); mode || options {
 		t.Fatal("the down migration left a delivery-mode column behind")
 	}
@@ -244,10 +244,10 @@ func TestMigration0007AddsAndDropsOnlyTheServingStationColumn(t *testing.T) {
 	if !pickupPointColumn(t, pool) {
 		t.Fatal("the serving-station column of migration 0007 is missing")
 	}
-	if err := m.Steps(-2); err != nil { // down through 0008 first, then 0007 itself
+	if err := m.Steps(-3); err != nil { // down through 0009 and 0008 first, then 0007 itself
 		t.Fatalf("step down: %v", err)
 	}
-	wantVersion(t, m, latestMigration-2)
+	wantVersion(t, m, latestMigration-3)
 	if pickupPointColumn(t, pool) {
 		t.Fatal("the down migration left the serving-station column behind")
 	}
@@ -278,12 +278,49 @@ func TestMigration0008AddsAndDropsOnlyTheLaneEmissionColumn(t *testing.T) {
 	if !laneEmissionColumn(t, pool) {
 		t.Fatal("the emission column of migration 0008 is missing")
 	}
+	if err := m.Steps(-2); err != nil { // down through 0009 first, then 0008 itself
+		t.Fatalf("step down: %v", err)
+	}
+	wantVersion(t, m, latestMigration-2)
+	if laneEmissionColumn(t, pool) {
+		t.Fatal("the down migration left the emission column behind")
+	}
+}
+
+// monthlyVolumeColumn reports whether node_profile_revisions carries the
+// nullable monthly volume column of migration 0009.
+func monthlyVolumeColumn(t *testing.T, pool *pgxpool.Pool) (present, nullable bool) {
+	t.Helper()
+	var isNullable string
+	err := pool.QueryRow(context.Background(), `SELECT is_nullable FROM information_schema.columns
+		WHERE table_name = 'node_profile_revisions' AND column_name = 'monthly_volume_dm3'`).Scan(&isNullable)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, false
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	return true, isNullable == "YES"
+}
+
+// TestMigration0009AddsAndDropsOnlyTheMonthlyVolumeColumn proves the monthly
+// volume arrives alone on node_profile_revisions and leaves with it.
+func TestMigration0009AddsAndDropsOnlyTheMonthlyVolumeColumn(t *testing.T) {
+	url := emptyURL(t)
+	pool := openPool(t, url)
+	m := migrator(t, url)
+	if err := m.Up(); err != nil {
+		t.Fatalf("up: %v", err)
+	}
+	if present, nullable := monthlyVolumeColumn(t, pool); !present || !nullable {
+		t.Fatal("the nullable monthly volume column of migration 0009 is missing")
+	}
 	if err := m.Steps(-1); err != nil {
 		t.Fatalf("step down: %v", err)
 	}
 	wantVersion(t, m, latestMigration-1)
-	if laneEmissionColumn(t, pool) {
-		t.Fatal("the down migration left the emission column behind")
+	if present, _ := monthlyVolumeColumn(t, pool); present {
+		t.Fatal("the down migration left the monthly volume column behind")
 	}
 }
 

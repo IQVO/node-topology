@@ -50,6 +50,30 @@ Feature: Inbound limits of an operational profile
     Then the command is refused with "validation-failed"
     And nothing was stored by the last command
 
+  Scenario: A monthly volume alone is a valid inbound declaration
+    When I declare revision 1 of the node "fc-1" with a monthly inbound volume of 400000 dm3
+    Then the command succeeds
+    And the last command published the event "NodeOperationalProfileDeclared"
+    And the published profile carries the monthly inbound volume 400000 dm3
+    And the node "fc-1" shows the monthly inbound volume 400000 dm3
+
+  Scenario: A monthly volume beside the other limits
+    When I declare revision 1 of the node "fc-1" with the inbound limits 25000 g, 600 x 400 x 300 mm, pallets accepted, SSCC required and a monthly inbound volume of 400000 dm3
+    Then the command succeeds
+    And the node "fc-1" shows the inbound limits 25000 g and 600 x 400 x 300 mm
+    And the node "fc-1" shows the monthly inbound volume 400000 dm3
+
+  Scenario Outline: A monthly volume that is not a positive integer is refused
+    When I declare revision 1 of the node "fc-1" with a monthly inbound volume of <volume> dm3
+    Then the command is refused with "validation-failed"
+    And nothing was stored by the last command
+
+    Examples:
+      | volume    |
+      | 0         |
+      | -1        |
+      | 2147483648 |
+
   Scenario: An inbound cross-dock declares inbound limits too
     Given a "INBOUND_CROSS_DOCK" node "icd-1" exists in the region "SP"
     When I declare revision 1 of the node "icd-1" with the inbound limits 25000 g, 600 x 400 x 300 mm, pallets accepted and SSCC required
