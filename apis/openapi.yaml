@@ -177,6 +177,7 @@ paths:
                     maxCartonDimsMm: { l: 600, w: 400, h: 300 }
                     acceptsPallets: true
                     requiresSscc: false
+                    monthlyVolumeDm3: 400000
                   declaredBy: VENDOR
               withoutInboundLimits:
                 summary: No inbound key at all means no inbound limits are declared.
@@ -1025,6 +1026,14 @@ components:
           type: boolean
           description: Whether every inbound carton must carry an SSCC.
           example: false
+        monthlyVolumeDm3:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+          description: >-
+            The inbound volume the node accepts per calendar month, in cubic
+            decimetres (ADR 0019). Absent means not declared.
+          example: 400000
     OperationalProfileDeclaration:
       type: object
       required: [profileRevision, timezone, operatingHoursByDay, handlingTimeMinutes, cutoffs, throughputCap, declaredBy]

@@ -130,10 +130,14 @@ func (w *world) revisionHandling(revision int, alias string, want int) error {
 func registerInboundSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^I declare revision (\d+) of the node "([^"]*)" with the inbound limits (-?\d+) g, (-?\d+) x (-?\d+) x (-?\d+) mm, pallets accepted and SSCC required$`, w.declareWithInbound)
 	sc.Step(`^I declare revision (\d+) of the node "([^"]*)" with an empty inbound declaration$`, w.declareWithEmptyInbound)
+	sc.Step(`^I declare revision (\d+) of the node "([^"]*)" with a monthly inbound volume of (-?\d+) dm3$`, w.declareWithMonthlyVolume)
+	sc.Step(`^I declare revision (\d+) of the node "([^"]*)" with the inbound limits (-?\d+) g, (-?\d+) x (-?\d+) x (-?\d+) mm, pallets accepted, SSCC required and a monthly inbound volume of (-?\d+) dm3$`, w.declareWithInboundAndVolume)
 	sc.Step(`^the published profile carries the inbound limits (\d+) g and (\d+) x (\d+) x (\d+) mm$`, w.publishedInbound)
 	sc.Step(`^the published profile carries no inbound limits$`, w.publishedNoInbound)
+	sc.Step(`^the published profile carries the monthly inbound volume (\d+) dm3$`, w.publishedMonthlyVolume)
 	sc.Step(`^the node "([^"]*)" shows the inbound limits (\d+) g and (\d+) x (\d+) x (\d+) mm$`, w.nodeInbound)
 	sc.Step(`^the node "([^"]*)" shows no inbound limits$`, w.nodeNoInbound)
+	sc.Step(`^the node "([^"]*)" shows the monthly inbound volume (\d+) dm3$`, w.nodeMonthlyVolume)
 	sc.Step(`^revision (\d+) of the node "([^"]*)" still has the inbound limits (\d+) g and (\d+) x (\d+) x (\d+) mm$`, w.revisionInbound)
 }
 
@@ -150,6 +154,45 @@ func (w *world) declareWithEmptyInbound(revision int, alias string) error {
 	d := declaration(revision, 30, 1)
 	d.Inbound = &node.InboundLimits{}
 	return w.declareAndRemember(alias, d)
+}
+
+func (w *world) declareWithMonthlyVolume(revision int, alias string, dm3 int) error {
+	d := declaration(revision, 30, 1)
+	d.Inbound = &node.InboundLimits{MonthlyVolumeDm3: &dm3}
+	return w.declareAndRemember(alias, d)
+}
+
+func (w *world) declareWithInboundAndVolume(revision int, alias string, weight, l, wd, h, dm3 int) error {
+	yes := true
+	d := declaration(revision, 30, 1)
+	d.Inbound = &node.InboundLimits{
+		MaxCartonWeightG: &weight, MaxCartonDimsMm: &node.CartonDims{L: l, W: wd, H: h},
+		AcceptsPallets: &yes, RequiresSscc: &yes, MonthlyVolumeDm3: &dm3,
+	}
+	return w.declareAndRemember(alias, d)
+}
+
+func wantMonthlyVolume(got *node.InboundLimits, dm3 int) error {
+	if got == nil || got.MonthlyVolumeDm3 == nil || *got.MonthlyVolumeDm3 != dm3 {
+		return fmt.Errorf("monthly inbound volume = %+v, want %d dm3", got, dm3)
+	}
+	return nil
+}
+
+func (w *world) publishedMonthlyVolume(dm3 int) error {
+	e, err := w.publishedProfile()
+	if err != nil {
+		return err
+	}
+	return wantMonthlyVolume(e.Inbound, dm3)
+}
+
+func (w *world) nodeMonthlyVolume(alias string, dm3 int) error {
+	got, err := w.nodeProfile(alias)
+	if err != nil {
+		return err
+	}
+	return wantMonthlyVolume(got, dm3)
 }
 
 func wantInbound(got *node.InboundLimits, weight, l, wd, h int) error {
