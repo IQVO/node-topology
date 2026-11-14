@@ -31,3 +31,4 @@ The *Status* column is copied from each ADR's own `## Status` section.
 | [0015](./0015-fulfillment-centres-receive-inbound.md) | Fulfillment centres receive inbound | Accepted (2026-11-08) |
 | [0016](./0016-service-area-delivery-mode.md) | Service-area delivery mode and declared carrier options | Accepted (2026-11-13) |
 | [0017](./0017-pickup-points.md) | Pickup points and their serving delivery station | Accepted (2026-11-13) |
+| [0018](./0018-lane-emission-declaration.md) | lane emission declaration (gCo2e, planner-declared) | Accepted (2026-11-14) |
