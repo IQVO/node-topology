@@ -13,7 +13,7 @@ Feature: REST contract rules from the documentation
     And the response problem is "not-found"
 
     Examples:
-      | path                       |
+      | path                        |
       | /nodes/node-404/activations |
       | /nodes/node-404/retirements |
       | /lanes/lane-404/closures    |
