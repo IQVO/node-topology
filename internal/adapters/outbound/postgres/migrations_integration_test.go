@@ -211,10 +211,10 @@ func TestMigration0006AddsAndDropsOnlyTheServiceAreaColumns(t *testing.T) {
 	if mode, options := serviceAreaModeColumns(t, pool); !mode || !options {
 		t.Fatal("the delivery-mode columns of migration 0006 are missing")
 	}
-	if err := m.Steps(-2); err != nil { // down through 0007, then 0006 itself
+	if err := m.Steps(-3); err != nil { // down through 0008 and 0007, then 0006 itself
 		t.Fatalf("step down: %v", err)
 	}
-	wantVersion(t, m, latestMigration-2)
+	wantVersion(t, m, latestMigration-3)
 	if mode, options := serviceAreaModeColumns(t, pool); mode || options {
 		t.Fatal("the down migration left a delivery-mode column behind")
 	}
@@ -244,10 +244,10 @@ func TestMigration0007AddsAndDropsOnlyTheServingStationColumn(t *testing.T) {
 	if !pickupPointColumn(t, pool) {
 		t.Fatal("the serving-station column of migration 0007 is missing")
 	}
-	if err := m.Steps(-1); err != nil {
+	if err := m.Steps(-2); err != nil { // down through 0008 first, then 0007 itself
 		t.Fatalf("step down: %v", err)
 	}
-	wantVersion(t, m, latestMigration-1)
+	wantVersion(t, m, latestMigration-2)
 	if pickupPointColumn(t, pool) {
 		t.Fatal("the down migration left the serving-station column behind")
 	}
