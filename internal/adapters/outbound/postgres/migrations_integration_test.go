@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -22,8 +23,13 @@ var allTables = []string{
 	"idempotency_keys", "lanes", "node_profile_revisions", "nodes", "outbox_events", "regions", "service_areas",
 }
 
-// coreTables are the tables of migration 0001; 0002 adds the other two and 0003
-// adds a column to node_profile_revisions only.
+// latestMigration is the highest migration number; every ceiling below
+// follows it (currently 0006, the service-area delivery mode).
+const latestMigration = 6
+
+// coreTables are the tables of migration 0001; 0002 adds the other two, 0003
+// adds a column to node_profile_revisions only, and 0005 and 0006 add columns
+// to lanes and service_areas.
 var coreTables = []string{"lanes", "node_profile_revisions", "nodes", "regions", "service_areas"}
 
 func tables(t *testing.T, pool *pgxpool.Pool) []string {
@@ -81,7 +87,7 @@ func TestMigrationsGoUpDownUp(t *testing.T) {
 	if err := m.Up(); err != nil {
 		t.Fatalf("up: %v", err)
 	}
-	wantVersion(t, m, 5)
+	wantVersion(t, m, latestMigration)
 	wantTables(t, pool, allTables)
 
 	if err := m.Down(); err != nil {
@@ -93,7 +99,7 @@ func TestMigrationsGoUpDownUp(t *testing.T) {
 	if err := m.Up(); err != nil {
 		t.Fatalf("up again: %v", err)
 	}
-	wantVersion(t, m, 5)
+	wantVersion(t, m, latestMigration)
 	wantTables(t, pool, allTables)
 }
 
@@ -118,7 +124,7 @@ func TestMigrationsStepDownOneRemovesOnlyTheInfrastructureTables(t *testing.T) {
 	if err := m.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.Steps(-4); err != nil {
+	if err := m.Steps(-(int(latestMigration) - 1)); err != nil {
 		t.Fatalf("step down: %v", err)
 	}
 	wantVersion(t, m, 1)
@@ -152,13 +158,65 @@ func TestMigration0003AddsAndDropsOnlyTheInboundColumn(t *testing.T) {
 	if present, nullable, typ := inboundColumn(t, pool); !present || !nullable || typ != "jsonb" {
 		t.Fatalf("inbound column = present %v nullable %v type %q, want a nullable jsonb column", present, nullable, typ)
 	}
-	if err := m.Steps(-3); err != nil {
+	if err := m.Steps(-(int(latestMigration) - 2)); err != nil {
 		t.Fatalf("step down: %v", err)
 	}
 	wantVersion(t, m, 2)
 	wantTables(t, pool, allTables)
 	if present, _, _ := inboundColumn(t, pool); present {
 		t.Fatal("the down migration left the inbound column behind")
+	}
+}
+
+// serviceAreaModeColumns reports the delivery-mode columns migration 0006
+// adds to service_areas (defaults rendered the way Postgres stores them,
+// with the cast suffix).
+func serviceAreaModeColumns(t *testing.T, pool *pgxpool.Pool) (mode, options bool) {
+	t.Helper()
+	for _, column := range []struct{ name, want string }{
+		{"delivery_mode", "'NETWORK_ROUTE'"},
+		{"carrier_options", "'[]'"},
+	} {
+		var def string
+		err := pool.QueryRow(context.Background(), `
+			SELECT column_default FROM information_schema.columns
+			WHERE table_schema = 'public' AND table_name = 'service_areas' AND column_name = $1`, column.name).Scan(&def)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return mode, options
+		}
+		if err != nil {
+			t.Fatalf("inspect %s: %v", column.name, err)
+		}
+		if !strings.Contains(def, column.want) {
+			t.Fatalf("%s default = %q, want it to contain %s", column.name, def, column.want)
+		}
+		if column.name == "delivery_mode" {
+			mode = true
+		} else {
+			options = true
+		}
+	}
+	return mode, options
+}
+
+// TestMigration0006AddsAndDropsOnlyTheServiceAreaColumns proves the delivery
+// mode arrives as exactly two service_areas columns and leaves with them.
+func TestMigration0006AddsAndDropsOnlyTheServiceAreaColumns(t *testing.T) {
+	url := emptyURL(t)
+	pool := openPool(t, url)
+	m := migrator(t, url)
+	if err := m.Up(); err != nil {
+		t.Fatal(err)
+	}
+	if mode, options := serviceAreaModeColumns(t, pool); !mode || !options {
+		t.Fatal("the delivery-mode columns of migration 0006 are missing")
+	}
+	if err := m.Steps(-1); err != nil {
+		t.Fatalf("step down: %v", err)
+	}
+	wantVersion(t, m, latestMigration-1)
+	if mode, options := serviceAreaModeColumns(t, pool); mode || options {
+		t.Fatal("the down migration left a delivery-mode column behind")
 	}
 }
 

@@ -163,7 +163,9 @@ func (d Deps) registerTools(server *mcp.Server) {
 	addTool(server, &mcp.Tool{
 		Name: "resolve_service_area",
 		Description: "Resolve which delivery station serves a postal prefix: the prefix (matched exactly), the deliveryStationNodeId, " +
-			"the station's regionId and the assignmentVersion. Read-only; an unassigned prefix fails with not-found.",
+			"the station's regionId, the assignmentVersion, and — when the area's last mile is a carrier handoff — the deliveryMode " +
+			"(CARRIER_HANDOFF) and the declared carrier options (carrierId, handoffNodeId, costPerPackageCents, transitMinutes); an " +
+			"area served by the network's own route carries no mode or options. Read-only; an unassigned prefix fails with not-found.",
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true, OpenWorldHint: &closedWorld},
 		Meta:        authorityMeta(authorityL1),
 	}, d.resolveServiceArea)

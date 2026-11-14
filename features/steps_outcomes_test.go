@@ -38,6 +38,8 @@ var problems = map[string]error{
 	"duplicate-lane":                     lane.ErrDuplicateLane,
 	"not-a-delivery-station":             servicearea.ErrNotADeliveryStation,
 	"stale-assignment-version":           servicearea.ErrStaleAssignmentVersion,
+	"handoff-node-not-usable":            servicearea.ErrHandoffNodeNotUsable,
+	"carrier-options-invalid":            servicearea.ErrCarrierOptionsInvalid,
 	"region-code-taken":                  region.ErrRegionCodeTaken,
 	"unknown-region":                     region.ErrUnknownRegion,
 }

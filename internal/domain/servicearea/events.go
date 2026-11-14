@@ -7,13 +7,18 @@ import (
 )
 
 // ServiceAreaAssigned is raised by Assign and Reassign. Its fields are the
-// model's data list; RegionID is the station's region.
+// model's data list; RegionID is the station's region. DeliveryMode and
+// Carriers are omitted on the wire when the area is a NETWORK_ROUTE area
+// (ADR 0016), so a consumer that predates the mode decodes the event with
+// its old meaning.
 type ServiceAreaAssigned struct {
 	shared.Header
 	PostalPrefix          PostalPrefix
 	DeliveryStationNodeID node.ID
 	RegionID              region.ID
 	AssignmentVersion     int
+	DeliveryMode          DeliveryMode
+	Carriers              []CarrierOption
 }
 
 // EventName returns "ServiceAreaAssigned".

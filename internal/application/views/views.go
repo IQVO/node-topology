@@ -119,12 +119,24 @@ type Lane struct {
 	ClosedAt              *time.Time `json:"closedAt,omitempty"`
 }
 
-// ServiceArea is the current assignment of a postal prefix.
+// CarrierOption is one declared carrier option of a CARRIER_HANDOFF service
+// area (ADR 0016).
+type CarrierOption struct {
+	CarrierID           string `json:"carrierId"`
+	HandoffNodeID       string `json:"handoffNodeId"`
+	CostPerPackageCents int64  `json:"costPerPackageCents"`
+	TransitMinutes      int    `json:"transitMinutes"`
+}
+
+// ServiceArea is the current assignment of a postal prefix. DeliveryMode and
+// Carriers are omitted when the area is a NETWORK_ROUTE area (ADR 0016).
 type ServiceArea struct {
-	PostalPrefix          string `json:"postalPrefix"`
-	DeliveryStationNodeID string `json:"deliveryStationNodeId"`
-	RegionID              string `json:"regionId"`
-	AssignmentVersion     int    `json:"assignmentVersion"`
+	PostalPrefix          string          `json:"postalPrefix"`
+	DeliveryStationNodeID string          `json:"deliveryStationNodeId"`
+	RegionID              string          `json:"regionId"`
+	AssignmentVersion     int             `json:"assignmentVersion"`
+	DeliveryMode          string          `json:"deliveryMode,omitempty"`
+	Carriers              []CarrierOption `json:"carriers,omitempty"`
 }
 
 // Region is a defined region.
@@ -232,12 +244,22 @@ func LaneFrom(l *lane.Lane) Lane {
 
 // ServiceAreaFrom builds the view of s.
 func ServiceAreaFrom(s *servicearea.ServiceArea) ServiceArea {
-	return ServiceArea{
+	v := ServiceArea{
 		PostalPrefix:          string(s.PostalPrefix()),
 		DeliveryStationNodeID: string(s.DeliveryStationNodeID()),
 		RegionID:              string(s.RegionID()),
 		AssignmentVersion:     s.AssignmentVersion(),
 	}
+	if s.DeliveryMode() != servicearea.ModeNetworkRoute {
+		v.DeliveryMode = string(s.DeliveryMode())
+		for _, o := range s.Carriers() {
+			v.Carriers = append(v.Carriers, CarrierOption{
+				CarrierID: o.CarrierID, HandoffNodeID: string(o.HandoffNodeID),
+				CostPerPackageCents: o.CostPerPackageCents, TransitMinutes: o.TransitMinutes,
+			})
+		}
+	}
+	return v
 }
 
 // RegionFrom builds the view of r.

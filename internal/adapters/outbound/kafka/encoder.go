@@ -102,10 +102,21 @@ func payloadFor(ev shared.Event) (any, error) {
 			LaneID: string(e.LaneID), CostPerUnitCents: e.CostPerUnitCents, DeclaredAt: instant(e.DeclaredAt),
 		}, nil
 	case servicearea.ServiceAreaAssigned:
-		return serviceAreaPayload{
+		p := serviceAreaPayload{
 			PostalPrefix: string(e.PostalPrefix), DeliveryStationNodeID: string(e.DeliveryStationNodeID),
 			RegionID: string(e.RegionID), AssignmentVersion: e.AssignmentVersion,
-		}, nil
+		}
+		if e.DeliveryMode != servicearea.ModeNetworkRoute {
+			p.DeliveryMode = string(e.DeliveryMode)
+			p.Carriers = make([]carrierOptionPayload, len(e.Carriers))
+			for i, o := range e.Carriers {
+				p.Carriers[i] = carrierOptionPayload{
+					CarrierID: o.CarrierID, HandoffNodeID: string(o.HandoffNodeID),
+					CostPerPackageCents: o.CostPerPackageCents, TransitMinutes: o.TransitMinutes,
+				}
+			}
+		}
+		return p, nil
 	case region.RegionDefined:
 		return regionPayload{RegionID: string(e.RegionID), Code: e.Code, Name: e.Name}, nil
 	default:

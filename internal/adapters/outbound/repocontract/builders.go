@@ -99,7 +99,7 @@ func NewLane(t testing.TB, id lane.ID, origin, destination *node.Node, mode lane
 // NewServiceArea assigns a prefix to an ACTIVE delivery station.
 func NewServiceArea(t testing.TB, prefix servicearea.PostalPrefix, station *node.Node, reg *region.Region, version int) *servicearea.ServiceArea {
 	t.Helper()
-	a, _, err := servicearea.Assign(prefix, version, station, reg, Now)
+	a, _, err := servicearea.Assign(prefix, version, station, reg, servicearea.CarrierDelivery{}, Now)
 	if err != nil {
 		t.Fatalf("assign %s: %v", prefix, err)
 	}

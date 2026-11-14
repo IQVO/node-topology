@@ -56,13 +56,17 @@ type skillDTO struct {
 	summary        string
 }
 
-// servingStation is the composed read DTO of the serving_station skill.
+// servingStation is the composed read DTO of the serving_station skill. The
+// delivery mode and the carrier options appear only on a CARRIER_HANDOFF
+// area (ADR 0016).
 type servingStation struct {
-	PostalPrefix          string   `json:"postalPrefix"`
-	DeliveryStationNodeID string   `json:"deliveryStationNodeId"`
-	RegionID              string   `json:"regionId"`
-	AssignmentVersion     int      `json:"assignmentVersion"`
-	Station               nodeView `json:"station"`
+	PostalPrefix          string              `json:"postalPrefix"`
+	DeliveryStationNodeID string              `json:"deliveryStationNodeId"`
+	RegionID              string              `json:"regionId"`
+	AssignmentVersion     int                 `json:"assignmentVersion"`
+	DeliveryMode          string              `json:"deliveryMode,omitempty"`
+	Carriers              []carrierOptionView `json:"carriers,omitempty"`
+	Station               nodeView            `json:"station"`
 }
 
 // nodeList is the DTO of the find_nodes skill.
@@ -78,6 +82,15 @@ type capabilitiesView struct {
 	Sort     bool `json:"sort"`
 	LastMile bool `json:"lastMile"`
 	Air      bool `json:"air"`
+}
+
+// carrierOptionView is one declared carrier option of a CARRIER_HANDOFF
+// service area (ADR 0016).
+type carrierOptionView struct {
+	CarrierID           string `json:"carrierId"`
+	HandoffNodeID       string `json:"handoffNodeId"`
+	CostPerPackageCents int64  `json:"costPerPackageCents"`
+	TransitMinutes      int    `json:"transitMinutes"`
 }
 
 type dayHoursView struct {
@@ -179,13 +192,25 @@ func toNode(n views.Node, withProfile bool) nodeView {
 	return out
 }
 
-// toServingStation composes the service area and its station node.
+// toServingStation composes the service area and its station node. The mode
+// and the carrier options ride along on a CARRIER_HANDOFF area (ADR 0016).
 func toServingStation(area views.ServiceArea, station views.Node) servingStation {
-	return servingStation{
+	out := servingStation{
 		PostalPrefix: area.PostalPrefix, DeliveryStationNodeID: area.DeliveryStationNodeID,
 		RegionID: area.RegionID, AssignmentVersion: area.AssignmentVersion,
 		Station: toNode(station, true),
 	}
+	if area.DeliveryMode != "" && area.DeliveryMode != "NETWORK_ROUTE" {
+		out.DeliveryMode = area.DeliveryMode
+		out.Carriers = make([]carrierOptionView, len(area.Carriers))
+		for i, o := range area.Carriers {
+			out.Carriers[i] = carrierOptionView{
+				CarrierID: o.CarrierID, HandoffNodeID: o.HandoffNodeID,
+				CostPerPackageCents: o.CostPerPackageCents, TransitMinutes: o.TransitMinutes,
+			}
+		}
+	}
+	return out
 }
 
 // summary is the one-line text of a serving_station answer.
