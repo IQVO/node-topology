@@ -338,3 +338,11 @@ network model's gap G64). Decided in
   `inbound-limits-not-allowed`), enforced by `Node.DeclareProfile` before the
   value checks of ADR 0007. `Restore` does not enforce it, so a revision stored
   earlier with limits on such a node stays restorable.
+
+## Addendum 2026-11-13: current state
+
+A36 counts nine events. Since ADR 0014 the context publishes ten: `LaneCostDeclared`
+(`internal/domain/lane/events.go`, encoded in `internal/adapters/outbound/kafka/encoder.go`),
+raised by the tenth command, `DeclareLaneCost` (`internal/application/usecases/lanes.go`).
+All ten are listed in `apis/asyncapi.yaml` and still go to
+`retailnetwork.node-topology.events`; nothing is published to `.analytics`.

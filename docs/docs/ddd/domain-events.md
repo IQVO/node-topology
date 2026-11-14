@@ -2,7 +2,7 @@
 id: domain-events
 title: Domain Events
 sidebar_label: Domain Events
-description: "The nine CloudEvents types Node Topology publishes, their payloads, producing commands and consumers; it consumes no event."
+description: "The ten CloudEvents types Node Topology publishes, their payloads, producing commands and consumers; it consumes no event."
 ---
 
 # Domain Events
@@ -47,12 +47,17 @@ Source: `internal/adapters/kafka/cloudevents/cloudevents.go`,
 | `NodeRetired` | `com.retailnetwork.logistics.node-topology.node.NodeRetired` | `nodeId` | `RetireNode` | `offer-availability`, `delivery-promise`, `order-sourcing`, `linehaul-transportation`, `vendor-connectivity`, `seller-inbound` |
 | `LaneOpened` | `com.retailnetwork.logistics.node-topology.lane.LaneOpened` | `laneId` | `OpenLane` | `linehaul-transportation`, `delivery-promise`, `order-sourcing` |
 | `LaneClosed` | `com.retailnetwork.logistics.node-topology.lane.LaneClosed` | `laneId` | `CloseLane` | `linehaul-transportation`, `delivery-promise`, `order-sourcing` |
+| `LaneCostDeclared` | `com.retailnetwork.logistics.node-topology.lane.LaneCostDeclared` | `laneId` | `DeclareLaneCost` | `order-sourcing` |
 | `ServiceAreaAssigned` | `com.retailnetwork.logistics.node-topology.servicearea.ServiceAreaAssigned` | `postalPrefix` | `AssignServiceArea` | `delivery-promise`, `order-sourcing`, `last-mile-delivery` |
 | `RegionDefined` | `com.retailnetwork.logistics.node-topology.region.RegionDefined` | `regionId` | `DefineRegion` | `delivery-promise`, `order-sourcing` |
 
 The consumer column is the network model's subscriber list
 (see [Integration](/docs/ecosystem/integration#subscribers-and-what-they-use));
-this repository cannot see its consumers. The field lists below are the
+this repository cannot see its consumers. `node-performance` subscribes to
+`NodeRegistered` and `NodeOperationalProfileDeclared` but its handlers have no
+effect: they acknowledge the event and write only the inbox row
+(`NodeTopologyHandlers` and `noEffect` in node-performance
+`internal/adapters/inbound/kafka/handlers.go`). The field lists below are the
 payload structs in `internal/adapters/outbound/kafka/payloads.go`; the
 [event catalogue](/docs/api-reference/events) is the consumer-facing summary.
 
@@ -83,8 +88,8 @@ Capabilities are not on the wire: consumers derive them from `nodeType`
 Producing use case: `DeclareOperationalProfile`. What consumers do with it:
 `linehaul-transportation` (re)generates pickup departures per cutoff
 (`PickupFromCutoffs`); `delivery-promise` and `order-sourcing` update
-`NodeProfileView` (handling time, cutoffs, throughput cap); `node-performance`
-records the declaration it will measure against.
+`NodeProfileView` (handling time, cutoffs, throughput cap). `node-performance` consumes it
+without effect: only its inbox row is written, no scorecard reads the declaration.
 
 | Field | Type | Meaning |
 | --- | --- | --- |
@@ -154,6 +159,19 @@ Producing use case: `CloseLane`.
 | --- | --- | --- |
 | `laneId` | string | The lane |
 | `closedAt` | timestamp | When it closed |
+
+### LaneCostDeclared
+
+Producing use case: `DeclareLaneCost` ([ADR 0014](/docs/adr/0014-lane-cost-declaration)).
+Raised on every declaration; a newer declaration supersedes the previous value, and a
+lane never declared on publishes nothing. `order-sourcing` keeps the latest declaration
+per `laneId` and folds it into its money-denominated assignment cost.
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `laneId` | string | The lane |
+| `costPerUnitCents` | integer | The declared marginal cost of moving one package-unit across the lane on one departure, in cents, 0 to 10000000 |
+| `declaredAt` | timestamp | When the cost was declared |
 
 ### ServiceAreaAssigned
 

@@ -370,7 +370,7 @@ flowchart TB
         A2A["inbound/a2a<br/>read-only skills, cmd/a2a"]
     end
     subgraph APP["application/usecases"]
-        UN["9 commands: RegisterNode, DeclareOperationalProfile,<br/>ActivateNode, SuspendNode, RetireNode,<br/>OpenLane, CloseLane,<br/>AssignServiceArea, DefineRegion<br/>6 queries: GetNode, ListNodes, ListLanes,<br/>GetRegion, ListRegions, ResolveServiceArea"]
+        UN["10 commands: RegisterNode, DeclareOperationalProfile,<br/>ActivateNode, SuspendNode, RetireNode,<br/>OpenLane, CloseLane, DeclareLaneCost,<br/>AssignServiceArea, DefineRegion<br/>6 queries: GetNode, ListNodes, ListLanes,<br/>GetRegion, ListRegions, ResolveServiceArea"]
     end
     subgraph DOM["domain"]
         D1["node, lane,<br/>servicearea, region"]
@@ -409,7 +409,7 @@ Packages, under `internal/`:
 | `internal/domain/servicearea` | `ServiceArea`, `PostalPrefix`, `ErrNotADeliveryStation`, `ErrStaleAssignmentVersion` |
 | `internal/domain/region` | `Region`, `ErrRegionCodeTaken`, `ErrUnknownRegion` |
 | `internal/domain/shared` | the `Event` interface, `Header`, `ErrValidation`, `ErrIllegalTransition`, id and text validators |
-| `internal/application/usecases` | the nine command use cases and the six query use cases |
+| `internal/application/usecases` | the ten command use cases and the six query use cases |
 | `internal/application/ports` | the four repositories, `EventOutbox`, `UnitOfWork`, `Clock`, `IDGenerator`, `NodeMetrics`, `ErrNotFound`, `ErrConcurrentUpdate` |
 | `internal/adapters/inbound/http` | the sixteen REST operations, `/healthz` and `/readyz`, problem+json mapping, `Idempotency-Key` handling |
 | `internal/adapters/inbound/mcp`, `inbound/a2a` | the read-only MCP tools and A2A skills, over the six query use cases |
