@@ -90,3 +90,10 @@ graceful shutdown.
 - A client retrying a timed-out write with the same key never duplicates a node,
   lane, region, assignment or event.
 - A 4xx is replayed too: after fixing the cause the client sends a new key.
+
+## Addendum 2026-11-13: current state
+
+`apis/openapi.yaml` now has sixteen operations, not fifteen, and ten routes take an
+`Idempotency-Key` (each registered through `keyed` in
+`internal/adapters/inbound/http/handlers_nodes.go` and `handlers_other.go`), not eight.
+The addition is `POST /lanes/{laneId}/cost-declarations` (`declareLaneCost`, ADR 0014).

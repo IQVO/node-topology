@@ -23,6 +23,9 @@ func registerLaneSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^I declare (-?\d+) cents per unit on the lane "([^"]*)"$`, w.declareLaneCost)
 	sc.Step(`^I declare (-?\d+) cents per unit on the lane id "([^"]*)"$`, w.declareLaneCostByID)
 	sc.Step(`^the lane "([^"]*)" costs (-?\d+) cents per unit$`, w.laneCosts)
+	sc.Step(`^I declare (-?\d+) gCo2e per unit on the lane "([^"]*)"$`, w.declareLaneEmission)
+	sc.Step(`^I declare (-?\d+) gCo2e per unit on the lane id "([^"]*)"$`, w.declareLaneEmissionByID)
+	sc.Step(`^the lane "([^"]*)" emits (-?\d+) gCo2e per unit$`, w.laneEmissions)
 }
 
 func (w *world) openCommand(mode, origin, destination string, transit int) (usecases.OpenLaneCommand, error) {
@@ -169,6 +172,45 @@ func (w *world) laneCosts(alias string, cents int) error {
 	}
 	if l.CostPerUnitCents() != int64(cents) {
 		return fmt.Errorf("lane %s costs %d cents per unit, want %d", alias, l.CostPerUnitCents(), cents)
+	}
+	return nil
+}
+
+func (w *world) declareLaneEmission(grams int, alias string) error {
+	id, err := w.laneID(alias)
+	if err != nil {
+		return err
+	}
+	w.run(func() error {
+		_, err := usecases.NewDeclareLaneEmission(w.deps).Execute(w.ctx(), usecases.DeclareLaneEmissionCommand{
+			LaneID: id, GCo2ePerUnit: int64(grams),
+		})
+		return err
+	})
+	return nil
+}
+
+func (w *world) declareLaneEmissionByID(grams int, id string) error {
+	w.run(func() error {
+		_, err := usecases.NewDeclareLaneEmission(w.deps).Execute(w.ctx(), usecases.DeclareLaneEmissionCommand{
+			LaneID: lane.ID(id), GCo2ePerUnit: int64(grams),
+		})
+		return err
+	})
+	return nil
+}
+
+func (w *world) laneEmissions(alias string, grams int) error {
+	id, err := w.laneID(alias)
+	if err != nil {
+		return err
+	}
+	l, err := w.deps.Lanes.Get(w.ctx(), id)
+	if err != nil {
+		return err
+	}
+	if l.EmissionPerUnitG() != int64(grams) {
+		return fmt.Errorf("lane %s emits %d gCo2e per unit, want %d", alias, l.EmissionPerUnitG(), grams)
 	}
 	return nil
 }

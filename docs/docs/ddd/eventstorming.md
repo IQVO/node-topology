@@ -120,8 +120,8 @@ flowchart LR
 Source: `internal/domain/node/events.go`, `internal/domain/lane/events.go`, `internal/domain/servicearea/events.go`, `internal/domain/region/events.go`, `internal/application/usecases/*.go`.
 
 Omitted: `NodeRegistered` feeding the same read models (and `StationView` in
-`last-mile-delivery`); `node-performance`, which records
-`NodeOperationalProfileDeclared` as the declaration it measures against;
+`last-mile-delivery`); `node-performance`, which consumes `NodeRegistered` and
+`NodeOperationalProfileDeclared` without effect (its handlers write only the inbox row);
 `seller-inbound`, which keeps its `NodeInboundView` from the five node events.
 
 ## 3. Suspension and retirement
@@ -191,11 +191,14 @@ flowchart LR
     G2["Lane"]:::aggregate
     E6["LaneOpened"]:::event
     E7["LaneClosed"]:::event
+    C10["DeclareLane<br/>Cost"]:::command
+    E10["LaneCost<br/>Declared"]:::event
     C9["AssignService<br/>Area"]:::command
     G3["ServiceArea"]:::aggregate
     E9["ServiceArea<br/>Assigned"]:::event
     N1["Node, read for<br/>ACTIVE and type"]:::aggregate
     R4["LaneView,<br/>NetworkGraphView,<br/>RegionAndService<br/>AreaView, StationView"]:::readmodel
+    R5["LaneView<br/>order-sourcing"]:::readmodel
 
     PL --> C6
     C6 --> G4
@@ -207,6 +210,9 @@ flowchart LR
     C8 --> G2
     G2 --> E6
     G2 --> E7
+    PL --> C10
+    C10 --> G2
+    G2 --> E10
     PL --> C9
     C9 --> N1
     C9 --> G3
@@ -215,6 +221,7 @@ flowchart LR
     E7 --> R4
     E8 --> R4
     E9 --> R4
+    E10 --> R5
 ```
 
 Source: `internal/domain/node/events.go`, `internal/domain/lane/events.go`, `internal/domain/servicearea/events.go`, `internal/domain/region/events.go`, `internal/application/usecases/*.go`.

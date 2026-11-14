@@ -497,3 +497,123 @@ func TestSnapshotRestoreRoundTripsTheDeclaredCost(t *testing.T) {
 		t.Fatalf("a legacy snapshot restores cost 0: %v", err)
 	}
 }
+
+func TestDeclareEmissionTransitions(t *testing.T) {
+	l := openLane(t) // version 1
+	events, err := l.DeclareEmission(400, t2.In(time.FixedZone("BRT", -3*3600)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := LaneEmissionDeclared{Header: shared.Header{Version: 2, At: t2}, LaneID: "lane-5c21d8", GCo2ePerUnit: 400, DeclaredAt: t2}
+	if !reflect.DeepEqual(events, []shared.Event{want}) {
+		t.Fatalf("events = %+v", events)
+	}
+	ev := events[0]
+	if ev.EventName() != "LaneEmissionDeclared" || ev.Entity() != "lane" || ev.SubjectID() != "lane-5c21d8" || ev.AggregateVersion() != 2 ||
+		!ev.OccurredAt().Equal(t2) || ev.OccurredAt().Location() != time.UTC {
+		t.Fatalf("accessors wrong: %+v", ev)
+	}
+	if l.EmissionPerUnitG() != 400 || l.Status() != StatusOpen || l.Version() != 2 {
+		t.Fatalf("unexpected lane: %+v", l.Snapshot())
+	}
+}
+
+func TestDeclareEmissionSupersedes(t *testing.T) {
+	l := openLane(t) // version 1
+	if _, err := l.DeclareEmission(400, t2); err != nil {
+		t.Fatal(err)
+	}
+	// a newer declaration supersedes the previous value; each is a fact
+	events, err := l.DeclareEmission(260, t2.Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l.EmissionPerUnitG() != 260 || l.Version() != 3 || len(events) != 1 {
+		t.Fatalf("redeclaration: emission %d version %d events %d", l.EmissionPerUnitG(), l.Version(), len(events))
+	}
+}
+
+func TestDeclareEmissionZeroIsLegal(t *testing.T) {
+	l := openLane(t)
+	events, err := l.DeclareEmission(0, t2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l.EmissionPerUnitG() != 0 || len(events) != 1 {
+		t.Fatalf("zero is a declaration of zero emission: %+v", l.Snapshot())
+	}
+}
+
+func TestDeclareEmissionRejections(t *testing.T) {
+	closed := openLane(t)
+	if _, err := closed.Close(t2); err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		name     string
+		lane     *Lane
+		emission int64
+		want     error
+	}{
+		{"negative", openLane(t), -1, shared.ErrValidation},
+		{"above the ceiling", openLane(t), MaxEmissionPerUnitG + 1, shared.ErrValidation},
+		{"closed lane", closed, 400, shared.ErrIllegalTransition},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			before := tc.lane.Snapshot()
+			events, err := tc.lane.DeclareEmission(tc.emission, t2)
+			if !errors.Is(err, tc.want) || events != nil {
+				t.Fatalf("want %v, got %v (%d events)", tc.want, err, len(events))
+			}
+			if !reflect.DeepEqual(tc.lane.Snapshot(), before) {
+				t.Fatalf("a refused declaration changes nothing: %+v vs %+v", tc.lane.Snapshot(), before)
+			}
+		})
+	}
+}
+
+func TestDeclareEmissionCheckOrder(t *testing.T) {
+	closed := openLane(t)
+	if _, err := closed.Close(t2); err != nil {
+		t.Fatal(err)
+	}
+	// values beat the transition guard, exactly as Open checks values first
+	if _, err := closed.DeclareEmission(-1, t2); !errors.Is(err, shared.ErrValidation) {
+		t.Fatalf("values first: %v", err)
+	}
+}
+
+func TestDeclareEmissionBoundaryValues(t *testing.T) {
+	for _, grams := range []int64{0, MaxEmissionPerUnitG} {
+		l := openLane(t)
+		if _, err := l.DeclareEmission(grams, t2); err != nil {
+			t.Errorf("%d gCo2e must be accepted: %v", grams, err)
+		}
+	}
+}
+
+func TestSnapshotRestoreRoundTripsTheDeclaredEmission(t *testing.T) {
+	l := openLane(t)
+	if _, err := l.DeclareEmission(410, t2); err != nil {
+		t.Fatal(err)
+	}
+	snap := l.Snapshot()
+	if snap.EmissionPerUnitG != 410 {
+		t.Fatalf("the builder must carry the declared emission: %+v", snap)
+	}
+	back, err := Restore(snap)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if back.EmissionPerUnitG() != 410 || !reflect.DeepEqual(back.Snapshot(), snap) {
+		t.Fatalf("round trip lost the declared emission: %+v vs %+v", back.Snapshot(), snap)
+	}
+	// a legacy snapshot (before the field existed) restores as 0
+	legacy := snap
+	legacy.EmissionPerUnitG = 0
+	old, err := Restore(legacy)
+	if err != nil || old.EmissionPerUnitG() != 0 {
+		t.Fatalf("a legacy snapshot restores emission 0: %v", err)
+	}
+}

@@ -78,13 +78,14 @@ type inboundBody struct {
 	MaxCartonDimsMm  *cartonDimsBody `json:"maxCartonDimsMm"`
 	AcceptsPallets   *bool           `json:"acceptsPallets"`
 	RequiresSscc     *bool           `json:"requiresSscc"`
+	MonthlyVolumeDm3 *int            `json:"monthlyVolumeDm3"`
 }
 
 func (b *inboundBody) limits() *node.InboundLimits {
 	if b == nil {
 		return nil
 	}
-	l := &node.InboundLimits{MaxCartonWeightG: b.MaxCartonWeightG, AcceptsPallets: b.AcceptsPallets, RequiresSscc: b.RequiresSscc}
+	l := &node.InboundLimits{MaxCartonWeightG: b.MaxCartonWeightG, AcceptsPallets: b.AcceptsPallets, RequiresSscc: b.RequiresSscc, MonthlyVolumeDm3: b.MonthlyVolumeDm3}
 	if d := b.MaxCartonDimsMm; d != nil {
 		l.MaxCartonDimsMm = &node.CartonDims{L: d.L, W: d.W, H: d.H}
 	}
@@ -148,6 +149,14 @@ type declareLaneCostBody struct {
 
 func (b declareLaneCostBody) command(id string) usecases.DeclareLaneCostCommand {
 	return usecases.DeclareLaneCostCommand{LaneID: lane.ID(id), CostPerUnitCents: b.CostPerUnitCents}
+}
+
+type declareLaneEmissionBody struct {
+	GCo2ePerUnit int64 `json:"gCo2ePerUnit"`
+}
+
+func (b declareLaneEmissionBody) command(id string) usecases.DeclareLaneEmissionCommand {
+	return usecases.DeclareLaneEmissionCommand{LaneID: lane.ID(id), GCo2ePerUnit: b.GCo2ePerUnit}
 }
 
 type carrierOptionBody struct {

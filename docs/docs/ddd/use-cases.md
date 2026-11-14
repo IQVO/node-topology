@@ -2,12 +2,12 @@
 id: use-cases
 title: Use Cases
 sidebar_label: Use Cases
-description: "Every application use case of Node Topology: nine commands and six reads, with trigger, inputs, invariants, errors and the events they raise."
+description: "Every application use case of Node Topology: ten commands and six reads, with trigger, inputs, invariants, errors and the events they raise."
 ---
 
 # Use Cases
 
-One use case per operation of `apis/openapi.yaml`, in `internal/application/usecases`. Nine commands change state and each raises exactly one event; six reads (`GetNode`, `ListNodes`, `ListLanes`, `ResolveServiceArea`, `GetRegion`, `ListRegions`) change nothing. No use case is driven by Kafka: the context consumes no event. Payloads are on the [event catalogue](/docs/api-reference/events), the step-by-step flows on [Sequence diagrams](/docs/ddd/sequence-diagrams).
+One use case per operation of `apis/openapi.yaml`, in `internal/application/usecases`. Ten commands change state and each raises exactly one event; six reads (`GetNode`, `ListNodes`, `ListLanes`, `ResolveServiceArea`, `GetRegion`, `ListRegions`) change nothing. No use case is driven by Kafka: the context consumes no event. Payloads are on the [event catalogue](/docs/api-reference/events), the step-by-step flows on [Sequence diagrams](/docs/ddd/sequence-diagrams).
 
 ## How every command commits
 
@@ -38,6 +38,7 @@ A `ErrConcurrentUpdate` at step 2 reruns the whole attempt once on fresh state (
 | `RetireNode` | planner | `POST /nodes/{nodeId}/retirements` | `NodeRetired` |
 | `OpenLane` | planner | `POST /lanes` | `LaneOpened` |
 | `CloseLane` | planner | `POST /lanes/{laneId}/closures` | `LaneClosed` |
+| `DeclareLaneCost` | planner | `POST /lanes/{laneId}/cost-declarations` | `LaneCostDeclared` |
 | `AssignServiceArea` | planner, in bulk at network redesign | `PUT /service-areas/{postalPrefix}` | `ServiceAreaAssigned` |
 | `DefineRegion` | planner | `POST /regions` | `RegionDefined` |
 
@@ -99,6 +100,15 @@ Source: `usecases/lanes.go`, `domain/lane/lane.go`.
 - **Preconditions**: the lane is `OPEN`. Closing needs no active endpoint. There is no reopen: a new lane is opened instead.
 - **Errors**: `illegal-transition` (409, already `CLOSED`), `not-found` (404).
 - **Event**: `LaneClosed`.
+
+## DeclareLaneCost
+
+Source: `usecases/lanes.go`, `domain/lane/lane.go`, `internal/adapters/inbound/http/handlers_other.go`, [ADR 0014](/docs/adr/0014-lane-cost-declaration).
+
+- **Input**: path `laneId`, body `costPerUnitCents` (integer cents, 0 to 10000000; 0 is a legal declaration).
+- **Flow**: load the lane (unknown is `404`); check the range and that the lane is `OPEN`; store the cost and bump the lane version; append `LaneCostDeclared`; answer `201` with the lane. Every declaration supersedes the previous value.
+- **Errors**: `validation-failed` (422, outside the range), `illegal-transition` (409, the lane is `CLOSED`), `not-found` (404).
+- **Event**: `LaneCostDeclared`, with `laneId`, `costPerUnitCents` and `declaredAt`.
 
 ## AssignServiceArea
 

@@ -169,8 +169,8 @@ const (
 	maxRevisionOf  = `SELECT COALESCE(MAX(revision), 0) FROM node_profile_revisions WHERE node_id = $1`
 	insertRevision = `INSERT INTO node_profile_revisions (node_id, revision, timezone, operating_hours, holidays,
 		handling_time_minutes, cutoffs, throughput_value, throughput_time_unit, throughput_unit, sort_dwell_minutes,
-		inbound, declared_by, declared_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`
+		inbound, monthly_volume_dm3, declared_by, declared_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`
 )
 
 // Save implements ports.NodeRepository: the node row under its version check,
@@ -233,8 +233,17 @@ func appendRevision(ctx context.Context, tx pgx.Tx, s node.Snapshot) error {
 	}
 	if _, err := tx.Exec(ctx, insertRevision, string(s.ID), p.Revision, p.Timezone, hours, holidays,
 		p.HandlingTimeMinutes, cutoffs, p.ThroughputCap.Value, string(p.ThroughputCap.TimeUnit), p.ThroughputCap.Unit,
-		p.SortDwellMinutes, inbound, string(p.DeclaredBy), p.DeclaredAt); err != nil {
+		p.SortDwellMinutes, inbound, monthlyVolume(p.Inbound), string(p.DeclaredBy), p.DeclaredAt); err != nil {
 		return err
 	}
 	return nil
+}
+
+// monthlyVolume returns the declared monthly volume column value of the
+// inbound limits (nil for SQL NULL, ADR 0019).
+func monthlyVolume(l *node.InboundLimits) any {
+	if l == nil {
+		return nil
+	}
+	return l.MonthlyVolumeDm3
 }

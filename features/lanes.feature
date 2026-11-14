@@ -166,3 +166,47 @@ Feature: Lanes
       | cents    |
       | -1       |
       | 10000001 |
+
+  Scenario: Declaring the emission per package-unit of a lane
+    Given an open GROUND lane "L1" exists from "fc-1" to "sc-1"
+    When I declare 410 gCo2e per unit on the lane "L1"
+    Then the command succeeds
+    And the last command published the event "LaneEmissionDeclared"
+    And the lane "L1" is OPEN
+    And the lane "L1" emits 410 gCo2e per unit
+
+  Scenario: A newer emission declaration supersedes the previous one
+    Given an open GROUND lane "L1" exists from "fc-1" to "sc-1"
+    And I declare 410 gCo2e per unit on the lane "L1"
+    When I declare 260 gCo2e per unit on the lane "L1"
+    Then the command succeeds
+    And the lane "L1" emits 260 gCo2e per unit
+
+  Scenario: Zero gCo2e is a legal declaration of zero emission
+    Given an open GROUND lane "L1" exists from "fc-1" to "sc-1"
+    When I declare 0 gCo2e per unit on the lane "L1"
+    Then the command succeeds
+    And the last command published the event "LaneEmissionDeclared"
+    And the lane "L1" emits 0 gCo2e per unit
+
+  Scenario: A closed lane cannot be emission-declared on
+    Given an open GROUND lane "L1" exists from "fc-1" to "sc-1"
+    And I close the lane "L1"
+    When I declare 410 gCo2e per unit on the lane "L1"
+    Then the command is refused with "illegal-transition"
+    And nothing was stored by the last command
+
+  Scenario: An unknown lane is not found by its emission declaration
+    When I declare 410 gCo2e per unit on the lane id "lane-404"
+    Then the command is refused with "not-found"
+
+  Scenario Outline: The declared emission is between 0 and 10000000 gCo2e
+    Given an open GROUND lane "L1" exists from "fc-1" to "sc-1"
+    When I declare <grams> gCo2e per unit on the lane "L1"
+    Then the command is refused with "validation-failed"
+    And nothing was stored by the last command
+
+    Examples:
+      | grams    |
+      | -1       |
+      | 10000001 |

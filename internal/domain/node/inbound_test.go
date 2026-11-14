@@ -17,6 +17,7 @@ func fullInbound() *InboundLimits {
 		MaxCartonDimsMm:  &CartonDims{L: 600, W: 400, H: 400},
 		AcceptsPallets:   boolp(true),
 		RequiresSscc:     boolp(false),
+		MonthlyVolumeDm3: intp(400000),
 	}
 }
 
@@ -37,6 +38,8 @@ func TestInboundLimitsAcceptedValues(t *testing.T) {
 		{"dims at the ceiling", &InboundLimits{MaxCartonDimsMm: &CartonDims{L: MaxInboundLimit, W: MaxInboundLimit, H: MaxInboundLimit}}},
 		{"false flags are a declaration", &InboundLimits{AcceptsPallets: boolp(false)}},
 		{"requiresSscc only", &InboundLimits{RequiresSscc: boolp(true)}},
+		{"monthly volume only", &InboundLimits{MonthlyVolumeDm3: intp(120000)}},
+		{"monthly volume at the ceiling", &InboundLimits{MonthlyVolumeDm3: intp(MaxInboundLimit)}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -73,6 +76,9 @@ func TestInboundLimitsRefusedValues(t *testing.T) {
 		{"height over the ceiling", &InboundLimits{MaxCartonDimsMm: &CartonDims{L: 1, W: 1, H: over}}, "maxCartonDimsMm.h"},
 		{"valid weight, bad dims", &InboundLimits{MaxCartonWeightG: intp(10), MaxCartonDimsMm: &CartonDims{}}, "maxCartonDimsMm"},
 		{"bad weight, valid dims", &InboundLimits{MaxCartonWeightG: intp(0), MaxCartonDimsMm: &CartonDims{L: 1, W: 1, H: 1}}, "maxCartonWeightG"},
+		{"volume zero", &InboundLimits{MonthlyVolumeDm3: intp(0)}, "monthlyVolumeDm3"},
+		{"volume negative", &InboundLimits{MonthlyVolumeDm3: intp(-5)}, "monthlyVolumeDm3"},
+		{"volume over the ceiling", &InboundLimits{MonthlyVolumeDm3: &over}, "monthlyVolumeDm3"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -97,6 +103,7 @@ func TestInboundLimitsCloneIsDeep(t *testing.T) {
 	c.MaxCartonDimsMm.L = 1
 	*c.AcceptsPallets = false
 	*c.RequiresSscc = true
+	*c.MonthlyVolumeDm3 = 1
 	if !reflect.DeepEqual(orig, fullInbound()) {
 		t.Fatalf("mutating the clone changed the original: %+v", orig)
 	}

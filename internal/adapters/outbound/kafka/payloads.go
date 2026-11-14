@@ -65,13 +65,14 @@ type inboundPayload struct {
 	MaxCartonDimsMm  *cartonDimsPayload `json:"maxCartonDimsMm,omitempty"`
 	AcceptsPallets   *bool              `json:"acceptsPallets,omitempty"`
 	RequiresSscc     *bool              `json:"requiresSscc,omitempty"`
+	MonthlyVolumeDm3 *int               `json:"monthlyVolumeDm3,omitempty"`
 }
 
 func inboundData(l *node.InboundLimits) *inboundPayload {
 	if l == nil {
 		return nil
 	}
-	p := &inboundPayload{MaxCartonWeightG: l.MaxCartonWeightG, AcceptsPallets: l.AcceptsPallets, RequiresSscc: l.RequiresSscc}
+	p := &inboundPayload{MaxCartonWeightG: l.MaxCartonWeightG, AcceptsPallets: l.AcceptsPallets, RequiresSscc: l.RequiresSscc, MonthlyVolumeDm3: l.MonthlyVolumeDm3}
 	if d := l.MaxCartonDimsMm; d != nil {
 		p.MaxCartonDimsMm = &cartonDimsPayload{L: d.L, W: d.W, H: d.H}
 	}
@@ -125,6 +126,12 @@ type laneCostDeclaredPayload struct {
 	LaneID           string `json:"laneId"`
 	CostPerUnitCents int64  `json:"costPerUnitCents"`
 	DeclaredAt       string `json:"declaredAt"`
+}
+
+type laneEmissionDeclaredPayload struct {
+	LaneID       string `json:"laneId"`
+	GCo2ePerUnit int64  `json:"gCo2ePerUnit"`
+	DeclaredAt   string `json:"declaredAt"`
 }
 
 // carrierOptionPayload is one declared carrier option of a CARRIER_HANDOFF

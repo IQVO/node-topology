@@ -72,6 +72,7 @@ type InboundLimits struct {
 	MaxCartonDimsMm  *CartonDims `json:"maxCartonDimsMm,omitempty"`
 	AcceptsPallets   *bool       `json:"acceptsPallets,omitempty"`
 	RequiresSscc     *bool       `json:"requiresSscc,omitempty"`
+	MonthlyVolumeDm3 *int        `json:"monthlyVolumeDm3,omitempty"`
 }
 
 // OperationalProfile is one revision of a node's declared profile.
@@ -118,6 +119,7 @@ type Lane struct {
 	NominalTransitMinutes int        `json:"nominalTransitMinutes"`
 	Status                string     `json:"status"`
 	CostPerUnitCents      int64      `json:"costPerUnitCents"`
+	EmissionPerUnitG      int64      `json:"emissionPerUnitG"`
 	ClosedAt              *time.Time `json:"closedAt,omitempty"`
 }
 
@@ -216,7 +218,7 @@ func inboundFrom(l *node.InboundLimits) *InboundLimits {
 	if l == nil {
 		return nil
 	}
-	v := &InboundLimits{MaxCartonWeightG: copyInt(l.MaxCartonWeightG), AcceptsPallets: copyBool(l.AcceptsPallets), RequiresSscc: copyBool(l.RequiresSscc)}
+	v := &InboundLimits{MaxCartonWeightG: copyInt(l.MaxCartonWeightG), AcceptsPallets: copyBool(l.AcceptsPallets), RequiresSscc: copyBool(l.RequiresSscc), MonthlyVolumeDm3: copyInt(l.MonthlyVolumeDm3)}
 	if d := l.MaxCartonDimsMm; d != nil {
 		v.MaxCartonDimsMm = &CartonDims{L: d.L, W: d.W, H: d.H}
 	}
@@ -241,6 +243,7 @@ func LaneFrom(l *lane.Lane) Lane {
 		NominalTransitMinutes: l.NominalTransitMinutes(),
 		Status:                string(l.Status()),
 		CostPerUnitCents:      l.CostPerUnitCents(),
+		EmissionPerUnitG:      l.EmissionPerUnitG(),
 		ClosedAt:              optTime(l.ClosedAt()),
 	}
 }

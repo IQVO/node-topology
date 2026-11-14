@@ -30,6 +30,9 @@ type InboundLimits struct {
 	AcceptsPallets *bool
 	// RequiresSscc says whether every inbound carton must carry an SSCC.
 	RequiresSscc *bool
+	// MonthlyVolumeDm3 is the inbound volume the node accepts per calendar
+	// month, in cubic decimetres (ADR 0019).
+	MonthlyVolumeDm3 *int
 }
 
 // clone returns a deep copy; nil stays nil.
@@ -54,6 +57,10 @@ func (l *InboundLimits) clone() *InboundLimits {
 		v := *l.RequiresSscc
 		c.RequiresSscc = &v
 	}
+	if l.MonthlyVolumeDm3 != nil {
+		v := *l.MonthlyVolumeDm3
+		c.MonthlyVolumeDm3 = &v
+	}
 	return &c
 }
 
@@ -64,11 +71,16 @@ func (l *InboundLimits) validate() error {
 	if l == nil {
 		return nil
 	}
-	if l.MaxCartonWeightG == nil && l.MaxCartonDimsMm == nil && l.AcceptsPallets == nil && l.RequiresSscc == nil {
+	if l.MaxCartonWeightG == nil && l.MaxCartonDimsMm == nil && l.AcceptsPallets == nil && l.RequiresSscc == nil && l.MonthlyVolumeDm3 == nil {
 		return errors.New("inbound must declare at least one limit; omit it to declare none")
 	}
 	if w := l.MaxCartonWeightG; w != nil {
 		if err := checkLimit("inbound.maxCartonWeightG", *w); err != nil {
+			return err
+		}
+	}
+	if m := l.MonthlyVolumeDm3; m != nil {
+		if err := checkLimit("inbound.monthlyVolumeDm3", *m); err != nil {
 			return err
 		}
 	}

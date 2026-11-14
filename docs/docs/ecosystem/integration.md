@@ -15,7 +15,7 @@ Node Topology is upstream of everything it touches. It **consumes nothing and ca
 | --- | --- | --- | --- | --- |
 | Seven or eight subscribing contexts | out | Kafka, CloudEvents 1.0 structured mode | `retailnetwork.node-topology.events`, ten event types ([Events](/docs/api-reference/events), `apis/asyncapi.yaml`) | Open Host Service + Published Language; consumers Conformist |
 | `vendor-connectivity` | in | REST, in-organisation | `POST /nodes`, `PUT /nodes/{nodeId}/operational-profile` | Customer/Supplier |
-| Network-ops planners and consoles | in | REST | the 15 operations of `apis/openapi.yaml` | UI |
+| Network-ops planners and consoles | in | REST | the 16 operations of `apis/openapi.yaml` | UI |
 | Any context or client | in | REST, MCP, A2A | the read routes, the six MCP tools, the two A2A skills | Open Host Service |
 | Console remote | in | REST, read-only `GET` calls from the browser to `${apiOrigin}/api/node-topology` through the gateway (`web/src/config.ts`) | `web/` (`node_topology_mfe`) | UI |
 
@@ -49,13 +49,13 @@ The subscriber lists are the network model's (warehouse-docs `network/docs/strat
 
 | Subscriber | Events it takes | What it builds |
 | --- | --- | --- |
-| `delivery-promise` | all nine | node profile, region and service-area, and lane views for its promise hot path |
-| `order-sourcing` | all nine | node profile and network graph views |
+| `delivery-promise` | nine: every event except `LaneCostDeclared` | node profile, region and service-area, and lane views for its promise hot path |
+| `order-sourcing` | all ten | node profile and network graph views, and the declared cost of each lane (`LaneCostDeclared`, [ADR 0014](/docs/adr/0014-lane-cost-declaration)) |
 | `linehaul-transportation` | `NodeRegistered`, `NodeOperationalProfileDeclared`, `NodeActivated`, `NodeSuspended`, `NodeRetired`, `LaneOpened`, `LaneClosed` | lanes into departures, cutoffs into pickup departures |
 | `offer-availability` | `NodeRegistered`, `NodeActivated`, `NodeSuspended`, `NodeRetired` | whether a listing's node is sellable |
 | `vendor-connectivity` | `NodeRegistered`, `NodeActivated`, `NodeSuspended`, `NodeRetired` (and `NodeOperationalProfileDeclared`) | its `VendorNodeView` |
 | `last-mile-delivery` | `NodeRegistered`, `ServiceAreaAssigned` | its station view |
-| `node-performance` | `NodeRegistered`, `NodeOperationalProfileDeclared` | the declared half it measures against |
+| `node-performance` | `NodeRegistered`, `NodeOperationalProfileDeclared` | nothing: it consumes both without effect and writes only the inbox row (node-performance `internal/adapters/inbound/kafka/handlers.go`, `NodeTopologyHandlers`) |
 | `seller-inbound` | node events, with the inbound limits of the profile | its `NodeInboundView` |
 
 ### Failure behaviour
@@ -73,8 +73,8 @@ Procedures are in the [runbook](/docs/operations/runbook#the-outbox-relay) and [
 ## Upstream callers: REST
 
 - **`vendor-connectivity`** calls `POST /nodes` and `PUT /nodes/{nodeId}/operational-profile` while processing a vendor submission. It is expected to send its transaction id as the `Idempotency-Key`, so a re-processed submission replays the first answer instead of failing on `vendor-node-code-taken`. This context keeps the invariants (`operator-not-allowed-for-node-type`, `stale-profile-revision`); a 409 or 422 becomes a failed submission on the caller's side. If this service is down the caller gets a connection error or a 503 and decides its own retry.
-- **Planners and consoles** drive the other seven commands. A planner registers parcel nodes with operator `NETWORK` here directly.
-- **Any context** may use the four reads, but none declares them as a synchronous call: the hot paths of the consumers read their own copies. Reads serve tools, planners and diagnosis.
+- **Planners and consoles** drive the other eight commands. A planner registers parcel nodes with operator `NETWORK` here directly.
+- **Any context** may use the six reads, but none declares them as a synchronous call: the hot paths of the consumers read their own copies. Reads serve tools, planners and diagnosis.
 
 The fleet gateway (Kong) exposes the api at `/api/node-topology`, MCP at `/api/mcp/node-topology` and A2A at `/api/a2a/node-topology`; details are on the [runbook](/docs/operations/runbook#deployment-helm). REST, MCP and A2A are unauthenticated; reachability is the cluster and gateway boundary.
 

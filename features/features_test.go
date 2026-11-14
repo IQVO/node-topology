@@ -45,4 +45,5 @@ func initializeScenario(sc *godog.ScenarioContext) {
 	registerServiceAreaSteps(sc, w)
 	registerOutcomeSteps(sc, w)
 	registerHTTPSteps(sc, w)
+	registerRulesSteps(sc, w)
 }

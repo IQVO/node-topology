@@ -25,7 +25,7 @@ var _ ports.LaneRepository = (*LaneRepo)(nil)
 // NewLaneRepo constructs a LaneRepo over pool.
 func NewLaneRepo(pool *pgxpool.Pool) *LaneRepo { return &LaneRepo{pool: pool} }
 
-const laneColumns = `id, origin_node_id, destination_node_id, mode, nominal_transit_minutes, status, opened_at, closed_at, cost_per_unit_cents, version`
+const laneColumns = `id, origin_node_id, destination_node_id, mode, nominal_transit_minutes, status, opened_at, closed_at, cost_per_unit_cents, emission_per_unit_g, version`
 
 func scanLane(row pgx.Row) (*lane.Lane, error) {
 	var (
@@ -35,7 +35,7 @@ func scanLane(row pgx.Row) (*lane.Lane, error) {
 		openedAt         time.Time
 		closedAt         *time.Time
 	)
-	if err := row.Scan(&id, &origin, &dest, &mode, &s.NominalTransitMinutes, &status, &openedAt, &closedAt, &s.CostPerUnitCents, &s.Version); err != nil {
+	if err := row.Scan(&id, &origin, &dest, &mode, &s.NominalTransitMinutes, &status, &openedAt, &closedAt, &s.CostPerUnitCents, &s.EmissionPerUnitG, &s.Version); err != nil {
 		return nil, err
 	}
 	s.ID, s.OriginNodeID, s.DestinationNodeID = lane.ID(id), node.ID(origin), node.ID(dest)
@@ -96,11 +96,11 @@ func (r *LaneRepo) List(ctx context.Context, f repository.LaneFilter) ([]*lane.L
 }
 
 const (
-	insertLane = `INSERT INTO lanes (id, origin_node_id, destination_node_id, mode, nominal_transit_minutes, status, opened_at, closed_at, cost_per_unit_cents, version)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
+	insertLane = `INSERT INTO lanes (id, origin_node_id, destination_node_id, mode, nominal_transit_minutes, status, opened_at, closed_at, cost_per_unit_cents, emission_per_unit_g, version)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
 	updateLane = `UPDATE lanes SET origin_node_id = $2, destination_node_id = $3, mode = $4, nominal_transit_minutes = $5,
-		status = $6, opened_at = $7, closed_at = $8, cost_per_unit_cents = $9, version = $10
-		WHERE id = $1 AND version = $10::bigint - 1`
+		status = $6, opened_at = $7, closed_at = $8, cost_per_unit_cents = $9, emission_per_unit_g = $10, version = $11
+		WHERE id = $1 AND version = $11::bigint - 1`
 )
 
 // Save implements ports.LaneRepository.
@@ -109,7 +109,7 @@ func (r *LaneRepo) Save(ctx context.Context, l *lane.Lane) error {
 	err := atomically(ctx, r.pool, func(tx pgx.Tx) error {
 		return upsertByVersion(ctx, tx, s.Version, "lane "+string(s.ID), insertLane, updateLane,
 			string(s.ID), string(s.OriginNodeID), string(s.DestinationNodeID), string(s.Mode), s.NominalTransitMinutes,
-			string(s.Status), s.OpenedAt, nullTime(s.ClosedAt), s.CostPerUnitCents, s.Version)
+			string(s.Status), s.OpenedAt, nullTime(s.ClosedAt), s.CostPerUnitCents, s.EmissionPerUnitG, s.Version)
 	})
 	return translateWrite(err, "save lane "+string(s.ID), map[string]error{uqOneOpenLane: lane.ErrDuplicateLane})
 }

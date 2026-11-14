@@ -46,7 +46,7 @@ func memoryServer() (*inboundhttp.Server, *memory.Store) {
 		RegisterNode: usecases.NewRegisterNode(d), DeclareProfile: usecases.NewDeclareOperationalProfile(d),
 		ActivateNode: usecases.NewActivateNode(d), SuspendNode: usecases.NewSuspendNode(d), RetireNode: usecases.NewRetireNode(d),
 		GetNode: usecases.NewGetNode(d.Nodes), ListNodes: usecases.NewListNodes(d.Nodes),
-		OpenLane: usecases.NewOpenLane(d), CloseLane: usecases.NewCloseLane(d), DeclareLaneCost: usecases.NewDeclareLaneCost(d), ListLanes: usecases.NewListLanes(d.Lanes),
+		OpenLane: usecases.NewOpenLane(d), CloseLane: usecases.NewCloseLane(d), DeclareLaneCost: usecases.NewDeclareLaneCost(d), DeclareLaneEmission: usecases.NewDeclareLaneEmission(d), ListLanes: usecases.NewListLanes(d.Lanes),
 		AssignServiceArea: usecases.NewAssignServiceArea(d), ResolveServiceArea: usecases.NewResolveServiceArea(d.ServiceAreas),
 		DefineRegion: usecases.NewDefineRegion(d), GetRegion: usecases.NewGetRegion(d.Regions), ListRegions: usecases.NewListRegions(d.Regions),
 		Idempotency: requireKeyOnly, Readiness: inboundhttp.NewReadiness(0, 0),

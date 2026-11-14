@@ -269,13 +269,14 @@ func TestDomainRefusalsMapToTheirProblems(t *testing.T) {
 func TestOperationalProfileInboundLimits(t *testing.T) {
 	w := newWorld(t)
 	const path = "/operational-profile"
-	good := `,"inbound":{"maxCartonWeightG":25000,"maxCartonDimsMm":{"l":600,"w":400,"h":300},"acceptsPallets":true,"requiresSscc":false}`
+	good := `,"inbound":{"maxCartonWeightG":25000,"maxCartonDimsMm":{"l":600,"w":400,"h":300},"acceptsPallets":true,"requiresSscc":false,"monthlyVolumeDm3":400000}`
 	r := w.a.keyed(http.MethodPut, "/nodes/"+w.origin+path, revision2(profileWith(good)))
 	if r.status != http.StatusOK {
 		t.Fatalf("declare with inbound: %d %s", r.status, r.raw)
 	}
 	in := r.decoded.(map[string]any)["operationalProfile"].(map[string]any)["inbound"].(map[string]any)
 	if in["maxCartonWeightG"] != float64(25000) || in["acceptsPallets"] != true || in["requiresSscc"] != false ||
+		in["monthlyVolumeDm3"] != float64(400000) ||
 		in["maxCartonDimsMm"].(map[string]any)["h"] != float64(300) {
 		t.Fatalf("inbound echoed as %v", in)
 	}
@@ -316,5 +317,33 @@ func TestOperationalProfileInboundRefusals(t *testing.T) {
 				t.Fatalf("= %d %s (%s), want %d %s", r.status, r.slug(), r.raw, tc.status, tc.slug)
 			}
 		})
+	}
+}
+
+func TestLaneEmissionDeclarationRoutesEndToEnd(t *testing.T) {
+	w := newWorld(t)
+	a := w.a
+	open := a.keyed(http.MethodPost, "/lanes", `{"originNodeId":"`+w.origin+`","destinationNodeId":"`+w.dest+`","mode":"GROUND","nominalTransitMinutes":90}`)
+	if open.status != http.StatusCreated {
+		t.Fatalf("openLane = %d %s", open.status, open.raw)
+	}
+	id := open.field("laneId")
+	if open.field("emissionPerUnitG") != "0" {
+		t.Fatalf("a new lane declares no emission: %s", open.raw)
+	}
+
+	declared := a.keyed(http.MethodPost, "/lanes/"+id+"/emission-declarations", `{"gCo2ePerUnit":410}`)
+	if declared.status != http.StatusCreated || declared.field("emissionPerUnitG") != "410" || declared.field("status") != "OPEN" {
+		t.Fatalf("declareLaneEmission = %d %s", declared.status, declared.raw)
+	}
+	if again := a.keyed(http.MethodPost, "/lanes/"+id+"/emission-declarations", `{"gCo2ePerUnit":260}`); again.status != http.StatusCreated || again.field("emissionPerUnitG") != "260" {
+		t.Fatalf("a newer declaration supersedes: %d %s", again.status, again.raw)
+	}
+
+	if outOfRange := a.keyed(http.MethodPost, "/lanes/"+id+"/emission-declarations", `{"gCo2ePerUnit":10000001}`); outOfRange.status != http.StatusUnprocessableEntity || outOfRange.slug() != "validation-failed" {
+		t.Fatalf("emission above the ceiling = %d %s", outOfRange.status, outOfRange.raw)
+	}
+	if zero := a.keyed(http.MethodPost, "/lanes/"+id+"/emission-declarations", `{"gCo2ePerUnit":0}`); zero.status != http.StatusCreated || zero.field("emissionPerUnitG") != "0" {
+		t.Fatalf("zero is a legal declaration: %d %s", zero.status, zero.raw)
 	}
 }

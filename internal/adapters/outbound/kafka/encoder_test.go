@@ -68,6 +68,10 @@ func goldenCases() []goldenCase {
 			"lane", "lane-1", `{"laneId":"lane-1","costPerUnitCents":320,"declaredAt":"2026-10-08T12:00:00Z"}`,
 		},
 		{
+			"LaneEmissionDeclared", lane.LaneEmissionDeclared{Header: header, LaneID: "lane-1", GCo2ePerUnit: 410, DeclaredAt: at},
+			"lane", "lane-1", `{"laneId":"lane-1","gCo2ePerUnit":410,"declaredAt":"2026-10-08T12:00:00Z"}`,
+		},
+		{
 			"ServiceAreaAssigned", servicearea.ServiceAreaAssigned{Header: header, PostalPrefix: "01310", DeliveryStationNodeID: "node-9", RegionID: "region-1", AssignmentVersion: 2},
 			"servicearea", "01310", `{"postalPrefix":"01310","deliveryStationNodeId":"node-9","regionId":"region-1","assignmentVersion":2}`,
 		},
@@ -179,7 +183,7 @@ func profileMinimalCase() goldenCase {
 }
 
 func profileInboundCase() goldenCase {
-	weight, yes, no := 25000, true, false
+	weight, yes, no, volume := 25000, true, false, 400000
 	return goldenCase{
 		"NodeOperationalProfileDeclared with every inbound limit",
 		node.NodeOperationalProfileDeclared{
@@ -189,7 +193,7 @@ func profileInboundCase() goldenCase {
 			ThroughputCap: node.ThroughputCap{Value: 50, TimeUnit: node.TimeUnitHour, Unit: node.UnitOrder},
 			Inbound: &node.InboundLimits{
 				MaxCartonWeightG: &weight, MaxCartonDimsMm: &node.CartonDims{L: 600, W: 400, H: 300},
-				AcceptsPallets: &yes, RequiresSscc: &no,
+				AcceptsPallets: &yes, RequiresSscc: &no, MonthlyVolumeDm3: &volume,
 			},
 			DeclaredBy: node.DeclaredByVendor,
 		},
@@ -198,7 +202,7 @@ func profileInboundCase() goldenCase {
 			`"operatingHoursByDay":{"monday":{"start":"06:00","end":"22:00"}},` +
 			`"holidays":[],"handlingTimeMinutes":60,"cutoffs":[{"localTime":"12:00"}],` +
 			`"throughputCap":{"value":50,"timeUnit":"HOUR","unit":"ORDER"},` +
-			`"inbound":{"maxCartonWeightG":25000,"maxCartonDimsMm":{"l":600,"w":400,"h":300},"acceptsPallets":true,"requiresSscc":false},` +
+			`"inbound":{"maxCartonWeightG":25000,"maxCartonDimsMm":{"l":600,"w":400,"h":300},"acceptsPallets":true,"requiresSscc":false,"monthlyVolumeDm3":400000},` +
 			`"declaredBy":"VENDOR"}`,
 	}
 }
@@ -263,14 +267,14 @@ func assertRow(t *testing.T, msg outbox.Message, tc goldenCase) {
 }
 
 // TestEncoderCoversEveryPublishedEvent keeps the golden table in step with
-// the catalogue: ten events, ten distinct names.
+// the catalogue: eleven events, eleven distinct names.
 func TestEncoderCoversEveryPublishedEvent(t *testing.T) {
 	names := map[string]bool{}
 	for _, tc := range goldenCases() {
 		names[tc.event.EventName()] = true
 	}
-	if len(names) != 10 {
-		t.Fatalf("golden table covers %d distinct events, want 10: %v", len(names), names)
+	if len(names) != 11 {
+		t.Fatalf("golden table covers %d distinct events, want 11: %v", len(names), names)
 	}
 }
 

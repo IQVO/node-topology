@@ -48,10 +48,14 @@ func rowFor(d node.ProfileDeclaration, at time.Time) (*profileRow, error) {
 	unitOf, unit := d.ThroughputCap.TimeUnit, d.ThroughputCap.Unit
 	tz, by := d.Timezone, string(d.DeclaredBy)
 	declaredAt := at
+	var monthly *int
+	if d.Inbound != nil {
+		monthly = d.Inbound.MonthlyVolumeDm3
+	}
 	return &profileRow{
 		Revision: &rev, Timezone: &tz, OperatingHours: hours, Holidays: holidays, HandlingTime: &handling,
 		Cutoffs: cutoffs, ThroughputValue: &value, ThroughputUnitOf: (*string)(&unitOf), ThroughputUnit: &unit,
-		SortDwell: d.SortDwellMinutes, Inbound: inbound, DeclaredBy: &by, DeclaredAt: &declaredAt,
+		SortDwell: d.SortDwellMinutes, Inbound: inbound, MonthlyVolumeDm3: monthly, DeclaredBy: &by, DeclaredAt: &declaredAt,
 	}, nil
 }
 
@@ -128,8 +132,8 @@ func TestProfileRowRejectsCorruptRows(t *testing.T) {
 
 func TestProfileRowDestMatchesColumns(t *testing.T) {
 	row := &profileRow{}
-	if got := len(row.dest()); got != 13 {
-		t.Fatalf("dest() has %d targets, want 13 (one per column of profileColumns)", got)
+	if got := len(row.dest()); got != 14 {
+		t.Fatalf("dest() has %d targets, want 14 (one per column of profileColumns)", got)
 	}
 }
 
@@ -267,7 +271,7 @@ func TestDerefHelpers(t *testing.T) {
 
 func TestProfileRowInboundRoundTrip(t *testing.T) {
 	at := time.Date(2026, 10, 23, 12, 0, 0, 0, time.UTC)
-	weight, yes, no := 25000, true, false
+	weight, yes, no, vol := 25000, true, false, 400000
 	tests := []struct {
 		name string
 		in   *node.InboundLimits
@@ -275,9 +279,10 @@ func TestProfileRowInboundRoundTrip(t *testing.T) {
 	}{
 		{"no limits is SQL NULL", nil, ""},
 		{"weight only", &node.InboundLimits{MaxCartonWeightG: &weight}, `{"maxCartonWeightG":25000}`},
+		{"monthly volume only stays out of the JSONB document", &node.InboundLimits{MonthlyVolumeDm3: &vol}, `{}`},
 		{"every limit", &node.InboundLimits{
 			MaxCartonWeightG: &weight, MaxCartonDimsMm: &node.CartonDims{L: 600, W: 400, H: 300},
-			AcceptsPallets: &yes, RequiresSscc: &no,
+			AcceptsPallets: &yes, RequiresSscc: &no, MonthlyVolumeDm3: &vol,
 		}, `{"maxCartonWeightG":25000,"maxCartonDimsMm":{"l":600,"w":400,"h":300},"acceptsPallets":true,"requiresSscc":false}`},
 	}
 	for _, tc := range tests {

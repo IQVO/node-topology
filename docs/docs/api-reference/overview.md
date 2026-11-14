@@ -15,7 +15,7 @@ description: "Node Topology's interfaces (REST, events, MCP, A2A), its endpoint 
 | Interface | Source of truth | Notes |
 | --- | --- | --- |
 | REST | `apis/openapi.yaml` (OpenAPI 3.0.3, version 0.1.0) | The pages under *REST* are generated from the spec with `npm run gen-api-docs`; do not edit them by hand. The only server the spec names is `http://localhost:8080`; through Kong in the fleet the api is at `/api/node-topology` with the prefix stripped. |
-| Events | `apis/asyncapi.yaml` (AsyncAPI 3.0.0, version 1.0.0) | Nine CloudEvents on `retailnetwork.node-topology.events`; summarised on the [event catalogue](/docs/api-reference/events), every field on [Domain events](/docs/ddd/domain-events). |
+| Events | `apis/asyncapi.yaml` (AsyncAPI 3.0.0, version 1.0.0) | Ten CloudEvents on `retailnetwork.node-topology.events`; summarised on the [event catalogue](/docs/api-reference/events), every field on [Domain events](/docs/ddd/domain-events). |
 | MCP | [ADR 0008](/docs/adr/0008-mcp-server-adoption), `internal/adapters/inbound/mcp` | `cmd/mcp` serves Streamable HTTP on `/mcp` and `/` (port 8090; through Kong `/api/mcp/node-topology`). Six read-only tools, no write tool; see [MCP tools](/docs/mcp/tools). |
 | A2A | [ADR 0011](/docs/adr/0011-a2a-inbound-adapter), `internal/adapters/inbound/a2a` | `cmd/a2a` serves JSON-RPC 2.0 on `/` and `/a2a` (port 8093; through Kong `/api/a2a/node-topology`). Two read-only skills; see below. |
 
@@ -35,6 +35,7 @@ All routes are on `cmd/api`. State-changing routes need an `Idempotency-Key`.
 | Lanes | `POST /lanes` | `openLane` | `201`, the lane `OPEN` |
 | Lanes | `GET /lanes` | `listLanes` | `200 {items, nextCursor}`, filters `origin`, `destination` |
 | Lanes | `POST /lanes/{laneId}/closures` | `closeLane` | `200`, the lane `CLOSED` |
+| Lanes | `POST /lanes/{laneId}/cost-declarations` | `declareLaneCost` | `201`, the lane with the declared `costPerUnitCents` |
 | Service areas | `PUT /service-areas/{postalPrefix}` | `assignServiceArea` | `200`, the assignment at its new version |
 | Service areas | `GET /service-areas/{postalPrefix}` | `resolveServiceArea` | `200`, the current assignment; `404 not-found` if unassigned |
 | Regions | `POST /regions` | `defineRegion` | `201`, the region |
