@@ -24,8 +24,8 @@ var allTables = []string{
 }
 
 // latestMigration is the highest migration number; every ceiling below
-// follows it (currently 0006, the service-area delivery mode).
-const latestMigration = 6
+// follows it (currently 0007, the pickup points).
+const latestMigration = 7
 
 // coreTables are the tables of migration 0001; 0002 adds the other two, 0003
 // adds a column to node_profile_revisions only, and 0005 and 0006 add columns
@@ -211,12 +211,45 @@ func TestMigration0006AddsAndDropsOnlyTheServiceAreaColumns(t *testing.T) {
 	if mode, options := serviceAreaModeColumns(t, pool); !mode || !options {
 		t.Fatal("the delivery-mode columns of migration 0006 are missing")
 	}
+	if err := m.Steps(-2); err != nil { // down through 0007, then 0006 itself
+		t.Fatalf("step down: %v", err)
+	}
+	wantVersion(t, m, latestMigration-2)
+	if mode, options := serviceAreaModeColumns(t, pool); mode || options {
+		t.Fatal("the down migration left a delivery-mode column behind")
+	}
+}
+
+// pickupPointColumn reports the serving-station column of migration 0007.
+func pickupPointColumn(t *testing.T, pool *pgxpool.Pool) bool {
+	t.Helper()
+	var ok bool
+	if err := pool.QueryRow(context.Background(), `SELECT EXISTS (
+		SELECT 1 FROM information_schema.columns
+		WHERE table_name = 'nodes' AND column_name = 'serving_station_node_id')`).Scan(&ok); err != nil {
+		t.Fatal(err)
+	}
+	return ok
+}
+
+// TestMigration0007AddsAndDropsOnlyTheServingStationColumn proves the pickup
+// point column arrives alone on nodes and leaves with it.
+func TestMigration0007AddsAndDropsOnlyTheServingStationColumn(t *testing.T) {
+	url := emptyURL(t)
+	pool := openPool(t, url)
+	m := migrator(t, url)
+	if err := m.Up(); err != nil {
+		t.Fatal(err)
+	}
+	if !pickupPointColumn(t, pool) {
+		t.Fatal("the serving-station column of migration 0007 is missing")
+	}
 	if err := m.Steps(-1); err != nil {
 		t.Fatalf("step down: %v", err)
 	}
 	wantVersion(t, m, latestMigration-1)
-	if mode, options := serviceAreaModeColumns(t, pool); mode || options {
-		t.Fatal("the down migration left a delivery-mode column behind")
+	if pickupPointColumn(t, pool) {
+		t.Fatal("the down migration left the serving-station column behind")
 	}
 }
 

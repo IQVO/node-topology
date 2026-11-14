@@ -76,12 +76,13 @@ type nodeList struct {
 }
 
 type capabilitiesView struct {
-	Outbound bool `json:"outbound"`
-	Inbound  bool `json:"inbound"`
-	Returns  bool `json:"returns"`
-	Sort     bool `json:"sort"`
-	LastMile bool `json:"lastMile"`
-	Air      bool `json:"air"`
+	Outbound   bool `json:"outbound"`
+	Inbound    bool `json:"inbound"`
+	Returns    bool `json:"returns"`
+	Sort       bool `json:"sort"`
+	LastMile   bool `json:"lastMile"`
+	Air        bool `json:"air"`
+	Collection bool `json:"collection"`
 }
 
 // carrierOptionView is one declared carrier option of a CARRIER_HANDOFF
@@ -127,18 +128,19 @@ type profileView struct {
 // where the skill asks for it (serving_station); find_nodes carries the
 // profile revision alone, so a listing stays small.
 type nodeView struct {
-	NodeID          string           `json:"nodeId"`
-	NodeType        string           `json:"nodeType"`
-	Subtype         string           `json:"subtype,omitempty"`
-	Operator        string           `json:"operator"`
-	RegionID        string           `json:"regionId"`
-	Timezone        string           `json:"timezone"`
-	PostalCode      string           `json:"postalCode"`
-	CountryCode     string           `json:"countryCode"`
-	Capabilities    capabilitiesView `json:"capabilities"`
-	Status          string           `json:"status"`
-	ProfileRevision int              `json:"profileRevision,omitempty"`
-	Profile         *profileView     `json:"operationalProfile,omitempty"`
+	NodeID               string           `json:"nodeId"`
+	NodeType             string           `json:"nodeType"`
+	Subtype              string           `json:"subtype,omitempty"`
+	Operator             string           `json:"operator"`
+	ServingStationNodeID string           `json:"servingStationNodeId,omitempty"`
+	RegionID             string           `json:"regionId"`
+	Timezone             string           `json:"timezone"`
+	PostalCode           string           `json:"postalCode"`
+	CountryCode          string           `json:"countryCode"`
+	Capabilities         capabilitiesView `json:"capabilities"`
+	Status               string           `json:"status"`
+	ProfileRevision      int              `json:"profileRevision,omitempty"`
+	Profile              *profileView     `json:"operationalProfile,omitempty"`
 }
 
 // instant formats an instant as RFC 3339 UTC; the zero time is "".
@@ -174,11 +176,13 @@ func toProfile(p views.OperationalProfile) profileView {
 func toNode(n views.Node, withProfile bool) nodeView {
 	out := nodeView{
 		NodeID: n.NodeID, NodeType: n.NodeType, Subtype: n.Subtype, Operator: n.Operator,
-		RegionID: n.RegionID, Timezone: n.Timezone,
+		ServingStationNodeID: n.ServingStationNodeID,
+		RegionID:             n.RegionID, Timezone: n.Timezone,
 		PostalCode: n.Location.PostalCode, CountryCode: n.Location.CountryCode,
 		Capabilities: capabilitiesView{
 			Outbound: n.Capabilities.Outbound, Inbound: n.Capabilities.Inbound, Returns: n.Capabilities.Returns,
 			Sort: n.Capabilities.Sort, LastMile: n.Capabilities.LastMile, Air: n.Capabilities.Air,
+			Collection: n.Capabilities.Collection,
 		},
 		Status: n.Status,
 	}

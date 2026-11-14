@@ -32,7 +32,8 @@ func NewNodeRepo(pool *pgxpool.Pool) *NodeRepo { return &NodeRepo{pool: pool} }
 
 // nodeSelect reads a node with its CURRENT profile revision (the LEFT JOIN
 // yields NULL profile columns while none was declared).
-const nodeSelect = `SELECT n.id, n.node_type, n.subtype, n.operator, n.vendor_id, n.vendor_node_code, n.region_id,
+const nodeSelect = `SELECT n.id, n.node_type, n.subtype, n.operator, n.vendor_id, n.vendor_node_code,
+	n.serving_station_node_id, n.region_id,
 	n.timezone, n.postal_code, n.country_code, n.lat, n.lon, n.status, n.activated_at, n.suspended_at,
 	n.suspend_reason, n.retired_at, n.version, ` + profileColumns + `
 	FROM nodes n
@@ -44,11 +45,12 @@ func scanNode(row pgx.Row) (*node.Node, error) {
 		s                                     node.Snapshot
 		id, typ, operator, regionID, status   string
 		subtype, vendorID, vendorCode, reason *string
+		servingStation                        *string
 		activated, suspended, retired         *time.Time
 		prof                                  profileRow
 	)
 	dest := append([]any{
-		&id, &typ, &subtype, &operator, &vendorID, &vendorCode, &regionID,
+		&id, &typ, &subtype, &operator, &vendorID, &vendorCode, &servingStation, &regionID,
 		&s.Timezone, &s.Location.PostalCode, &s.Location.CountryCode, &s.Location.Lat, &s.Location.Lon, &status,
 		&activated, &suspended, &reason, &retired, &s.Version,
 	}, prof.dest()...)
@@ -56,6 +58,7 @@ func scanNode(row pgx.Row) (*node.Node, error) {
 		return nil, err
 	}
 	s.ID, s.Type, s.Subtype, s.Operator = node.ID(id), node.Type(typ), node.Subtype(deref(subtype)), node.Operator(operator)
+	s.ServingStationNodeID = node.ID(deref(servingStation))
 	s.RegionID, s.Status, s.SuspendReason = region.ID(regionID), node.Status(status), deref(reason)
 	s.ActivatedAt, s.SuspendedAt, s.RetiredAt = timeOrZero(activated), timeOrZero(suspended), timeOrZero(retired)
 	if vendorID != nil && vendorCode != nil {
@@ -153,13 +156,15 @@ func (r *NodeRepo) ProfileRevisions(ctx context.Context, id node.ID) ([]node.Ope
 }
 
 const (
-	insertNode = `INSERT INTO nodes (id, node_type, subtype, operator, vendor_id, vendor_node_code, region_id, timezone,
+	insertNode = `INSERT INTO nodes (id, node_type, subtype, operator, vendor_id, vendor_node_code,
+		serving_station_node_id, region_id, timezone,
 		postal_code, country_code, lat, lon, status, profile_revision, activated_at, suspended_at, suspend_reason, retired_at, version)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`
 	updateNode = `UPDATE nodes SET node_type = $2, subtype = $3, operator = $4, vendor_id = $5, vendor_node_code = $6,
-		region_id = $7, timezone = $8, postal_code = $9, country_code = $10, lat = $11, lon = $12, status = $13,
-		profile_revision = $14, activated_at = $15, suspended_at = $16, suspend_reason = $17, retired_at = $18, version = $19
-		WHERE id = $1 AND version = $19::bigint - 1`
+		serving_station_node_id = $7, region_id = $8, timezone = $9, postal_code = $10, country_code = $11, lat = $12, lon = $13,
+		status = $14,
+		profile_revision = $15, activated_at = $16, suspended_at = $17, suspend_reason = $18, retired_at = $19, version = $20
+		WHERE id = $1 AND version = $20::bigint - 1`
 
 	maxRevisionOf  = `SELECT COALESCE(MAX(revision), 0) FROM node_profile_revisions WHERE node_id = $1`
 	insertRevision = `INSERT INTO node_profile_revisions (node_id, revision, timezone, operating_hours, holidays,
@@ -185,6 +190,7 @@ func (r *NodeRepo) Save(ctx context.Context, n *node.Node) error {
 		}
 		if err := upsertByVersion(ctx, tx, s.Version, what, insertNode, updateNode,
 			string(s.ID), string(s.Type), nullString(string(s.Subtype)), string(s.Operator), vendorID, vendorCode,
+			nullString(string(s.ServingStationNodeID)),
 			string(s.RegionID), s.Timezone, s.Location.PostalCode, s.Location.CountryCode, s.Location.Lat, s.Location.Lon,
 			string(s.Status), revision, nullTime(s.ActivatedAt), nullTime(s.SuspendedAt), nullString(s.SuspendReason),
 			nullTime(s.RetiredAt), s.Version); err != nil {

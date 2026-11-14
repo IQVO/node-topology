@@ -42,7 +42,7 @@ type goldenCase struct {
 
 func goldenCases() []goldenCase {
 	return []goldenCase{
-		registeredVendorCase(), registeredNetworkCase(), profileSortCase(), profileMinimalCase(), profileInboundCase(), profilePartialInboundCase(),
+		registeredVendorCase(), registeredNetworkCase(), registeredPickupPointCase(), profileSortCase(), profileMinimalCase(), profileInboundCase(), profilePartialInboundCase(),
 		{
 			"NodeActivated", node.NodeActivated{Header: header, NodeID: "node-1", ActivatedAt: later},
 			"node", "node-1", `{"nodeId":"node-1","activatedAt":"2026-10-08T12:30:15.123456Z"}`,
@@ -102,7 +102,21 @@ func registeredVendorCase() goldenCase {
 		},
 		"node", "node-1",
 		`{"nodeId":"node-1","nodeType":"FULFILLMENT_CENTER","subtype":"XL","operator":"VENDOR","vendorId":"vendor-7","vendorNodeCode":"FC-A",` +
-			`"regionId":"region-1","timezone":"America/Sao_Paulo","postalCode":"01310-100","countryCode":"BR"}`,
+			`"servingStationNodeId":null,"regionId":"region-1","timezone":"America/Sao_Paulo","postalCode":"01310-100","countryCode":"BR"}`,
+	}
+}
+
+func registeredPickupPointCase() goldenCase {
+	return goldenCase{
+		"NodeRegistered partner pickup point (serving station present)",
+		node.NodeRegistered{
+			Header: header, NodeID: "node-pnt-7", NodeType: node.PickupPoint, Operator: node.OperatorPartner,
+			VendorID: "partner-9", VendorNodeCode: "PP-A", ServingStationNodeID: "node-9",
+			RegionID: "region-1", Timezone: "America/Sao_Paulo", PostalCode: "01310", CountryCode: "BR",
+		},
+		"node", "node-pnt-7",
+		`{"nodeId":"node-pnt-7","nodeType":"PICKUP_POINT","subtype":null,"operator":"PARTNER","vendorId":"partner-9","vendorNodeCode":"PP-A",` +
+			`"servingStationNodeId":"node-9","regionId":"region-1","timezone":"America/Sao_Paulo","postalCode":"01310","countryCode":"BR"}`,
 	}
 }
 
@@ -115,7 +129,7 @@ func registeredNetworkCase() goldenCase {
 		},
 		"node", "node-2",
 		`{"nodeId":"node-2","nodeType":"SORTATION_CENTER","subtype":null,"operator":"NETWORK","vendorId":null,"vendorNodeCode":null,` +
-			`"regionId":"region-1","timezone":"America/Sao_Paulo","postalCode":"06000-000","countryCode":"BR"}`,
+			`"servingStationNodeId":null,"regionId":"region-1","timezone":"America/Sao_Paulo","postalCode":"06000-000","countryCode":"BR"}`,
 	}
 }
 

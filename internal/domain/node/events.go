@@ -15,16 +15,17 @@ const entity = "node"
 // NodeType.
 type NodeRegistered struct {
 	shared.Header
-	NodeID         ID
-	NodeType       Type
-	Subtype        Subtype
-	Operator       Operator
-	VendorID       string
-	VendorNodeCode string
-	RegionID       region.ID
-	Timezone       string
-	PostalCode     string
-	CountryCode    string
+	NodeID               ID
+	NodeType             Type
+	Subtype              Subtype
+	Operator             Operator
+	VendorID             string
+	VendorNodeCode       string
+	ServingStationNodeID ID
+	RegionID             region.ID
+	Timezone             string
+	PostalCode           string
+	CountryCode          string
 }
 
 // EventName returns "NodeRegistered".

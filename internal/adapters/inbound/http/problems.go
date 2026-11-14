@@ -85,6 +85,8 @@ var problemCatalogue = []struct {
 	{node.ErrIncompleteOperationalProfile, problem{http.StatusConflict, "incomplete-operational-profile", "The operational profile is incomplete"}},
 	{node.ErrNodeRetired, problem{http.StatusConflict, "node-retired", "The node is retired"}},
 	{node.ErrOperatorNotAllowedForNodeType, problem{http.StatusUnprocessableEntity, "operator-not-allowed-for-node-type", "This operator may not run this node type"}},
+	{node.ErrServingStationNotAllowed, problem{http.StatusUnprocessableEntity, "serving-station-not-allowed", "A pickup point needs an active delivery station as its serving station; other node types carry none"}},
+	{node.ErrPointPrefixNotLabellable, problem{http.StatusUnprocessableEntity, "pickup-point-postal-code-not-labellable", "A pickup point's postal code must be uppercase letters and digits only (the label charset)"}},
 	{node.ErrSubtypeNotAllowed, problem{http.StatusUnprocessableEntity, "subtype-not-allowed", "A subtype is not allowed for this node type"}},
 	{node.ErrCutoffOutsideOperatingHours, problem{http.StatusUnprocessableEntity, "cutoff-outside-operating-hours", "A cutoff falls outside the operating hours of its day"}},
 	{node.ErrSortDwellNotAllowed, problem{http.StatusUnprocessableEntity, "sort-dwell-not-allowed", "Only sorting nodes declare a sort dwell"}},

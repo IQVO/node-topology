@@ -45,69 +45,83 @@ const MaxPostalCode = 20
 
 // Node is the aggregate root: one physical building of the network.
 type Node struct {
-	id            ID
-	typ           Type
-	subtype       Subtype
-	operator      Operator
-	vendor        *VendorRef
-	regionID      region.ID
-	timezone      string
-	location      GeoLocation
-	status        Status
-	profile       *OperationalProfile
-	activatedAt   time.Time
-	suspendedAt   time.Time
-	suspendReason string
-	retiredAt     time.Time
-	version       int64
+	id             ID
+	typ            Type
+	subtype        Subtype
+	operator       Operator
+	vendor         *VendorRef
+	servingStation ID
+	regionID       region.ID
+	timezone       string
+	location       GeoLocation
+	status         Status
+	profile        *OperationalProfile
+	activatedAt    time.Time
+	suspendedAt    time.Time
+	suspendReason  string
+	retiredAt      time.Time
+	version        int64
 }
 
 // Snapshot is the persisted form of a node. Restore validates it. Only the
 // CURRENT profile revision is held; the repository stores every revision as
 // its own immutable row (ADR 0003).
 type Snapshot struct {
-	ID            ID
-	Type          Type
-	Subtype       Subtype
-	Operator      Operator
-	Vendor        *VendorRef
-	RegionID      region.ID
-	Timezone      string
-	Location      GeoLocation
-	Status        Status
-	Profile       *OperationalProfile
-	ActivatedAt   time.Time
-	SuspendedAt   time.Time
-	SuspendReason string
-	RetiredAt     time.Time
-	Version       int64
+	ID                   ID
+	Type                 Type
+	Subtype              Subtype
+	Operator             Operator
+	Vendor               *VendorRef
+	ServingStationNodeID ID
+	RegionID             region.ID
+	Timezone             string
+	Location             GeoLocation
+	Status               Status
+	Profile              *OperationalProfile
+	ActivatedAt          time.Time
+	SuspendedAt          time.Time
+	SuspendReason        string
+	RetiredAt            time.Time
+	Version              int64
 }
 
-// Registration is the input of RegisterNode.
+// Registration is the input of RegisterNode. ServingStationNodeID is required
+// for a PICKUP_POINT and refused for every other type (ADR 0017).
 type Registration struct {
-	ID       ID
-	Type     Type
-	Subtype  Subtype
-	Operator Operator
-	Vendor   *VendorRef
-	RegionID region.ID
-	Timezone string
-	Location GeoLocation
+	ID                   ID
+	Type                 Type
+	Subtype              Subtype
+	Operator             Operator
+	Vendor               *VendorRef
+	ServingStationNodeID ID
+	RegionID             region.ID
+	Timezone             string
+	Location             GeoLocation
 }
 
 // Register creates a node in PROPOSED at version 1 and raises NodeRegistered.
 // reg is the Region the use case loaded for in.RegionID; nil, or a region with
-// another id, is region.ErrUnknownRegion. Capabilities are derived from the type.
-func Register(in Registration, reg *region.Region, now time.Time) (*Node, []shared.Event, error) {
+// another id, is region.ErrUnknownRegion. station is the serving delivery
+// station of a PICKUP_POINT: nil unless the type is PICKUP_POINT, and it must
+// be an ACTIVE DELIVERY_STATION - the same invariant the service area
+// enforces (ADR 0017). Capabilities are derived from the type.
+func Register(in Registration, reg *region.Region, station *Node, now time.Time) (*Node, []shared.Event, error) {
 	if err := checkEnums(in.Type, in.Operator); err != nil {
 		return nil, nil, shared.Invalid("%v", err)
 	}
 	if !in.Type.AllowsOperator(in.Operator) {
 		return nil, nil, fmt.Errorf("%w: %s cannot be run by %s", ErrOperatorNotAllowedForNodeType, in.Type, in.Operator)
 	}
+	if err := checkServingStation(in.Type, in.ServingStationNodeID, station); err != nil {
+		return nil, nil, err // already the ErrServingStationNotAllowed chain
+	}
+	if in.Type == PickupPoint && !labellable(in.Location.PostalCode) {
+		return nil, nil, fmt.Errorf("%w: %q", ErrPointPrefixNotLabellable, in.Location.PostalCode)
+	}
 	s := Snapshot{
 		ID: in.ID, Type: in.Type, Subtype: in.Subtype, Operator: in.Operator, Vendor: in.Vendor,
-		RegionID: in.RegionID, Timezone: in.Timezone, Location: in.Location, Status: StatusProposed, Version: 1,
+		ServingStationNodeID: in.ServingStationNodeID,
+		RegionID:             in.RegionID, Timezone: in.Timezone, Location: in.Location, Status: StatusProposed, Version: 1,
 	}
 	if err := checkIdentity(s); err != nil {
 		return nil, nil, shared.Invalid("%v", err)
@@ -122,7 +136,8 @@ func Register(in Registration, reg *region.Region, now time.Time) (*Node, []shar
 	ev := NodeRegistered{
 		Header: shared.Header{Version: n.version, At: shared.UTC(now)},
 		NodeID: n.id, NodeType: n.typ, Subtype: n.subtype, Operator: n.operator,
-		RegionID: n.regionID, Timezone: n.timezone, PostalCode: n.location.PostalCode, CountryCode: n.location.CountryCode,
+		ServingStationNodeID: n.servingStation,
+		RegionID:             n.regionID, Timezone: n.timezone, PostalCode: n.location.PostalCode, CountryCode: n.location.CountryCode,
 	}
 	if n.vendor != nil {
 		ev.VendorID, ev.VendorNodeCode = n.vendor.VendorID, n.vendor.VendorNodeCode
@@ -135,7 +150,7 @@ func checkEnums(t Type, o Operator) error {
 		return fmt.Errorf("nodeType %q is not a node type", t)
 	}
 	if !o.Valid() {
-		return fmt.Errorf("operator %q is not NETWORK or VENDOR", o)
+		return fmt.Errorf("operator %q is not NETWORK, VENDOR or PARTNER", o)
 	}
 	return nil
 }
@@ -147,6 +162,12 @@ func checkIdentity(s Snapshot) error {
 	}
 	if !shared.ValidID(string(s.RegionID)) {
 		return fmt.Errorf("regionId %q is not a valid id", s.RegionID)
+	}
+	if err := checkServingStation(s.Type, s.ServingStationNodeID, nil); err != nil {
+		return err
+	}
+	if s.Type == PickupPoint && !labellable(s.Location.PostalCode) {
+		return fmt.Errorf("%w: %q", ErrPointPrefixNotLabellable, s.Location.PostalCode)
 	}
 	if err := checkVendor(s.Operator, s.Vendor); err != nil {
 		return err
@@ -165,9 +186,54 @@ func checkVendor(o Operator, v *VendorRef) error {
 		return nil
 	}
 	if v == nil || !shared.ValidText(v.VendorID) || !shared.ValidText(v.VendorNodeCode) {
-		return errors.New("a VENDOR node needs a vendorRef with vendorId and vendorNodeCode")
+		return errors.New("a VENDOR or PARTNER node needs a vendorRef with vendorId and vendorNodeCode")
 	}
 	return nil
+}
+
+// checkServingStation enforces the PICKUP_POINT-only serving station (ADR
+// 0017). Restore passes nil: the persisted shape is already constrained by the
+// presence rule, and the station's own status is re-checked by the projection.
+func checkServingStation(t Type, id ID, station *Node) error {
+	if t != PickupPoint {
+		if id != "" {
+			return fmt.Errorf("%w: %s carries no serving station", ErrServingStationNotAllowed, t)
+		}
+		return nil
+	}
+	if id == "" || !shared.ValidID(string(id)) {
+		return fmt.Errorf("%w: a PICKUP_POINT needs a servingStationNodeId", ErrServingStationNotAllowed)
+	}
+	if station == nil {
+		return nil // restore path: the shape rule alone
+	}
+	if station.typ != DeliveryStation || station.status != StatusActive {
+		return fmt.Errorf("%w: %s is %s %s", ErrServingStationNotAllowed, station.id, station.status, station.typ)
+	}
+	if station.id != id {
+		return fmt.Errorf("%w: the loaded station is %s, not %s", ErrServingStationNotAllowed, station.id, id)
+	}
+	return nil
+}
+
+// labellable reports whether a postal code yields a prefix the label charset
+// accepts (A-Z 0-9, the shipping label rule): a pickup point's own code rides
+// its labels (ADR 0017).
+func labellable(postalCode string) bool {
+	if postalCode == "" {
+		return false
+	}
+	for _, r := range postalCode {
+		if !labellableRune(r) {
+			return false
+		}
+	}
+	return true
+}
+
+// labellableRune reports whether r is an uppercase letter or a digit.
+func labellableRune(r rune) bool {
+	return (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')
 }
 
 func checkLocation(g GeoLocation) error {
@@ -200,6 +266,10 @@ func (n *Node) Subtype() Subtype { return n.subtype }
 
 // Operator returns who runs the building.
 func (n *Node) Operator() Operator { return n.operator }
+
+// ServingStationNodeID returns the serving delivery station of a PICKUP_POINT
+// (empty for every other type).
+func (n *Node) ServingStationNodeID() ID { return n.servingStation }
 
 // Vendor returns the vendor reference of a VENDOR node.
 func (n *Node) Vendor() (VendorRef, bool) {
@@ -265,7 +335,8 @@ func (n *Node) AcceptsDemand() bool {
 // Snapshot returns the persisted form (pointers and slices are copies).
 func (n *Node) Snapshot() Snapshot {
 	s := Snapshot{
-		ID: n.id, Type: n.typ, Subtype: n.subtype, Operator: n.operator, RegionID: n.regionID,
+		ID: n.id, Type: n.typ, Subtype: n.subtype, Operator: n.operator,
+		ServingStationNodeID: n.servingStation, RegionID: n.regionID,
 		Timezone: n.timezone, Location: n.location.clone(), Status: n.status,
 		ActivatedAt: n.activatedAt, SuspendedAt: n.suspendedAt, SuspendReason: n.suspendReason,
 		RetiredAt: n.retiredAt, Version: n.version,

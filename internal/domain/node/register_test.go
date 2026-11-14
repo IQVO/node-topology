@@ -3,6 +3,7 @@ package node
 import (
 	"errors"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -36,7 +37,18 @@ func vendorReg() Registration {
 }
 
 func networkReg(typ Type) Registration {
-	return Registration{ID: "node-net-1", Type: typ, Operator: OperatorNetwork, RegionID: "region-se", Timezone: "America/Sao_Paulo", Location: location()}
+	in := Registration{ID: "node-net-1", Type: typ, Operator: OperatorNetwork, RegionID: "region-se", Timezone: "America/Sao_Paulo", Location: location()}
+	if typ == PickupPoint {
+		in.ServingStationNodeID = "node-sta-1"
+		in.Location = pointLocation()
+	}
+	return in
+}
+
+// pointLocation is a labellable postal code: a pickup point's own code rides
+// its labels (ADR 0017).
+func pointLocation() GeoLocation {
+	return GeoLocation{PostalCode: "07750", CountryCode: "BR", Lat: f64(-23.35), Lon: f64(-46.87)}
 }
 
 func reg(mut func(*Registration)) Registration {
@@ -47,7 +59,7 @@ func reg(mut func(*Registration)) Registration {
 
 func mustRegister(t *testing.T, in Registration) *Node {
 	t.Helper()
-	n, _, err := Register(in, sudeste(t), t0)
+	n, _, err := Register(in, sudeste(t), nil, t0)
 	if err != nil {
 		t.Fatalf("Register: %v", err)
 	}
@@ -56,7 +68,7 @@ func mustRegister(t *testing.T, in Registration) *Node {
 
 func TestRegisterVendorFulfillmentCenter(t *testing.T) {
 	brt := time.FixedZone("BRT", -3*3600)
-	n, events, err := Register(vendorReg(), sudeste(t), t0.In(brt))
+	n, events, err := Register(vendorReg(), sudeste(t), nil, t0.In(brt))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +136,7 @@ func TestRegisterNetworkNodesAndVendorNodesOfEveryType(t *testing.T) {
 				RegionID: "region-se", Timezone: "UTC", Location: GeoLocation{PostalCode: "1", CountryCode: "AA"},
 			}
 		}
-		n, events, err := Register(in, sudeste(t), t0)
+		n, events, err := Register(in, sudeste(t), nil, t0)
 		if err != nil {
 			t.Fatalf("%s: %v", row.typ, err)
 		}
@@ -140,21 +152,34 @@ func TestRegisterNetworkNodesAndVendorNodesOfEveryType(t *testing.T) {
 
 func TestRegisterOperatorMatrix(t *testing.T) {
 	for _, row := range modelRows() {
-		for _, o := range []Operator{OperatorNetwork, OperatorVendor} {
-			in := Registration{ID: "n1", Type: row.typ, Operator: o, RegionID: "region-se", Timezone: "UTC", Location: GeoLocation{PostalCode: "1", CountryCode: "AA"}}
-			if o == OperatorVendor {
-				in.Vendor = &VendorRef{VendorID: "v", VendorNodeCode: "c"}
+		for _, o := range []Operator{OperatorNetwork, OperatorVendor, OperatorPartner} {
+			assertOperatorAllowed(t, row, o)
+		}
+	}
+}
+
+// assertOperatorAllowed proves the type's operator row: an allowed operator
+// registers, every other one is ErrOperatorNotAllowedForNodeType.
+func assertOperatorAllowed(t *testing.T, row typeRow, o Operator) {
+	t.Helper()
+	{
+		in := Registration{ID: "n1", Type: row.typ, Operator: o, RegionID: "region-se", Timezone: "UTC", Location: GeoLocation{PostalCode: "1", CountryCode: "AA"}}
+		if o == OperatorVendor || o == OperatorPartner {
+			in.Vendor = &VendorRef{VendorID: "v", VendorNodeCode: "c"}
+		}
+		if row.typ == PickupPoint {
+			in.ServingStationNodeID = "node-sta-1"
+		}
+		_, events, err := Register(in, sudeste(t), nil, t0)
+		allowed := slices.Contains(row.operators, o)
+		if allowed {
+			if err != nil {
+				t.Errorf("%s by %s must be allowed: %v", row.typ, o, err)
 			}
-			_, events, err := Register(in, sudeste(t), t0)
-			if o == row.operators[0] {
-				if err != nil {
-					t.Errorf("%s by %s must be allowed: %v", row.typ, o, err)
-				}
-				continue
-			}
-			if !errors.Is(err, ErrOperatorNotAllowedForNodeType) || events != nil {
-				t.Errorf("%s by %s: want ErrOperatorNotAllowedForNodeType, got %v", row.typ, o, err)
-			}
+			return
+		}
+		if !errors.Is(err, ErrOperatorNotAllowedForNodeType) || events != nil {
+			t.Errorf("%s by %s: want ErrOperatorNotAllowedForNodeType, got %v", row.typ, o, err)
 		}
 	}
 }
@@ -168,7 +193,7 @@ func TestRegisterRejections(t *testing.T) {
 	}{
 		{"unknown type", reg(func(r *Registration) { r.Type = "WAREHOUSE" }), nil, shared.ErrValidation},
 		{"empty type", reg(func(r *Registration) { r.Type = "" }), nil, shared.ErrValidation},
-		{"unknown operator", reg(func(r *Registration) { r.Operator = "PARTNER" }), nil, shared.ErrValidation},
+		{"unknown operator", reg(func(r *Registration) { r.Operator = "COOPERATIVE" }), nil, shared.ErrValidation},
 		{"empty id", reg(func(r *Registration) { r.ID = "" }), nil, shared.ErrValidation},
 		{"id with space", reg(func(r *Registration) { r.ID = "node 1" }), nil, shared.ErrValidation},
 		{"empty region id", reg(func(r *Registration) { r.RegionID = "" }), nil, shared.ErrValidation},
@@ -220,7 +245,7 @@ func TestRegisterRejections(t *testing.T) {
 			if tc.reg != nil {
 				r = tc.reg(t)
 			}
-			n, events, err := Register(tc.in, r, t0)
+			n, events, err := Register(tc.in, r, nil, t0)
 			if !errors.Is(err, tc.want) {
 				t.Fatalf("want %v, got %v", tc.want, err)
 			}
@@ -234,21 +259,21 @@ func TestRegisterRejections(t *testing.T) {
 func TestRegisterCheckOrder(t *testing.T) {
 	// operator beats every value check
 	in := reg(func(r *Registration) { r.Operator, r.Vendor, r.ID, r.Timezone = OperatorNetwork, nil, "", "" })
-	if _, _, err := Register(in, nil, t0); !errors.Is(err, ErrOperatorNotAllowedForNodeType) {
+	if _, _, err := Register(in, nil, nil, t0); !errors.Is(err, ErrOperatorNotAllowedForNodeType) {
 		t.Fatalf("operator first: %v", err)
 	}
 	// value checks beat the region
 	in = reg(func(r *Registration) { r.Timezone = "" })
-	if _, _, err := Register(in, nil, t0); !errors.Is(err, shared.ErrValidation) {
+	if _, _, err := Register(in, nil, nil, t0); !errors.Is(err, shared.ErrValidation) {
 		t.Fatalf("values before region: %v", err)
 	}
 	// the region beats the subtype
 	in = reg(func(r *Registration) { r.Subtype = "HUGE" })
-	if _, _, err := Register(in, nil, t0); !errors.Is(err, region.ErrUnknownRegion) {
+	if _, _, err := Register(in, nil, nil, t0); !errors.Is(err, region.ErrUnknownRegion) {
 		t.Fatalf("region before subtype: %v", err)
 	}
 	// a fulfillment centre may omit the subtype
-	if _, _, err := Register(reg(func(r *Registration) { r.Subtype = "" }), sudeste(t), t0); err != nil {
+	if _, _, err := Register(reg(func(r *Registration) { r.Subtype = "" }), sudeste(t), nil, t0); err != nil {
 		t.Fatalf("subtype is optional: %v", err)
 	}
 }
@@ -266,7 +291,7 @@ func TestRegisterBoundaryValuesAreAccepted(t *testing.T) {
 		func(r *Registration) { r.ID = ID("n" + strings.Repeat("x", shared.MaxID-1)) },
 	}
 	for i, mut := range cases {
-		if _, _, err := Register(reg(mut), sudeste(t), t0); err != nil {
+		if _, _, err := Register(reg(mut), sudeste(t), nil, t0); err != nil {
 			t.Errorf("case %d: %v", i, err)
 		}
 	}
@@ -274,7 +299,7 @@ func TestRegisterBoundaryValuesAreAccepted(t *testing.T) {
 
 func TestRegisterCopiesItsInputs(t *testing.T) {
 	in := vendorReg()
-	n, _, err := Register(in, sudeste(t), t0)
+	n, _, err := Register(in, sudeste(t), nil, t0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -296,5 +321,120 @@ func TestRegisterCopiesItsInputs(t *testing.T) {
 	*s.Location.Lon = 1
 	if v, _ := n.Vendor(); v.VendorID != "vendor-77" || *n.Location().Lon != -46.87 {
 		t.Fatal("Snapshot() must return copies")
+	}
+}
+
+func pointReg(mut func(*Registration)) Registration {
+	r := Registration{
+		ID: "node-pnt-1", Type: PickupPoint, Operator: OperatorNetwork,
+		ServingStationNodeID: "node-sta-1", RegionID: "region-se",
+		Timezone: "America/Sao_Paulo", Location: pointLocation(),
+	}
+	mut(&r)
+	return r
+}
+
+func TestRegisterPickupPoint(t *testing.T) {
+	n, events, err := Register(pointReg(nilfunc()), sudeste(t), nil, t0)
+	if err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+	if n.ServingStationNodeID() != "node-sta-1" {
+		t.Fatalf("serving station = %q", n.ServingStationNodeID())
+	}
+	if caps := n.Type().Capabilities(); !caps.Collection || caps.LastMile || caps.Inbound {
+		t.Fatalf("capabilities = %+v, want Collection only", caps)
+	}
+	found := false
+	for _, ev := range events {
+		if r, ok := ev.(NodeRegistered); ok && r.ServingStationNodeID == "node-sta-1" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("NodeRegistered carries the serving station")
+	}
+}
+
+func nilfunc() func(*Registration) { return func(*Registration) {} }
+
+func TestRegisterPickupPointRejections(t *testing.T) {
+	cases := map[string]struct {
+		in   Registration
+		want error
+	}{
+		"no serving station":     {pointReg(func(r *Registration) { r.ServingStationNodeID = "" }), ErrServingStationNotAllowed},
+		"station on other types": {networkReg(SortationCenter), nil}, // SortationCenter carries none; must PASS
+		"hyphen postal code":     {pointReg(func(r *Registration) { r.Location.PostalCode = "07750-000" }), ErrPointPrefixNotLabellable},
+		"partner without ref":    {pointReg(func(r *Registration) { r.Operator = OperatorPartner }), shared.ErrValidation},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, _, err := Register(tc.in, sudeste(t), nil, t0)
+			if name == "station on other types" {
+				if err != nil {
+					t.Fatalf("a sortation centre without a station must register: %v", err)
+				}
+				return
+			}
+			if !errors.Is(err, tc.want) {
+				t.Fatalf("want %v, got %v", tc.want, err)
+			}
+		})
+	}
+}
+
+func TestRegisterPickupPointPartnerWithRef(t *testing.T) {
+	in := pointReg(func(r *Registration) {
+		r.Operator = OperatorPartner
+		r.Vendor = &VendorRef{VendorID: "partner-9", VendorNodeCode: "PP-GUARULHOS-1"}
+	})
+	n, _, err := Register(in, sudeste(t), nil, t0)
+	if err != nil {
+		t.Fatalf("a PARTNER point with a ref registers: %v", err)
+	}
+	if _, ok := n.Vendor(); !ok {
+		t.Fatal("the partner ref is carried")
+	}
+}
+
+func TestRegisterServingStationOnNonPointRefused(t *testing.T) {
+	in := networkReg(DeliveryStation)
+	in.ServingStationNodeID = "node-sta-1"
+	if _, _, err := Register(in, sudeste(t), nil, t0); !errors.Is(err, ErrServingStationNotAllowed) {
+		t.Fatalf("want ErrServingStationNotAllowed, got %v", err)
+	}
+}
+
+func TestRegisterServingStationMustBeAnActiveDeliveryStation(t *testing.T) {
+	st, _, err := Register(Registration{
+		ID: "node-sta-1", Type: DeliveryStation, Operator: OperatorNetwork, RegionID: "region-se",
+		Timezone: "UTC", Location: GeoLocation{PostalCode: "1", CountryCode: "AA"},
+	}, sudeste(t), nil, t0)
+	if err != nil {
+		t.Fatalf("station: %v", err)
+	}
+	if _, _, err := Register(pointReg(nilfunc()), sudeste(t), st, t0); err == nil {
+		t.Fatal("a PROPOSED station must be refused as the serving station")
+	}
+	if _, err := st.Activate(t0); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := Register(pointReg(nilfunc()), sudeste(t), st, t0); err != nil {
+		t.Fatalf("an ACTIVE delivery station serves the point: %v", err)
+	}
+	sc, _, err := Register(Registration{
+		ID: "node-sort-2", Type: SortationCenter, Operator: OperatorNetwork, RegionID: "region-se",
+		Timezone: "UTC", Location: GeoLocation{PostalCode: "1", CountryCode: "AA"},
+	}, sudeste(t), nil, t0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sc.Activate(t0); err != nil {
+		t.Fatal(err)
+	}
+	wrong := pointReg(func(r *Registration) { r.ServingStationNodeID = "node-sort-2" })
+	if _, _, err := Register(wrong, sudeste(t), sc, t0); err == nil {
+		t.Fatal("an ACTIVE SORTATION_CENTER must be refused as the serving station")
 	}
 }

@@ -37,7 +37,7 @@ func mkNode(t *testing.T, id string, typ node.Type, regionID string, status node
 		in.Operator = node.OperatorVendor
 		in.Vendor = &node.VendorRef{VendorID: "vendor-77", VendorNodeCode: "code-" + id}
 	}
-	n, _, err := node.Register(in, mkRegion(t, regionID), t0)
+	n, _, err := node.Register(in, mkRegion(t, regionID), nil, t0)
 	if err != nil {
 		t.Fatal(err)
 	}

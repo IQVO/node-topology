@@ -775,14 +775,15 @@ components:
           description: Opaque cursor of the next page; absent on the last page.
     NodeType:
       type: string
-      enum: [FULFILLMENT_CENTER, INBOUND_CROSS_DOCK, RETURNS_CENTER, SORTATION_CENTER, DELIVERY_STATION, AIR_HUB]
+      enum: [FULFILLMENT_CENTER, INBOUND_CROSS_DOCK, RETURNS_CENTER, SORTATION_CENTER, DELIVERY_STATION, AIR_HUB, PICKUP_POINT]
     NodeSubtype:
       type: string
       description: Only for FULFILLMENT_CENTER.
       enum: [SORTABLE, NON_SORTABLE, XL, SOFT_LINES, SUB_SAME_DAY, FRESH, MICRO]
     NodeOperator:
       type: string
-      enum: [NETWORK, VENDOR]
+      description: PARTNER is allowed only on a PICKUP_POINT (ADR 0017).
+      enum: [NETWORK, VENDOR, PARTNER]
     NodeStatus:
       type: string
       enum: [PROPOSED, ACTIVE, SUSPENDED, RETIRED]
@@ -828,6 +829,9 @@ components:
           type: boolean
         air:
           type: boolean
+        collection:
+          type: boolean
+          description: A PICKUP_POINT collects packages (ADR 0017).
     RegisterNodeRequest:
       type: object
       required: [nodeType, operator, regionId, timezone, location]
@@ -840,6 +844,9 @@ components:
           $ref: '#/components/schemas/NodeOperator'
         vendorRef:
           $ref: '#/components/schemas/VendorRef'
+        servingStationNodeId:
+          type: string
+          description: Required when nodeType is PICKUP_POINT; refused for every other type (ADR 0017).
         regionId:
           type: string
         timezone:
@@ -1022,6 +1029,9 @@ components:
           $ref: '#/components/schemas/NodeOperator'
         vendorRef:
           $ref: '#/components/schemas/VendorRef'
+        servingStationNodeId:
+          type: string
+          description: The serving delivery station; present only on a PICKUP_POINT (ADR 0017).
         regionId:
           type: string
         timezone:
