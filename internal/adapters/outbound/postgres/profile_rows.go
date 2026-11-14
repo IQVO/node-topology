@@ -53,6 +53,7 @@ type profileRow struct {
 	ThroughputUnit   *string
 	SortDwell        *int
 	Inbound          []byte
+	MonthlyVolumeDm3 *int
 	DeclaredBy       *string
 	DeclaredAt       *time.Time
 }
@@ -60,13 +61,13 @@ type profileRow struct {
 // profileColumns lists the columns of node_profile_revisions under the alias
 // p, in the order dest scans them.
 const profileColumns = `p.revision, p.timezone, p.operating_hours, p.holidays, p.handling_time_minutes, p.cutoffs,
-	p.throughput_value, p.throughput_time_unit, p.throughput_unit, p.sort_dwell_minutes, p.inbound, p.declared_by, p.declared_at`
+	p.throughput_value, p.throughput_time_unit, p.throughput_unit, p.sort_dwell_minutes, p.inbound, p.monthly_volume_dm3, p.declared_by, p.declared_at`
 
 // dest returns the scan targets matching profileColumns.
 func (p *profileRow) dest() []any {
 	return []any{
 		&p.Revision, &p.Timezone, &p.OperatingHours, &p.Holidays, &p.HandlingTime, &p.Cutoffs,
-		&p.ThroughputValue, &p.ThroughputUnitOf, &p.ThroughputUnit, &p.SortDwell, &p.Inbound, &p.DeclaredBy, &p.DeclaredAt,
+		&p.ThroughputValue, &p.ThroughputUnitOf, &p.ThroughputUnit, &p.SortDwell, &p.Inbound, &p.MonthlyVolumeDm3, &p.DeclaredBy, &p.DeclaredAt,
 	}
 }
 
@@ -92,6 +93,14 @@ func (p *profileRow) profile() (_ node.OperationalProfile, ok bool, _ error) {
 	inbound, err := decodeInbound(p.Inbound)
 	if err != nil {
 		return node.OperationalProfile{}, false, err
+	}
+	// the monthly volume is a first-class column of migration 0009 (ADR 0019),
+	// not part of the JSONB document
+	if p.MonthlyVolumeDm3 != nil {
+		if inbound == nil {
+			inbound = &node.InboundLimits{}
+		}
+		inbound.MonthlyVolumeDm3 = p.MonthlyVolumeDm3
 	}
 	decl := node.ProfileDeclaration{
 		Revision:            *p.Revision,

@@ -65,13 +65,14 @@ type inboundPayload struct {
 	MaxCartonDimsMm  *cartonDimsPayload `json:"maxCartonDimsMm,omitempty"`
 	AcceptsPallets   *bool              `json:"acceptsPallets,omitempty"`
 	RequiresSscc     *bool              `json:"requiresSscc,omitempty"`
+	MonthlyVolumeDm3 *int               `json:"monthlyVolumeDm3,omitempty"`
 }
 
 func inboundData(l *node.InboundLimits) *inboundPayload {
 	if l == nil {
 		return nil
 	}
-	p := &inboundPayload{MaxCartonWeightG: l.MaxCartonWeightG, AcceptsPallets: l.AcceptsPallets, RequiresSscc: l.RequiresSscc}
+	p := &inboundPayload{MaxCartonWeightG: l.MaxCartonWeightG, AcceptsPallets: l.AcceptsPallets, RequiresSscc: l.RequiresSscc, MonthlyVolumeDm3: l.MonthlyVolumeDm3}
 	if d := l.MaxCartonDimsMm; d != nil {
 		p.MaxCartonDimsMm = &cartonDimsPayload{L: d.L, W: d.W, H: d.H}
 	}

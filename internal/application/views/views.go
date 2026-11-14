@@ -72,6 +72,7 @@ type InboundLimits struct {
 	MaxCartonDimsMm  *CartonDims `json:"maxCartonDimsMm,omitempty"`
 	AcceptsPallets   *bool       `json:"acceptsPallets,omitempty"`
 	RequiresSscc     *bool       `json:"requiresSscc,omitempty"`
+	MonthlyVolumeDm3 *int        `json:"monthlyVolumeDm3,omitempty"`
 }
 
 // OperationalProfile is one revision of a node's declared profile.
@@ -217,7 +218,7 @@ func inboundFrom(l *node.InboundLimits) *InboundLimits {
 	if l == nil {
 		return nil
 	}
-	v := &InboundLimits{MaxCartonWeightG: copyInt(l.MaxCartonWeightG), AcceptsPallets: copyBool(l.AcceptsPallets), RequiresSscc: copyBool(l.RequiresSscc)}
+	v := &InboundLimits{MaxCartonWeightG: copyInt(l.MaxCartonWeightG), AcceptsPallets: copyBool(l.AcceptsPallets), RequiresSscc: copyBool(l.RequiresSscc), MonthlyVolumeDm3: copyInt(l.MonthlyVolumeDm3)}
 	if d := l.MaxCartonDimsMm; d != nil {
 		v.MaxCartonDimsMm = &CartonDims{L: d.L, W: d.W, H: d.H}
 	}
