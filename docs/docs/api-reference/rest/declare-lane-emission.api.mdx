@@ -1,0 +1,70 @@
+---
+id: declare-lane-emission
+title: "Declare the carbon emission per package-unit of a lane (DeclareLaneEmission)"
+description: "Records the planner's declared carbon emission of moving ONE package-unit across the lane on one departure, grams of CO2-equivalent (0..10000000). Valid on an OPEN lane only; every declaration supersedes the previous value and publishes LaneEmissionDeclared."
+sidebar_label: "Declare the carbon emission per package-unit of a lane (DeclareLaneEmission)"
+hide_title: true
+hide_table_of_contents: true
+api: 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
+sidebar_class_name: "post api-method"
+info_path: docs/api-reference/rest/node-topology-api
+custom_edit_url: null
+hide_send_button: true
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+import Translate from "@docusaurus/Translate";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Declare the carbon emission per package-unit of a lane (DeclareLaneEmission)"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/lanes/{laneId}/emission-declarations"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Records the planner's declared carbon emission of moving ONE package-unit across the lane on one departure, grams of CO2-equivalent (0..10000000). Valid on an OPEN lane only; every declaration supersedes the previous value and publishes LaneEmissionDeclared.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+>
+  <Translate id="theme.openapi.request.title">Request</Translate>
+</Heading>
+
+<ParamsDetails
+  {...require("./declare-lane-emission.ParamsDetails.json")}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  {...require("./declare-lane-emission.RequestSchema.json")}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  {...require("./declare-lane-emission.StatusCodes.json")}
+>
+  
+</StatusCodes>
+
+
+      

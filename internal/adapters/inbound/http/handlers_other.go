@@ -15,6 +15,7 @@ func (s *Server) mountLanes(r chi.Router) {
 	r.Get("/lanes", s.listLanes)
 	s.keyed(r, http.MethodPost, "/lanes/{laneId}/closures", s.closeLane)
 	s.keyed(r, http.MethodPost, "/lanes/{laneId}/cost-declarations", s.declareLaneCost)
+	s.keyed(r, http.MethodPost, "/lanes/{laneId}/emission-declarations", s.declareLaneEmission)
 }
 
 func (s *Server) mountServiceAreas(r chi.Router) {
@@ -61,6 +62,21 @@ func (s *Server) declareLaneCost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	l, err := s.DeclareLaneCost.Execute(r.Context(), body.command(chi.URLParam(r, "laneId")))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, l)
+}
+
+// declareLaneEmission is POST /lanes/{laneId}/emission-declarations.
+func (s *Server) declareLaneEmission(w http.ResponseWriter, r *http.Request) {
+	var body declareLaneEmissionBody
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	l, err := s.DeclareLaneEmission.Execute(r.Context(), body.command(chi.URLParam(r, "laneId")))
 	if err != nil {
 		writeError(w, r, err)
 		return

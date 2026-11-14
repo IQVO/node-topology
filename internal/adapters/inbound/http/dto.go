@@ -150,6 +150,14 @@ func (b declareLaneCostBody) command(id string) usecases.DeclareLaneCostCommand 
 	return usecases.DeclareLaneCostCommand{LaneID: lane.ID(id), CostPerUnitCents: b.CostPerUnitCents}
 }
 
+type declareLaneEmissionBody struct {
+	GCo2ePerUnit int64 `json:"gCo2ePerUnit"`
+}
+
+func (b declareLaneEmissionBody) command(id string) usecases.DeclareLaneEmissionCommand {
+	return usecases.DeclareLaneEmissionCommand{LaneID: lane.ID(id), GCo2ePerUnit: b.GCo2ePerUnit}
+}
+
 type carrierOptionBody struct {
 	CarrierID           string `json:"carrierId"`
 	HandoffNodeID       string `json:"handoffNodeId"`

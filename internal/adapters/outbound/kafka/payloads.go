@@ -127,6 +127,12 @@ type laneCostDeclaredPayload struct {
 	DeclaredAt       string `json:"declaredAt"`
 }
 
+type laneEmissionDeclaredPayload struct {
+	LaneID       string `json:"laneId"`
+	GCo2ePerUnit int64  `json:"gCo2ePerUnit"`
+	DeclaredAt   string `json:"declaredAt"`
+}
+
 // carrierOptionPayload is one declared carrier option of a CARRIER_HANDOFF
 // service area (ADR 0016).
 type carrierOptionPayload struct {

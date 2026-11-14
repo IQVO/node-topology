@@ -49,6 +49,9 @@ type (
 	declareLaneCost interface {
 		Execute(context.Context, usecases.DeclareLaneCostCommand) (views.Lane, error)
 	}
+	declareLaneEmission interface {
+		Execute(context.Context, usecases.DeclareLaneEmissionCommand) (views.Lane, error)
+	}
 	listLanes interface {
 		Execute(context.Context, usecases.ListLanesQuery) ([]views.Lane, error)
 	}
@@ -71,22 +74,23 @@ type (
 
 // Server holds everything the router needs; cmd/api fills every field.
 type Server struct {
-	RegisterNode       registerNode
-	DeclareProfile     declareProfile
-	ActivateNode       nodeByID
-	SuspendNode        suspendNode
-	RetireNode         nodeByID
-	GetNode            nodeByID
-	ListNodes          listNodes
-	OpenLane           openLane
-	CloseLane          closeLane
-	DeclareLaneCost    declareLaneCost
-	ListLanes          listLanes
-	AssignServiceArea  assignServiceArea
-	ResolveServiceArea resolveServiceArea
-	DefineRegion       defineRegion
-	GetRegion          getRegion
-	ListRegions        listRegions
+	RegisterNode        registerNode
+	DeclareProfile      declareProfile
+	ActivateNode        nodeByID
+	SuspendNode         suspendNode
+	RetireNode          nodeByID
+	GetNode             nodeByID
+	ListNodes           listNodes
+	OpenLane            openLane
+	CloseLane           closeLane
+	DeclareLaneCost     declareLaneCost
+	DeclareLaneEmission declareLaneEmission
+	ListLanes           listLanes
+	AssignServiceArea   assignServiceArea
+	ResolveServiceArea  resolveServiceArea
+	DefineRegion        defineRegion
+	GetRegion           getRegion
+	ListRegions         listRegions
 
 	// Idempotency guards every state-changing route; it is mandatory.
 	Idempotency Idempotency

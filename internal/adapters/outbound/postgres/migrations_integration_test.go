@@ -24,12 +24,12 @@ var allTables = []string{
 }
 
 // latestMigration is the highest migration number; every ceiling below
-// follows it (currently 0007, the pickup points).
-const latestMigration = 7
+// follows it (currently 0008, the lane emission).
+const latestMigration = 8
 
 // coreTables are the tables of migration 0001; 0002 adds the other two, 0003
-// adds a column to node_profile_revisions only, and 0005 and 0006 add columns
-// to lanes and service_areas.
+// adds a column to node_profile_revisions only, and 0005, 0006 and 0008 add
+// columns to lanes and service_areas.
 var coreTables = []string{"lanes", "node_profile_revisions", "nodes", "regions", "service_areas"}
 
 func tables(t *testing.T, pool *pgxpool.Pool) []string {
@@ -211,10 +211,10 @@ func TestMigration0006AddsAndDropsOnlyTheServiceAreaColumns(t *testing.T) {
 	if mode, options := serviceAreaModeColumns(t, pool); !mode || !options {
 		t.Fatal("the delivery-mode columns of migration 0006 are missing")
 	}
-	if err := m.Steps(-2); err != nil { // down through 0007, then 0006 itself
+	if err := m.Steps(-3); err != nil { // down through 0008 and 0007, then 0006 itself
 		t.Fatalf("step down: %v", err)
 	}
-	wantVersion(t, m, latestMigration-2)
+	wantVersion(t, m, latestMigration-3)
 	if mode, options := serviceAreaModeColumns(t, pool); mode || options {
 		t.Fatal("the down migration left a delivery-mode column behind")
 	}
@@ -244,12 +244,46 @@ func TestMigration0007AddsAndDropsOnlyTheServingStationColumn(t *testing.T) {
 	if !pickupPointColumn(t, pool) {
 		t.Fatal("the serving-station column of migration 0007 is missing")
 	}
+	if err := m.Steps(-2); err != nil { // down through 0008 first, then 0007 itself
+		t.Fatalf("step down: %v", err)
+	}
+	wantVersion(t, m, latestMigration-2)
+	if pickupPointColumn(t, pool) {
+		t.Fatal("the down migration left the serving-station column behind")
+	}
+}
+
+// laneEmissionColumn reports whether lanes carries the declared emission
+// column of migration 0008.
+func laneEmissionColumn(t *testing.T, pool *pgxpool.Pool) bool {
+	t.Helper()
+	var ok bool
+	if err := pool.QueryRow(context.Background(), `SELECT EXISTS (
+		SELECT 1 FROM information_schema.columns
+		WHERE table_name = 'lanes' AND column_name = 'emission_per_unit_g')`).Scan(&ok); err != nil {
+		t.Fatal(err)
+	}
+	return ok
+}
+
+// TestMigration0008AddsAndDropsOnlyTheLaneEmissionColumn proves the emission
+// column arrives alone on lanes and leaves with it.
+func TestMigration0008AddsAndDropsOnlyTheLaneEmissionColumn(t *testing.T) {
+	url := emptyURL(t)
+	pool := openPool(t, url)
+	m := migrator(t, url)
+	if err := m.Up(); err != nil {
+		t.Fatalf("up: %v", err)
+	}
+	if !laneEmissionColumn(t, pool) {
+		t.Fatal("the emission column of migration 0008 is missing")
+	}
 	if err := m.Steps(-1); err != nil {
 		t.Fatalf("step down: %v", err)
 	}
 	wantVersion(t, m, latestMigration-1)
-	if pickupPointColumn(t, pool) {
-		t.Fatal("the down migration left the serving-station column behind")
+	if laneEmissionColumn(t, pool) {
+		t.Fatal("the down migration left the emission column behind")
 	}
 }
 

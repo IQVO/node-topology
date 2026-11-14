@@ -90,6 +90,12 @@ const sidebar: SidebarsConfig = {
           label: "Declare the cost per package-unit of a lane (DeclareLaneCost)",
           className: "api-method post",
         },
+        {
+          type: "doc",
+          id: "api-reference/rest/declare-lane-emission",
+          label: "Declare the carbon emission per package-unit of a lane (DeclareLaneEmission)",
+          className: "api-method post",
+        },
       ],
     },
     {
