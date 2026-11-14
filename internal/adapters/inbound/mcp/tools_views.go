@@ -21,12 +21,13 @@ type geoLocationView struct {
 }
 
 type capabilitiesView struct {
-	Outbound bool `json:"outbound"`
-	Inbound  bool `json:"inbound"`
-	Returns  bool `json:"returns"`
-	Sort     bool `json:"sort"`
-	LastMile bool `json:"lastMile"`
-	Air      bool `json:"air"`
+	Outbound   bool `json:"outbound"`
+	Inbound    bool `json:"inbound"`
+	Returns    bool `json:"returns"`
+	Sort       bool `json:"sort"`
+	LastMile   bool `json:"lastMile"`
+	Air        bool `json:"air"`
+	Collection bool `json:"collection"`
 }
 
 type dayHoursView struct {
@@ -60,21 +61,22 @@ type operationalProfileView struct {
 }
 
 type nodeView struct {
-	NodeID             string                  `json:"nodeId"`
-	NodeType           string                  `json:"nodeType"`
-	Subtype            string                  `json:"subtype,omitempty"`
-	Operator           string                  `json:"operator"`
-	VendorRef          *vendorRefView          `json:"vendorRef,omitempty"`
-	RegionID           string                  `json:"regionId"`
-	Timezone           string                  `json:"timezone"`
-	Location           geoLocationView         `json:"location"`
-	Capabilities       capabilitiesView        `json:"capabilities"`
-	Status             string                  `json:"status"`
-	OperationalProfile *operationalProfileView `json:"operationalProfile,omitempty"`
-	ActivatedAt        string                  `json:"activatedAt,omitempty"`
-	SuspendedAt        string                  `json:"suspendedAt,omitempty"`
-	SuspendReason      string                  `json:"suspendReason,omitempty"`
-	RetiredAt          string                  `json:"retiredAt,omitempty"`
+	NodeID               string                  `json:"nodeId"`
+	NodeType             string                  `json:"nodeType"`
+	Subtype              string                  `json:"subtype,omitempty"`
+	Operator             string                  `json:"operator"`
+	VendorRef            *vendorRefView          `json:"vendorRef,omitempty"`
+	ServingStationNodeID string                  `json:"servingStationNodeId,omitempty"`
+	RegionID             string                  `json:"regionId"`
+	Timezone             string                  `json:"timezone"`
+	Location             geoLocationView         `json:"location"`
+	Capabilities         capabilitiesView        `json:"capabilities"`
+	Status               string                  `json:"status"`
+	OperationalProfile   *operationalProfileView `json:"operationalProfile,omitempty"`
+	ActivatedAt          string                  `json:"activatedAt,omitempty"`
+	SuspendedAt          string                  `json:"suspendedAt,omitempty"`
+	SuspendReason        string                  `json:"suspendReason,omitempty"`
+	RetiredAt            string                  `json:"retiredAt,omitempty"`
 }
 
 type nodeListView struct {
@@ -144,7 +146,7 @@ func toGeoLocation(l views.GeoLocation) geoLocationView {
 func toCapabilities(c views.Capabilities) capabilitiesView {
 	return capabilitiesView{
 		Outbound: c.Outbound, Inbound: c.Inbound, Returns: c.Returns,
-		Sort: c.Sort, LastMile: c.LastMile, Air: c.Air,
+		Sort: c.Sort, LastMile: c.LastMile, Air: c.Air, Collection: c.Collection,
 	}
 }
 
@@ -176,7 +178,8 @@ func toProfile(p views.OperationalProfile) operationalProfileView {
 func toNode(n views.Node) nodeView {
 	out := nodeView{
 		NodeID: n.NodeID, NodeType: n.NodeType, Subtype: n.Subtype, Operator: n.Operator,
-		RegionID: n.RegionID, Timezone: n.Timezone, Location: toGeoLocation(n.Location),
+		ServingStationNodeID: n.ServingStationNodeID,
+		RegionID:             n.RegionID, Timezone: n.Timezone, Location: toGeoLocation(n.Location),
 		Capabilities: toCapabilities(n.Capabilities), Status: n.Status, SuspendReason: n.SuspendReason,
 		ActivatedAt: instant(n.ActivatedAt), SuspendedAt: instant(n.SuspendedAt), RetiredAt: instant(n.RetiredAt),
 	}

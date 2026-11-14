@@ -100,3 +100,24 @@ Feature: Node registration
   Scenario: An unknown node type is not a filter
     When listing nodes with the type "WAREHOUSE" fails as invalid
     Then the command is refused with "validation-failed"
+
+  Scenario: A pickup point registers against an active delivery station
+    Given an active "DELIVERY_STATION" node "ds-1" exists in the region "SP"
+    When I register a "PICKUP_POINT" node "pp-1" served by "ds-1" in the region "SP"
+    Then the command succeeds
+    And the node "pp-1" has the capability "collection"
+    And the node "pp-1" lacks the capability "lastMile"
+
+  Scenario: A pickup point without a serving station is refused
+    When I register a "PICKUP_POINT" node "pp-1" without a serving station in the region "SP"
+    Then the command is refused with "serving-station-not-allowed"
+
+  Scenario: Only an active delivery station may serve a pickup point
+    Given an active "SORTATION_CENTER" node "sc-1" exists in the region "SP"
+    When I register a "PICKUP_POINT" node "pp-1" served by "sc-1" in the region "SP"
+    Then the command is refused with "serving-station-not-allowed"
+
+  Scenario: A partner pickup point carries the partner's own code
+    Given an active "DELIVERY_STATION" node "ds-1" exists in the region "SP"
+    When I register a "PICKUP_POINT" node "pp-2" operated by "PARTNER" in the region "SP"
+    Then the command is refused with "serving-station-not-allowed"

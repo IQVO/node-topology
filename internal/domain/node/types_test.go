@@ -22,6 +22,7 @@ func modelRows() []typeRow {
 		{SortationCenter, []Operator{OperatorNetwork}, Capabilities{Sort: true}, nil},
 		{DeliveryStation, []Operator{OperatorNetwork}, Capabilities{LastMile: true}, nil},
 		{AirHub, []Operator{OperatorNetwork}, Capabilities{Sort: true, Air: true}, nil},
+		{PickupPoint, []Operator{OperatorNetwork, OperatorPartner}, Capabilities{Collection: true}, nil},
 	}
 }
 
@@ -53,7 +54,7 @@ func TestTypeRulesPinTheModel(t *testing.T) {
 }
 
 func TestTypesAreInTheModelOrderAndCopied(t *testing.T) {
-	want := []Type{FulfillmentCenter, InboundCrossDock, ReturnsCenter, SortationCenter, DeliveryStation, AirHub}
+	want := []Type{FulfillmentCenter, InboundCrossDock, ReturnsCenter, SortationCenter, DeliveryStation, AirHub, PickupPoint}
 	got := Types()
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("Types() = %v", got)

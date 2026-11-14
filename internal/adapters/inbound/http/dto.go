@@ -25,19 +25,21 @@ type locationBody struct {
 }
 
 type registerNodeBody struct {
-	NodeType  string         `json:"nodeType"`
-	Subtype   string         `json:"subtype"`
-	Operator  string         `json:"operator"`
-	VendorRef *vendorRefBody `json:"vendorRef"`
-	RegionID  string         `json:"regionId"`
-	Timezone  string         `json:"timezone"`
-	Location  locationBody   `json:"location"`
+	NodeType             string         `json:"nodeType"`
+	Subtype              string         `json:"subtype"`
+	Operator             string         `json:"operator"`
+	VendorRef            *vendorRefBody `json:"vendorRef"`
+	ServingStationNodeID string         `json:"servingStationNodeId"`
+	RegionID             string         `json:"regionId"`
+	Timezone             string         `json:"timezone"`
+	Location             locationBody   `json:"location"`
 }
 
 func (b registerNodeBody) command() usecases.RegisterNodeCommand {
 	cmd := usecases.RegisterNodeCommand{
 		Type: node.Type(b.NodeType), Subtype: node.Subtype(b.Subtype), Operator: node.Operator(b.Operator),
-		RegionID: region.ID(b.RegionID), Timezone: b.Timezone,
+		ServingStationNodeID: b.ServingStationNodeID,
+		RegionID:             region.ID(b.RegionID), Timezone: b.Timezone,
 		Location: node.GeoLocation{PostalCode: b.Location.PostalCode, CountryCode: b.Location.CountryCode, Lat: b.Location.Lat, Lon: b.Location.Lon},
 	}
 	if b.VendorRef != nil {
