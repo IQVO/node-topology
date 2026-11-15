@@ -279,10 +279,11 @@ Questions the design once left open and the code has since answered:
   must equal its station's.
 - **Not-found and illegal transitions.** They have shared problem types:
   `not-found` (404) and `illegal-transition` (409), plus `node-retired`.
-
-Still open:
-
-- **Lanes and service areas after a node leaves service.** When a node is
-  suspended or retired, its lanes stay `OPEN` and the prefixes assigned to a
-  retired delivery station stay `ASSIGNED` (policy `SuspendedEndpointsUnusable`).
-  Nothing closes or reassigns them; consumers must treat them as unusable.
+- **Lanes and service areas after a node leaves service.** Decided, and not
+  open: suspending or retiring a node closes and reassigns nothing (policy
+  `SuspendedEndpointsUnusable`, [ADR 0003](/docs/adr/0003-no-consumed-contracts-and-ohs-reads)
+  decision 7, [ADR 0002](/docs/adr/0002-aggregates-and-invariants) A15). Its
+  lanes stay `OPEN` and the prefixes assigned to a retired delivery station stay
+  `ASSIGNED`; consumers react to `NodeSuspended` and `NodeRetired` and treat them
+  as unusable. An operator can still close a lane or reassign a prefix by hand
+  while the node is not `ACTIVE`.
