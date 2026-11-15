@@ -438,3 +438,32 @@ func TestRegisterServingStationMustBeAnActiveDeliveryStation(t *testing.T) {
 		t.Fatal("an ACTIVE SORTATION_CENTER must be refused as the serving station")
 	}
 }
+
+// TestPickupPointPostalCodeCharsetEdges pins every edge of the A-Z 0-9 label
+// charset: the first and last legal rune of each range is accepted and the
+// rune just outside each range is refused.
+func TestPickupPointPostalCodeCharsetEdges(t *testing.T) {
+	cases := []struct {
+		code string
+		want error
+	}{
+		{"A", nil}, {"Z", nil}, {"0", nil}, {"9", nil}, {"AZ09", nil},
+		{"@", ErrPointPrefixNotLabellable}, // 'A' - 1
+		{"[", ErrPointPrefixNotLabellable}, // 'Z' + 1
+		{"/", ErrPointPrefixNotLabellable}, // '0' - 1
+		{":", ErrPointPrefixNotLabellable}, // '9' + 1
+		{"a", ErrPointPrefixNotLabellable}, // lowercase is not on the label
+	}
+	for _, tc := range cases {
+		t.Run(tc.code, func(t *testing.T) {
+			in := pointReg(func(r *Registration) { r.Location.PostalCode = tc.code })
+			_, _, err := Register(in, sudeste(t), nil, t0)
+			if tc.want == nil && err != nil {
+				t.Fatalf("%q must be labellable: %v", tc.code, err)
+			}
+			if tc.want != nil && !errors.Is(err, tc.want) {
+				t.Fatalf("%q: want %v, got %v", tc.code, tc.want, err)
+			}
+		})
+	}
+}

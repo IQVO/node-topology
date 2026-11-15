@@ -27,9 +27,21 @@ unleash:
     # differs. See HARNESS.md's mutation-testing section for the
     # tagless-switch-under-reports pitfall before assuming a low number
     # means missing tests.
-    # Measured before raising (gremlins v0.6.0, one worker, killed/lived/not-covered
-    # across efficacy and mutant coverage): lane 20/0/0, node 232/0/0, region 21/0/0,
-    # servicearea 35/0/0, shared 31/0/0 -- every internal/domain package at 100.00%,
-    # so the 95 gate keeps five points of drift headroom below the measured floor.
-    efficacy: "95"
-    mutant-coverage: "95"
+    # Measured 2026-11-15 (gremlins v0.6.0, one worker, one `gremlins unleash
+    # ./internal/domain/<pkg>` each, the exact loop `make mutation` and the
+    # mutation-fast CI job run), killed/lived/not-covered:
+    #   lane 40/0/0  node 258/0/0  region 21/0/0  servicearea 55/0/8  shared 31/0/0
+    # efficacy is 100.00% in every package. Mutator coverage is 100.00% everywhere
+    # except servicearea at 87.30%: its 8 NOT COVERED mutants all sit on the two
+    # `case` expressions of checkDelivery's tagless switch (carriers.go:99 and :102),
+    # which Go's cover profile never attributes to any block (see MUTATION.md; HARNESS.md
+    # "tagless switch" pitfall). They are killed in fact (verified by hand).
+    # efficacy 99 is the fleet standard; mutant-coverage 87 is strictly below the
+    # servicearea measurement. Raise it to 99 once that switch is an if-chain.
+    #
+    # NOTE: the values are UNQUOTED on purpose. gremlins v0.6.0 reads the threshold
+    # with a float64/int type assertion, so a quoted string ("95") is read as 0 and the
+    # gate is silently DISABLED. Unquoted numbers are enforced (measured: efficacy: 100
+    # on a 100% package fails with "below efficacy-threshold"; "100" passes).
+    efficacy: 99
+    mutant-coverage: 87

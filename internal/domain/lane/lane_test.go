@@ -617,3 +617,20 @@ func TestSnapshotRestoreRoundTripsTheDeclaredEmission(t *testing.T) {
 		t.Fatalf("a legacy snapshot restores emission 0: %v", err)
 	}
 }
+
+func TestRestoreAcceptsTheCostAndEmissionCeilings(t *testing.T) {
+	s := openLane(t).Snapshot()
+	s.CostPerUnitCents, s.EmissionPerUnitG = MaxCostPerUnitCents, MaxEmissionPerUnitG
+	l, err := Restore(s)
+	if err != nil || l.CostPerUnitCents() != MaxCostPerUnitCents || l.EmissionPerUnitG() != MaxEmissionPerUnitG {
+		t.Fatalf("the ceilings must restore: %v", err)
+	}
+	s.CostPerUnitCents, s.EmissionPerUnitG = 0, MaxEmissionPerUnitG+1
+	if _, err := Restore(s); !errors.Is(err, shared.ErrInvalidSnapshot) {
+		t.Fatalf("emission above the ceiling must be refused: %v", err)
+	}
+	s.EmissionPerUnitG = -1
+	if _, err := Restore(s); !errors.Is(err, shared.ErrInvalidSnapshot) {
+		t.Fatalf("negative emission must be refused: %v", err)
+	}
+}
