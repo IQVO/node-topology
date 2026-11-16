@@ -1,5 +1,6 @@
 openapi: 3.0.3
 info:
+  x-canary: true
   title: Node Topology API
   version: 0.1.0
   contact:
