@@ -31,7 +31,7 @@ tags:
   - name: Regions
     description: Partitions of the network (aggregate Region).
 paths:
-  /nodes:
+  /nodes-canary:
     post:
       tags: [Nodes]
       operationId: registerNode
