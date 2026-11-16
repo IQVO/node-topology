@@ -127,7 +127,7 @@ operations:
 
 components:
   messages:
-    NodeRegistered:
+    NodeRegisteredCanary:
       name: NodeRegistered
       title: Node registered
       summary: A node was registered in state PROPOSED.
