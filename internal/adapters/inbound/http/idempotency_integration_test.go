@@ -32,13 +32,20 @@ type dbAPI struct {
 	srv  *inboundhttp.Server
 }
 
-func newDBAPI(t *testing.T) dbAPI {
+func newDBAPI(t *testing.T) dbAPI { return newDBAPIWith(t, nil) }
+
+// newDBAPIWith is newDBAPI with a hook on the use cases' dependencies, to wrap
+// one collaborator (a repository that loses an optimistic lock, an id source).
+func newDBAPIWith(t *testing.T, tweak func(*usecases.Deps)) dbAPI {
 	t.Helper()
 	pool := pgtest.NewPool(t)
 	outbox := postgres.NewOutboxRepo(pool, outboundkafka.NewEncoder())
 	d := usecases.Deps{
 		Nodes: postgres.NewNodeRepo(pool), Lanes: postgres.NewLaneRepo(pool), ServiceAreas: postgres.NewServiceAreaRepo(pool),
 		Regions: postgres.NewRegionRepo(pool), Outbox: outbox, UoW: postgres.NewUnitOfWork(pool), Clock: clock.System{}, IDs: ids.UUID{},
+	}
+	if tweak != nil {
+		tweak(&d)
 	}
 	srv := &inboundhttp.Server{
 		RegisterNode: usecases.NewRegisterNode(d), DeclareProfile: usecases.NewDeclareOperationalProfile(d),
