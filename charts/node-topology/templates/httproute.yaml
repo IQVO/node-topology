@@ -5,6 +5,10 @@ metadata:
   name: {{ include "node-topology.fullname" . }}
   labels:
     {{- include "node-topology.labels" . | nindent 4 }}
+  {{- with include "node-topology.kongPluginNames" . }}
+  annotations:
+    konghq.com/plugins: {{ . | quote }}
+  {{- end }}
 spec:
   parentRefs:
     {{- range .Values.gatewayApi.parentRefs }}
