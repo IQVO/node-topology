@@ -72,7 +72,7 @@ Procedures are in the [runbook](/docs/operations/runbook#the-outbox-relay) and [
 
 ## Upstream callers: REST
 
-- **`vendor-connectivity`** calls `POST /nodes` and `PUT /nodes/{nodeId}/operational-profile` while processing a vendor submission. It is expected to send its transaction id as the `Idempotency-Key`, so a re-processed submission replays the first answer instead of failing on `vendor-node-code-taken`. This context keeps the invariants (`operator-not-allowed-for-node-type`, `stale-profile-revision`); a 409 or 422 becomes a failed submission on the caller's side. If this service is down the caller gets a connection error or a 503 and decides its own retry.
+- **`vendor-connectivity`** calls `POST /nodes` and `PUT /nodes/{nodeId}/operational-profile` while processing a vendor submission. It is expected to send its transaction id as the `Idempotency-Key`, so a re-processed submission replays the first answer instead of failing on `vendor-node-code-taken`. This context keeps the invariants (`operator-not-allowed-for-node-type`, `stale-profile-revision`); a 409 or 422 becomes a failed submission on the caller's side (today `vendor-connectivity` treats every 4xx as terminal; the ten refusals that depend on changeable state are not stored under the key since ADR 0020, so a caller that retried them with the same key would now run again). If this service is down the caller gets a connection error or a 503 and decides its own retry.
 - **Planners and consoles** drive the other eight commands. A planner registers parcel nodes with operator `NETWORK` here directly.
 - **Any context** may use the six reads, but none declares them as a synchronous call: the hot paths of the consumers read their own copies. Reads serve tools, planners and diagnosis.
 

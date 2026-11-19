@@ -145,7 +145,7 @@ values render the env.
 Contract: [`apis/openapi.yaml`](apis/openapi.yaml). No authentication. Errors are RFC 9457 `application/problem+json` (`type` is a slug such as
 `not-found`, `illegal-transition`, `concurrent-update`, `validation-failed`, `stale-profile-revision`).
 Every state-changing request (each POST, and the two PUTs that append) needs an `Idempotency-Key` header (1-128 printable ASCII characters, one per logical
-submit). The key is global: a repeat of the same request replays the first response for 24 hours with `Idempotency-Replayed: true`; the same key with another
+submit). The key is global: a repeat of the same request replays the first response for 24 hours with `Idempotency-Replayed: true` when that response is final for the request (a 2xx, or a refusal that is a function of the request alone); a refusal that depends on state another request can change (`not-found`, `illegal-transition`, `concurrent-update`, `incomplete-operational-profile`, `serving-station-not-allowed`, `lane-endpoint-not-active`, `duplicate-lane`, `not-a-delivery-station`, `handoff-node-not-usable`, `unknown-region`) is not stored: the key is released and a retry under it runs again (ADR 0020); the same key with another
 method, path or body is `409 idempotency-key-reused`; a missing or malformed key is `400 idempotency-key-required` / `idempotency-key-invalid`. The three
 collections (`GET /nodes`, `GET /lanes`, `GET /regions`) are keyset-paginated: `limit` (1-500, default 100) and an opaque `cursor`, answering
 `{"items":[...],"nextCursor":"..."}` (`nextCursor` absent on the last page); an undeclared query parameter is `400 unknown-query-parameter`
