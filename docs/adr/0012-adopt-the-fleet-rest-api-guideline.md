@@ -42,6 +42,7 @@ reuse, the per-route key scope, the unpaginated lists and the list envelopes.
   rows still commit in ONE Postgres transaction (the handler runs in a
   savepoint of the middleware's transaction), a 4xx is stored, a 5xx or a panic
   is not. Every POST was already behind the middleware; no route was unkeyed.
+  *Pointer 2026-11-19: "a 4xx is stored" is superseded in part by [ADR 0020](./0020-every-problem-type-has-a-replay-class.md): a RETRYABLE refusal is not stored and releases the key.*
 - **PUT routes keep the middleware** (guideline 2.1 exception). `PUT
   /nodes/{nodeId}/operational-profile` APPENDS a profile revision (revisions
   are append-only rows) and `PUT /service-areas/{postalPrefix}` bumps the
