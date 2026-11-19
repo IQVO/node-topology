@@ -24,8 +24,12 @@ idempotency-key-required` without one). The middleware opens a transaction,
 claims the key and runs the handler inside a savepoint of it, so the key,
 the aggregate rows and the outbox rows of a 2xx commit together. The same key
 with the same request replays the first answer (header `Idempotency-Replayed:
-true`), the same key with another request is `409 idempotency-key-reused`. A 4xx
-is stored too, a 5xx rolls everything back and is not stored. Each diagram shows
+true`), the same key with another request is `409 idempotency-key-reused`. A refusal
+that is a function of the request alone (FINAL, for example `validation-failed`) is
+stored too; a refusal that depends on state another request can change (RETRYABLE,
+for example `concurrent-update`, `not-found`, `unknown-region`; the full table is
+ADR 0020) and a 5xx roll everything back, key row included, and are not stored, so a
+retry under the same key runs again. Each diagram shows
 the optimistic-concurrency version check (or the unique index that backs a
 create), the outbox write and the relay. When the version check fails the use
 case runs the whole unit once more on fresh state and only then answers `409

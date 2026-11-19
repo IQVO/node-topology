@@ -164,7 +164,7 @@ profileRevision 1 again            -> 409 stale-profile-revision
 same vendorNodeCode twice          -> 409 vendor-node-code-taken
 ```
 
-A rejected request still consumes its `Idempotency-Key` (4xx outcomes are stored): fix the request and send it with a new key.
+A refusal that is a function of the request alone (for example `validation-failed`) is stored under its `Idempotency-Key` and replayed: fix the request and send it with a new key. A refusal that depends on state another request can change (for example `409 concurrent-update`, `404 not-found`, `422 unknown-region`) is not stored: retry with the same key (ADR 0020).
 
 ## 7. See the events
 

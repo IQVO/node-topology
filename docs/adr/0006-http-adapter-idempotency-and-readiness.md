@@ -90,6 +90,7 @@ graceful shutdown.
 - A client retrying a timed-out write with the same key never duplicates a node,
   lane, region, assignment or event.
 - A 4xx is replayed too: after fixing the cause the client sends a new key.
+  *Pointer 2026-11-19: superseded in part by [ADR 0020](./0020-every-problem-type-has-a-replay-class.md): only a refusal whose class is FINAL is stored and replayed; a RETRYABLE refusal releases the key and a retry under it runs again.*
 
 ## Addendum 2026-11-13: current state
 
