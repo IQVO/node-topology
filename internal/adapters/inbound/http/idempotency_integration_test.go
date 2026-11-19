@@ -161,14 +161,16 @@ func TestAMissingOrInvalidKeyIs400(t *testing.T) {
 	}
 }
 
-// TestA4xxIsStoredAndItsWritesAreRolledBack: the refusal replays, and nothing
-// the failed handler wrote survives.
+// TestA4xxIsStoredAndItsWritesAreRolledBack: a FINAL refusal (validation-failed,
+// a function of the request alone, ADR 0020) replays, and nothing the failed
+// handler wrote survives. A RETRYABLE refusal is not stored: see
+// idempotency_retryable_integration_test.go.
 func TestA4xxIsStoredReplayedAndLeavesNothingBehind(t *testing.T) {
 	d := newDBAPI(t)
-	body := `{"nodeType":"SORTATION_CENTER","operator":"NETWORK","regionId":"region-nope","timezone":"America/Sao_Paulo","location":{"postalCode":"1","countryCode":"BR"}}`
+	body := `{"nodeType":"NOT_A_TYPE","operator":"NETWORK","regionId":"region-nope","timezone":"America/Sao_Paulo","location":{"postalCode":"1","countryCode":"BR"}}`
 	first := d.do(http.MethodPost, "/nodes", body, "key-1")
 	second := d.do(http.MethodPost, "/nodes", body, "key-1")
-	if first.status != 422 || first.slug() != "unknown-region" || second.status != 422 || second.raw != first.raw {
+	if first.status != 422 || first.slug() != "validation-failed" || second.status != 422 || second.raw != first.raw {
 		t.Fatalf("first %d %s replay %d %s", first.status, first.raw, second.status, second.raw)
 	}
 	if second.header.Get("Content-Type") != "application/problem+json" {
