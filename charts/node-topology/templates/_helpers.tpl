@@ -168,3 +168,18 @@ docs/adr/0011). Both are pinned by app.kubernetes.io/component=a2a.
 {{- define "node-topology.a2aFullname" -}}
 {{- include "node-topology.fullname" . }}-a2a
 {{- end }}
+
+{{/*
+Comma-joined names of this chart's enabled KongPlugins, for the
+konghq.com/plugins annotation on every HTTPRoute this chart renders.
+Empty string (annotation omitted) when none are enabled.
+*/}}
+{{- define "node-topology.kongPluginNames" -}}
+{{- $names := list -}}
+{{- range $name, $cfg := .Values.kongPlugins -}}
+{{- if $cfg.enabled -}}
+{{- $names = append $names (printf "%s-%s" (include "node-topology.fullname" $) $name) -}}
+{{- end -}}
+{{- end -}}
+{{- join "," $names -}}
+{{- end -}}
