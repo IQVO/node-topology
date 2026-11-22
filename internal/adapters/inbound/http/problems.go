@@ -52,60 +52,86 @@ var (
 	dependencyUnavailable = problem{http.StatusServiceUnavailable, "dependency-unavailable", "A runtime dependency is unavailable"}
 )
 
-// Typed errors the adapter raises itself, each carrying its own detail.
+// Typed errors the adapter raises itself, each carrying its own detail. Each is
+// a function of the request alone (ADR 0020): FINAL.
 var (
-	errNULQuery error = detailError{"a NUL character (U+0000) is not allowed in the query string", malformedQuery}
-	errNULBody  error = detailError{"a NUL character (U+0000) is not allowed in a request body", malformedBody}
-	errTooLarge error = detailError{"the request body is larger than the limit", bodyTooLarge}
+	errNULQuery error = detailError{"a NUL character (U+0000) is not allowed in the query string", malformedQuery, replayFinal}
+	errNULBody  error = detailError{"a NUL character (U+0000) is not allowed in a request body", malformedBody, replayFinal}
+	errTooLarge error = detailError{"the request body is larger than the limit", bodyTooLarge, replayFinal}
 )
+
+// adapterErrors lists the typed errors above, so the replay-class tests cover
+// them with the catalogue.
+var adapterErrors = []error{errNULQuery, errNULBody, errTooLarge}
 
 // detailError is an adapter error that already knows its problem.
 type detailError struct {
 	detail string
 	p      problem
+	replay replayClass
 }
 
 func (e detailError) Error() string { return e.detail }
 
+// replayOf returns the replay class of err, read from the same place as its
+// problem: the adapter's own errors and the catalogue entries declare theirs,
+// anything else (an unmapped 5xx) has none.
+func replayOf(err error) replayClass {
+	var de detailError
+	if errors.As(err, &de) {
+		return de.replay
+	}
+	for _, entry := range problemCatalogue {
+		if errors.Is(err, entry.err) {
+			return entry.replay
+		}
+	}
+	return replayUnset
+}
+
 // problemCatalogue maps every typed error to its problem, in match order. The
 // slugs are the catalogue of .claude/rules/rest-api.md: the four shared types
 // of the model conventions plus one kebab-case slug per model Err.
+//
+// replay is the replay class of the problem (replay_class.go, ADR 0020): what
+// the Idempotency-Key middleware does with the answer. Every entry declares one.
 var problemCatalogue = []struct {
-	err error
-	p   problem
+	err    error
+	p      problem
+	replay replayClass
 }{
-	{errMalformedRequest, malformedBody},
+	{errMalformedRequest, malformedBody, replayFinal},
 	// Shared types (model conventions.errors).
-	{ports.ErrNotFound, problem{http.StatusNotFound, "not-found", "Resource not found"}},
-	{shared.ErrIllegalTransition, problem{http.StatusConflict, "illegal-transition", "Illegal transition"}},
-	{ports.ErrConcurrentUpdate, problem{http.StatusConflict, "concurrent-update", "The resource was modified by another request; re-fetch it and retry"}},
+	{ports.ErrNotFound, problem{http.StatusNotFound, "not-found", "Resource not found"}, replayRetryable},
+	{shared.ErrIllegalTransition, problem{http.StatusConflict, "illegal-transition", "Illegal transition"}, replayRetryable},
+	{ports.ErrConcurrentUpdate, problem{http.StatusConflict, "concurrent-update", "The resource was modified by another request; re-fetch it and retry"}, replayRetryable},
 	// Node.
-	{node.ErrVendorNodeCodeTaken, problem{http.StatusConflict, "vendor-node-code-taken", "The vendor already registered a node with this code"}},
-	{node.ErrStaleProfileRevision, problem{http.StatusConflict, "stale-profile-revision", "The profile revision is not newer than the current one"}},
-	{node.ErrIncompleteOperationalProfile, problem{http.StatusConflict, "incomplete-operational-profile", "The operational profile is incomplete"}},
-	{node.ErrNodeRetired, problem{http.StatusConflict, "node-retired", "The node is retired"}},
-	{node.ErrOperatorNotAllowedForNodeType, problem{http.StatusUnprocessableEntity, "operator-not-allowed-for-node-type", "This operator may not run this node type"}},
-	{node.ErrServingStationNotAllowed, problem{http.StatusUnprocessableEntity, "serving-station-not-allowed", "A pickup point needs an active delivery station as its serving station; other node types carry none"}},
-	{node.ErrPointPrefixNotLabellable, problem{http.StatusUnprocessableEntity, "pickup-point-postal-code-not-labellable", "A pickup point's postal code must be uppercase letters and digits only (the label charset)"}},
-	{node.ErrSubtypeNotAllowed, problem{http.StatusUnprocessableEntity, "subtype-not-allowed", "A subtype is not allowed for this node type"}},
-	{node.ErrCutoffOutsideOperatingHours, problem{http.StatusUnprocessableEntity, "cutoff-outside-operating-hours", "A cutoff falls outside the operating hours of its day"}},
-	{node.ErrSortDwellNotAllowed, problem{http.StatusUnprocessableEntity, "sort-dwell-not-allowed", "Only sorting nodes declare a sort dwell"}},
-	{node.ErrInboundLimitsNotAllowed, problem{http.StatusUnprocessableEntity, "inbound-limits-not-allowed", "Only nodes with the INBOUND capability declare inbound limits"}},
+	{node.ErrVendorNodeCodeTaken, problem{http.StatusConflict, "vendor-node-code-taken", "The vendor already registered a node with this code"}, replayFinal},
+	{node.ErrStaleProfileRevision, problem{http.StatusConflict, "stale-profile-revision", "The profile revision is not newer than the current one"}, replayFinal},
+	{node.ErrIncompleteOperationalProfile, problem{http.StatusConflict, "incomplete-operational-profile", "The operational profile is incomplete"}, replayRetryable},
+	{node.ErrNodeRetired, problem{http.StatusConflict, "node-retired", "The node is retired"}, replayFinal},
+	{node.ErrOperatorNotAllowedForNodeType, problem{http.StatusUnprocessableEntity, "operator-not-allowed-for-node-type", "This operator may not run this node type"}, replayFinal},
+	{node.ErrServingStationNotAllowed, problem{http.StatusUnprocessableEntity, "serving-station-not-allowed", "A pickup point needs an active delivery station as its serving station; other node types carry none"}, replayRetryable},
+	{node.ErrPointPrefixNotLabellable, problem{http.StatusUnprocessableEntity, "pickup-point-postal-code-not-labellable", "A pickup point's postal code must be uppercase letters and digits only (the label charset)"}, replayFinal},
+	{node.ErrSubtypeNotAllowed, problem{http.StatusUnprocessableEntity, "subtype-not-allowed", "A subtype is not allowed for this node type"}, replayFinal},
+	{node.ErrCutoffOutsideOperatingHours, problem{http.StatusUnprocessableEntity, "cutoff-outside-operating-hours", "A cutoff falls outside the operating hours of its day"}, replayFinal},
+	{node.ErrSortDwellNotAllowed, problem{http.StatusUnprocessableEntity, "sort-dwell-not-allowed", "Only sorting nodes declare a sort dwell"}, replayFinal},
+	{node.ErrInboundLimitsNotAllowed, problem{http.StatusUnprocessableEntity, "inbound-limits-not-allowed", "Only nodes with the INBOUND capability declare inbound limits"}, replayFinal},
 	// Lane.
-	{lane.ErrLaneEndpointNotActive, problem{http.StatusConflict, "lane-endpoint-not-active", "Both ends of a lane must be ACTIVE nodes"}},
-	{lane.ErrDuplicateLane, problem{http.StatusConflict, "duplicate-lane", "An open lane with this origin, destination and mode exists"}},
-	{lane.ErrLaneLoop, problem{http.StatusUnprocessableEntity, "lane-loop", "A lane cannot start and end at the same node"}},
-	{lane.ErrLaneTypePairNotAllowed, problem{http.StatusUnprocessableEntity, "lane-type-pair-not-allowed", "This pair of node types may not be connected"}},
+	{lane.ErrLaneEndpointNotActive, problem{http.StatusConflict, "lane-endpoint-not-active", "Both ends of a lane must be ACTIVE nodes"}, replayRetryable},
+	{lane.ErrDuplicateLane, problem{http.StatusConflict, "duplicate-lane", "An open lane with this origin, destination and mode exists"}, replayRetryable},
+	{lane.ErrLaneLoop, problem{http.StatusUnprocessableEntity, "lane-loop", "A lane cannot start and end at the same node"}, replayFinal},
+	{lane.ErrLaneTypePairNotAllowed, problem{http.StatusUnprocessableEntity, "lane-type-pair-not-allowed", "This pair of node types may not be connected"}, replayFinal},
 	// ServiceArea.
-	{servicearea.ErrNotADeliveryStation, problem{http.StatusConflict, "not-a-delivery-station", "The node is not an ACTIVE delivery station"}},
-	{servicearea.ErrStaleAssignmentVersion, problem{http.StatusConflict, "stale-assignment-version", "The assignment version is not newer than the current one"}},
-	{servicearea.ErrHandoffNodeNotUsable, problem{http.StatusConflict, "handoff-node-not-usable", "A carrier option's handoff node is not an ACTIVE delivery station or sortation centre"}},
-	{servicearea.ErrCarrierOptionsInvalid, problem{http.StatusUnprocessableEntity, "carrier-options-invalid", "The carrier options do not match the delivery mode"}},
+	{servicearea.ErrNotADeliveryStation, problem{http.StatusConflict, "not-a-delivery-station", "The node is not an ACTIVE delivery station"}, replayRetryable},
+	{servicearea.ErrStaleAssignmentVersion, problem{http.StatusConflict, "stale-assignment-version", "The assignment version is not newer than the current one"}, replayFinal},
+	{servicearea.ErrHandoffNodeNotUsable, problem{http.StatusConflict, "handoff-node-not-usable", "A carrier option's handoff node is not an ACTIVE delivery station or sortation centre"}, replayRetryable},
+	{servicearea.ErrCarrierOptionsInvalid, problem{http.StatusUnprocessableEntity, "carrier-options-invalid", "The carrier options do not match the delivery mode"}, replayFinal},
 	// Region.
-	{region.ErrRegionCodeTaken, problem{http.StatusConflict, "region-code-taken", "A region with this code exists"}},
-	{region.ErrUnknownRegion, problem{http.StatusUnprocessableEntity, "unknown-region", "The region does not exist"}},
+	{region.ErrRegionCodeTaken, problem{http.StatusConflict, "region-code-taken", "A region with this code exists"}, replayFinal},
+	{region.ErrUnknownRegion, problem{http.StatusUnprocessableEntity, "unknown-region", "The region does not exist"}, replayRetryable},
 	// Any value-object rule.
-	{shared.ErrValidation, problem{http.StatusUnprocessableEntity, "validation-failed", "Validation failed"}},
+	{shared.ErrValidation, problem{http.StatusUnprocessableEntity, "validation-failed", "Validation failed"}, replayFinal},
 }
 
 // problemFor returns the problem of err: the adapter's own detailError first,

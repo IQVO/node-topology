@@ -15,7 +15,7 @@ The pyramid as it is on this branch: a pure domain under a mutation gate, use ca
 | Unit, application | 50: `usecases` 39, `views` 11 | `make test` |
 | Unit and `httptest`, adapters and `cmd/*` | REST adapter 36, MCP 15, A2A 16, request log 4, Kafka encoder, writer, health and relay sink 18, `kafka/cloudevents` 6, outbox relay 11, Postgres adapter units 27, telemetry 11, memory 4, `cmd/api` 20, `cmd/mcp` 11, `cmd/a2a` 15, `bootretry` 5, ids and clock 2 | `make test` |
 | Coverage gate | 90% over `./internal/domain/...,./internal/application/...` (`COVERAGE_PKGS` in the `Makefile`) | `make coverage` |
-| BDD (godog / Gherkin) | 15 feature files in `features/`, 228 `Scenario` and `Scenario Outline` blocks (see below) | `make bdd` |
+| BDD (godog / Gherkin) | 15 feature files in `features/`, 237 `Scenario` and `Scenario Outline` definitions, run as 363 scenarios (see below) | `make bdd` |
 | Integration (testcontainers) | 20 files with `//go:build integration` holding 56 top-level functions, including the `TestMain` bootstraps | `make integration` |
 | Architecture fitness | 35 top-level tests in 13 files of `internal/architecture` | `make arch-test` |
 | Mutation (gremlins) | efficacy 90, mutant coverage 90 (`.gremlins.yaml`), on every package under `internal/domain/` | `make mutation`, `make mutation-full` |
@@ -72,8 +72,8 @@ go test ./internal/application/usecases -v
 | Feature file | Scenario blocks |
 | --- | --- |
 | `http_api.feature` | 28 |
+| `lanes.feature` | 27 |
 | `profile_rules.feature` | 26 |
-| `lanes.feature` | 21 |
 | `rest_contract_rules.feature` | 21 |
 | `node_registration.feature` | 17 |
 | `service_area_region_rules.feature` | 17 |
@@ -82,12 +82,12 @@ go test ./internal/application/usecases -v
 | `registration_rules.feature` | 14 |
 | `lane_rules.feature` | 13 |
 | `node_lifecycle_rules.feature` | 13 |
+| `inbound_limits.feature` | 11 |
 | `suspension.feature` | 9 |
-| `inbound_limits.feature` | 8 |
 | `regions.feature` | 7 |
 | `http_idempotency.feature` | 2 |
 
-The runner wires the real use cases over the in-memory adapters, so the suite is fast and needs no Docker. The blocks are counted by `Scenario:` and `Scenario Outline:`; outline example rows are not counted above.
+The runner wires the real use cases over the in-memory adapters, so the suite is fast and needs no Docker. The blocks are counted by `git grep -c -E "^[[:space:]]*Scenario" -- features` (237 in total); the runner executes them as 363 scenarios because the Examples rows of the outlines expand (the `363 scenarios (363 passed)` line of `go test ./features -run TestFeatures -count=1 -v`, which is the one count on this page taken from a test run). The six `*_rules.feature` files (`node_lifecycle_rules`, `profile_rules`, `registration_rules`, `lane_rules`, `service_area_region_rules`, `rest_contract_rules`) pin the rules the context's documentation states; the others come from the OpenAPI and the ADRs.
 
 ## Integration (testcontainers)
 

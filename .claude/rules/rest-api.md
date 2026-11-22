@@ -38,8 +38,11 @@ registered in `internal/adapters/inbound/http/handlers_nodes.go` and
   unmapped error is an opaque 500 `internal-error`. A new `Err` needs a catalogue
   row and a row in `errors_test.go`.
 - **Idempotency-Key** is required on all eight state-changing routes
-  (`idempotency.go`): same key + same request replays the first response, same
-  key + other request is 409 `idempotency-key-reused`, missing key 400
+  (`idempotency.go`): same key + same request replays the first response when it is final
+  for the request (a 2xx or a FINAL refusal); a RETRYABLE refusal releases the key
+  and a retry runs again (ADR 0020: every problem type declares its `replay` class on
+  its catalogue entry, a new one without a class fails `TestEveryProblemTypeDeclaresAReplayClass`),
+  same key + other request is 409 `idempotency-key-reused` while the key holds a stored answer, missing key 400
   `idempotency-key-required`, keys live 24 h in `idempotency_keys`. A new
   state-changing route registers through `Server.keyed`, never `r.Post`.
 - **NUL** (U+0000) is rejected before anything else (`nul.go`): 404 in the path,

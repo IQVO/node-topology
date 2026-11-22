@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/claudioed/node-topology/internal/domain/node"
+	"github.com/claudioed/node-topology/internal/domain/shared"
 )
 
 // handoffDelivery builds a CARRIER_HANDOFF CarrierDelivery whose options hand
@@ -168,5 +169,73 @@ func TestCarriersAccessorCopies(t *testing.T) {
 	got[0].CarrierID = "mutated"
 	if sa.Carriers()[0].CarrierID == "mutated" {
 		t.Fatal("Carriers() aliased the aggregate's list")
+	}
+}
+
+func TestCarrierOptionListAcceptsTheMaximumSize(t *testing.T) {
+	st := station(t)
+	sc := mkNode(t, "node-sc", node.SortationCenter, "region-se", node.StatusActive)
+	ids := make([]node.ID, MaxCarriersPerArea)
+	for i := range ids {
+		ids[i] = sc.ID()
+	}
+	d := withHandoffs(handoffDelivery(ids...), sc)
+	sa, _, err := Assign("01310", 1, st, mkRegion(t, "region-se"), d, t0)
+	if err != nil || len(sa.Carriers()) != MaxCarriersPerArea {
+		t.Fatalf("%d options must be accepted: %v", MaxCarriersPerArea, err)
+	}
+}
+
+func TestRestoreRejectsCorruptCarrierRows(t *testing.T) {
+	st := station(t)
+	sc := mkNode(t, "node-sc", node.SortationCenter, "region-se", node.StatusActive)
+	good := func() Snapshot {
+		sa, _, err := Assign("01310", 1, st, mkRegion(t, "region-se"), withHandoffs(handoffDelivery(sc.ID()), sc), t0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return sa.Snapshot()
+	}
+	cases := []struct {
+		name string
+		mut  func(*Snapshot)
+	}{
+		{"unknown mode", func(s *Snapshot) { s.DeliveryMode = "TELEPORT" }},
+		{"CARRIER_HANDOFF with no options", func(s *Snapshot) { s.Carriers = nil }},
+		{"NETWORK_ROUTE with options", func(s *Snapshot) { s.DeliveryMode = ModeNetworkRoute }},
+		{"cost above the ceiling", func(s *Snapshot) { s.Carriers[0].CostPerPackageCents = MaxCarrierCostCents + 1 }},
+		{"negative cost", func(s *Snapshot) { s.Carriers[0].CostPerPackageCents = -1 }},
+		{"zero transit", func(s *Snapshot) { s.Carriers[0].TransitMinutes = 0 }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := good()
+			tc.mut(&s)
+			sa, err := Restore(s)
+			if !errors.Is(err, shared.ErrInvalidSnapshot) || sa != nil {
+				t.Fatalf("want ErrInvalidSnapshot, got %v", err)
+			}
+		})
+	}
+	ok := good()
+	ok.Carriers[0].CostPerPackageCents, ok.Carriers[0].TransitMinutes = MaxCarrierCostCents, shared.MaxInt32
+	if _, err := Restore(ok); err != nil {
+		t.Fatalf("the ceilings must restore: %v", err)
+	}
+}
+
+func TestCarrierOptionAcceptsTheLowerBounds(t *testing.T) {
+	st := station(t)
+	sc := mkNode(t, "node-sc", node.SortationCenter, "region-se", node.StatusActive)
+	d := withHandoffs(CarrierDelivery{Mode: ModeCarrierHandoff, Carriers: []CarrierOption{
+		{CarrierID: "free-1min", HandoffNodeID: sc.ID(), CostPerPackageCents: 0, TransitMinutes: 1},
+	}}, sc)
+	sa, _, err := Assign("01310", 1, st, mkRegion(t, "region-se"), d, t0)
+	if err != nil {
+		t.Fatalf("a free one-minute option is legal: %v", err)
+	}
+	back, err := Restore(sa.Snapshot())
+	if err != nil || back.Carriers()[0].CostPerPackageCents != 0 || back.Carriers()[0].TransitMinutes != 1 {
+		t.Fatalf("the lower bounds must restore: %v", err)
 	}
 }

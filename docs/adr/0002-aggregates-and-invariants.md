@@ -298,6 +298,7 @@ silent on the points below; each is an assumption and is reported as a model gap
 - **A38 Refusals are replayed.** A 4xx outcome is stored with the key and replayed
   (its writes are rolled back); a 5xx is never stored. `idempotency_keys` needed no
   new column: the replay content type is derived from the status.
+  *Pointer 2026-11-19: since [ADR 0020](./0020-every-problem-type-has-a-replay-class.md) only a refusal whose class is FINAL is stored; a RETRYABLE one releases the key.*
 - **A39 Malformed input.** JSON that is invalid, has an unknown field, a wrong
   type or no body is 400 `malformed-request-body`; an invalid enumeration or a
   missing required value that reaches the domain is 422 `validation-failed`. A

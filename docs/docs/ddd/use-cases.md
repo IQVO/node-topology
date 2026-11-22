@@ -18,7 +18,7 @@ Source: `internal/application/usecases/writer.go`, `internal/adapters/inbound/ht
 3. In the same Postgres transaction `EventOutbox.Append` writes one already-encoded `outbox_events` row per event, and the idempotency record is stored.
 4. The outbox relay publishes the row to `retailnetwork.node-topology.events` after commit.
 
-A `ErrConcurrentUpdate` at step 2 reruns the whole attempt once on fresh state (`transact`); a second conflict answers `409 concurrent-update`. A domain error writes nothing and publishes nothing. A 4xx is stored and replayed; a 5xx rolls everything back and is not stored.
+A `ErrConcurrentUpdate` at step 2 reruns the whole attempt once on fresh state (`transact`); a second conflict answers `409 concurrent-update`. A domain error writes nothing and publishes nothing. A FINAL refusal (a function of the request alone) is stored and replayed; a RETRYABLE one (state another request can change: `concurrent-update`, `not-found`, `illegal-transition`, `unknown-region` and the others of ADR 0020) and a 5xx roll everything back and are not stored, so a retry under the same key runs again.
 
 | Error (every use case) | HTTP | Problem slug |
 | --- | --- | --- |
@@ -51,7 +51,7 @@ Source: `usecases/nodes.go`, `domain/node/node.go` (`Register`).
 - **Invariants**: fulfilment centres, inbound cross-docks and returns centres are `VENDOR`-operated and carry a vendor reference; sortation centres, delivery stations and air hubs are `NETWORK`-operated and carry none; only a fulfilment centre has a subtype (`SORTABLE`, `NON_SORTABLE`, `XL`, `SOFT_LINES`, `SUB_SAME_DAY`, `FRESH`, `MICRO`); the vendor code is unique per vendor; `countryCode` is two uppercase letters; `lat` and `lon` come together; capabilities derive from the type.
 - **Errors**: `operator-not-allowed-for-node-type` (422), `unknown-region` (422), `subtype-not-allowed` (422), `vendor-node-code-taken` (409), `validation-failed` (422).
 - **Event**: `NodeRegistered`. Every attempt also increments `topology.nodes.registered` with the outcome and, on a refusal, the slug as `reason`.
-- **Idempotency**: `vendor-connectivity` is expected to send its transaction id as the key, so a re-processed submission replays the first answer instead of failing on `vendor-node-code-taken`.
+- **Idempotency**: `vendor-connectivity` is expected to send its transaction id as the key, so a re-processed submission replays the first answer instead of failing on `vendor-node-code-taken`. A refusal that depends on state another request can change is not stored under the key (ADR 0020), so a retry executes again.
 
 ## DeclareOperationalProfile
 
