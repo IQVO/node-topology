@@ -1,0 +1,20 @@
+{
+  "name": "com.retailnetwork.logistics/node-topology",
+  "version": "0.1.12",
+  "title": "Node Topology MCP",
+  "description": "The authoritative registry of the network's physical shape: every node (vendor fulfillment centres, cross-docks, returns centres, and the network's own sortation centres, delivery stations and air hubs), its declared operational profile, the directed lanes between nodes, the regions, and which delivery station serves which postal area.",
+  "websiteUrl": "https://iqvo.github.io/node-topology/",
+  "repository": {
+    "url": "https://github.com/IQVO/node-topology",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "http://localhost:8010/api/mcp/node-topology",
+      "protocolVersions": [
+        "2026-07-28"
+      ]
+    }
+  ]
+}

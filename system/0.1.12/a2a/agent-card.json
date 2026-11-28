@@ -1,0 +1,65 @@
+{
+  "supportedInterfaces": [
+    {
+      "url": "http://node-topology-a2a.warehouse-systems.svc.cluster.local:8093/",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "1.0"
+    }
+  ],
+  "capabilities": {
+    "pushNotifications": false,
+    "streaming": false
+  },
+  "defaultInputModes": [
+    "application/json",
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "application/json",
+    "text/plain"
+  ],
+  "description": "Node Topology agent of the retail network (read-only): answers which delivery station serves a postal prefix, with that station's region and current operational profile (operating hours, cutoffs, handling time, throughput cap), and finds the network's nodes by type, region and status. It reads the authoritative registry of nodes, regions and postal service areas; it never changes it (registering nodes, profile revisions, lifecycle transitions, lanes, service areas and regions are REST operations of node-topology).",
+  "name": "node-topology",
+  "provider": {
+    "organization": "IQVO",
+    "url": "https://github.com/IQVO/node-topology"
+  },
+  "skills": [
+    {
+      "description": "Composed read: resolves the delivery station that serves a postal prefix (matched exactly) and returns the assignment (deliveryStationNodeId, regionId, assignmentVersion) together with that station's node: type, operator, region, timezone, location, status and its current operational profile (operating hours, holidays, handling time, cutoffs, throughput cap). An unassigned prefix is answered as a not-found problem.",
+      "examples": [
+        "{\"skill\":\"serving_station\",\"arguments\":{\"postalPrefix\":\"013\"}}"
+      ],
+      "id": "serving_station",
+      "inputModes": [
+        "application/json"
+      ],
+      "name": "Delivery station serving a postal prefix",
+      "tags": [
+        "topology",
+        "service-area",
+        "read",
+        "authority:L1"
+      ]
+    },
+    {
+      "description": "Lists the network's nodes by id ascending, optionally filtered by type (FULFILLMENT_CENTER, INBOUND_CROSS_DOCK, RETURNS_CENTER, SORTATION_CENTER, DELIVERY_STATION or AIR_HUB), regionId and/or status (PROPOSED, ACTIVE, SUSPENDED or RETIRED); the filters combine with AND and no match is an empty list. A type or status that is not an enumeration value is answered as a validation problem.",
+      "examples": [
+        "{\"skill\":\"find_nodes\",\"arguments\":{}}",
+        "{\"skill\":\"find_nodes\",\"arguments\":{\"type\":\"DELIVERY_STATION\",\"status\":\"ACTIVE\"}}"
+      ],
+      "id": "find_nodes",
+      "inputModes": [
+        "application/json"
+      ],
+      "name": "Find network nodes",
+      "tags": [
+        "topology",
+        "node",
+        "read",
+        "authority:L1"
+      ]
+    }
+  ],
+  "version": "f9cf37a-arm64"
+}

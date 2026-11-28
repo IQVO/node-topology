@@ -1,0 +1,868 @@
+{
+  "apiVersion": "warehouse/mcp-primitives/v1",
+  "server": "com.retailnetwork.logistics/node-topology",
+  "tools": [
+    {
+      "_meta": {
+        "com.warehouse/authority": "L1"
+      },
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Read one network node with its current operational profile: type (FULFILLMENT_CENTER, INBOUND_CROSS_DOCK, RETURNS_CENTER, SORTATION_CENTER, DELIVERY_STATION or AIR_HUB), subtype, operator, vendor's own code, region, timezone, location, derived capabilities, status (PROPOSED, ACTIVE, SUSPENDED or RETIRED) and the profile revision the node currently holds (operating hours, holidays, handling time, cutoffs, throughput cap, sort dwell). Read-only; an unknown id fails with not-found.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "string",
+            "description": "the node id, e.g. node-3f6a"
+          }
+        },
+        "required": [
+          "nodeId"
+        ],
+        "additionalProperties": false
+      },
+      "name": "get_node",
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "string"
+          },
+          "nodeType": {
+            "type": "string"
+          },
+          "subtype": {
+            "type": "string"
+          },
+          "operator": {
+            "type": "string"
+          },
+          "vendorRef": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "properties": {
+              "vendorId": {
+                "type": "string"
+              },
+              "vendorNodeCode": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "vendorId",
+              "vendorNodeCode"
+            ],
+            "additionalProperties": false
+          },
+          "servingStationNodeId": {
+            "type": "string"
+          },
+          "regionId": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "postalCode": {
+                "type": "string"
+              },
+              "countryCode": {
+                "type": "string"
+              },
+              "lat": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "lon": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              }
+            },
+            "required": [
+              "postalCode",
+              "countryCode"
+            ],
+            "additionalProperties": false
+          },
+          "capabilities": {
+            "type": "object",
+            "properties": {
+              "outbound": {
+                "type": "boolean"
+              },
+              "inbound": {
+                "type": "boolean"
+              },
+              "returns": {
+                "type": "boolean"
+              },
+              "sort": {
+                "type": "boolean"
+              },
+              "lastMile": {
+                "type": "boolean"
+              },
+              "air": {
+                "type": "boolean"
+              },
+              "collection": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "outbound",
+              "inbound",
+              "returns",
+              "sort",
+              "lastMile",
+              "air",
+              "collection"
+            ],
+            "additionalProperties": false
+          },
+          "status": {
+            "type": "string"
+          },
+          "operationalProfile": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "properties": {
+              "profileRevision": {
+                "type": "integer"
+              },
+              "timezone": {
+                "type": "string"
+              },
+              "operatingHoursByDay": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "start": {
+                      "type": "string"
+                    },
+                    "end": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "start",
+                    "end"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "holidays": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "handlingTimeMinutes": {
+                "type": "integer"
+              },
+              "cutoffs": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "localTime": {
+                      "type": "string"
+                    },
+                    "days": {
+                      "type": [
+                        "null",
+                        "array"
+                      ],
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "maxOrders": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "localTime"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "throughputCap": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "integer"
+                  },
+                  "timeUnit": {
+                    "type": "string"
+                  },
+                  "unit": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "value",
+                  "timeUnit",
+                  "unit"
+                ],
+                "additionalProperties": false
+              },
+              "sortDwellMinutes": {
+                "type": [
+                  "null",
+                  "integer"
+                ]
+              },
+              "declaredBy": {
+                "type": "string"
+              },
+              "declaredAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "profileRevision",
+              "timezone",
+              "operatingHoursByDay",
+              "holidays",
+              "handlingTimeMinutes",
+              "cutoffs",
+              "throughputCap",
+              "declaredBy",
+              "declaredAt"
+            ],
+            "additionalProperties": false
+          },
+          "activatedAt": {
+            "type": "string"
+          },
+          "suspendedAt": {
+            "type": "string"
+          },
+          "suspendReason": {
+            "type": "string"
+          },
+          "retiredAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nodeId",
+          "nodeType",
+          "operator",
+          "regionId",
+          "timezone",
+          "location",
+          "capabilities",
+          "status"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "_meta": {
+        "com.warehouse/authority": "L1"
+      },
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Read one region of the network by its id: the code and the name it was defined with. Read-only; an unknown id fails with not-found.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "regionId": {
+            "type": "string",
+            "description": "the region id, e.g. region-9c21"
+          }
+        },
+        "required": [
+          "regionId"
+        ],
+        "additionalProperties": false
+      },
+      "name": "get_region",
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "regionId": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "regionId",
+          "code",
+          "name"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "_meta": {
+        "com.warehouse/authority": "L1"
+      },
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "List the directed lanes between nodes by id ascending, optionally only those leaving one origin node and/or arriving at one destination node (the filters combine with AND). Open and closed lanes are both listed, distinguished by status (OPEN or CLOSED); mode is GROUND or AIR and nominalTransitMinutes is the planned transit. Each lane carries costPerUnitCents, the planner's declared marginal cost of moving one package-unit across it on one departure (integer cents; 0 means nothing declared yet), and emissionPerUnitG, the declared carbon emission of that move (grams of CO2-equivalent; 0 means nothing declared yet). Read-only; no match is an empty list.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "origin": {
+            "type": "string",
+            "description": "optional filter: keep only lanes leaving this origin node; omitted means every origin"
+          },
+          "destination": {
+            "type": "string",
+            "description": "optional filter: keep only lanes arriving at this destination node; omitted means every destination"
+          }
+        },
+        "additionalProperties": false
+      },
+      "name": "list_lanes",
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "lanes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "object",
+              "properties": {
+                "laneId": {
+                  "type": "string"
+                },
+                "originNodeId": {
+                  "type": "string"
+                },
+                "destinationNodeId": {
+                  "type": "string"
+                },
+                "mode": {
+                  "type": "string"
+                },
+                "nominalTransitMinutes": {
+                  "type": "integer"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "costPerUnitCents": {
+                  "type": "integer"
+                },
+                "emissionPerUnitG": {
+                  "type": "integer"
+                },
+                "closedAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "laneId",
+                "originNodeId",
+                "destinationNodeId",
+                "mode",
+                "nominalTransitMinutes",
+                "status",
+                "costPerUnitCents",
+                "emissionPerUnitG"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "lanes"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "_meta": {
+        "com.warehouse/authority": "L1"
+      },
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "List the network's nodes by id ascending, optionally filtered by type (FULFILLMENT_CENTER, INBOUND_CROSS_DOCK, RETURNS_CENTER, SORTATION_CENTER, DELIVERY_STATION or AIR_HUB), region and/or status (PROPOSED, ACTIVE, SUSPENDED or RETIRED); the filters combine with AND and no match is an empty list. Each node carries its current operational profile. Read-only; a type or status that is not an enumeration value fails with validation-failed.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "optional filter: keep only nodes of this type (FULFILLMENT_CENTER, INBOUND_CROSS_DOCK, RETURNS_CENTER, SORTATION_CENTER, DELIVERY_STATION or AIR_HUB); omitted means every type"
+          },
+          "regionId": {
+            "type": "string",
+            "description": "optional filter: keep only nodes of this region; omitted means every region"
+          },
+          "status": {
+            "type": "string",
+            "description": "optional filter: keep only nodes in this status (PROPOSED, ACTIVE, SUSPENDED or RETIRED); omitted means every status"
+          }
+        },
+        "additionalProperties": false
+      },
+      "name": "list_nodes",
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "nodes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "object",
+              "properties": {
+                "nodeId": {
+                  "type": "string"
+                },
+                "nodeType": {
+                  "type": "string"
+                },
+                "subtype": {
+                  "type": "string"
+                },
+                "operator": {
+                  "type": "string"
+                },
+                "vendorRef": {
+                  "type": [
+                    "null",
+                    "object"
+                  ],
+                  "properties": {
+                    "vendorId": {
+                      "type": "string"
+                    },
+                    "vendorNodeCode": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "vendorId",
+                    "vendorNodeCode"
+                  ],
+                  "additionalProperties": false
+                },
+                "servingStationNodeId": {
+                  "type": "string"
+                },
+                "regionId": {
+                  "type": "string"
+                },
+                "timezone": {
+                  "type": "string"
+                },
+                "location": {
+                  "type": "object",
+                  "properties": {
+                    "postalCode": {
+                      "type": "string"
+                    },
+                    "countryCode": {
+                      "type": "string"
+                    },
+                    "lat": {
+                      "type": [
+                        "null",
+                        "number"
+                      ]
+                    },
+                    "lon": {
+                      "type": [
+                        "null",
+                        "number"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "postalCode",
+                    "countryCode"
+                  ],
+                  "additionalProperties": false
+                },
+                "capabilities": {
+                  "type": "object",
+                  "properties": {
+                    "outbound": {
+                      "type": "boolean"
+                    },
+                    "inbound": {
+                      "type": "boolean"
+                    },
+                    "returns": {
+                      "type": "boolean"
+                    },
+                    "sort": {
+                      "type": "boolean"
+                    },
+                    "lastMile": {
+                      "type": "boolean"
+                    },
+                    "air": {
+                      "type": "boolean"
+                    },
+                    "collection": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "outbound",
+                    "inbound",
+                    "returns",
+                    "sort",
+                    "lastMile",
+                    "air",
+                    "collection"
+                  ],
+                  "additionalProperties": false
+                },
+                "status": {
+                  "type": "string"
+                },
+                "operationalProfile": {
+                  "type": [
+                    "null",
+                    "object"
+                  ],
+                  "properties": {
+                    "profileRevision": {
+                      "type": "integer"
+                    },
+                    "timezone": {
+                      "type": "string"
+                    },
+                    "operatingHoursByDay": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "start": {
+                            "type": "string"
+                          },
+                          "end": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "start",
+                          "end"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "holidays": {
+                      "type": [
+                        "null",
+                        "array"
+                      ],
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "handlingTimeMinutes": {
+                      "type": "integer"
+                    },
+                    "cutoffs": {
+                      "type": [
+                        "null",
+                        "array"
+                      ],
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "localTime": {
+                            "type": "string"
+                          },
+                          "days": {
+                            "type": [
+                              "null",
+                              "array"
+                            ],
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "maxOrders": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "localTime"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "throughputCap": {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "type": "integer"
+                        },
+                        "timeUnit": {
+                          "type": "string"
+                        },
+                        "unit": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "value",
+                        "timeUnit",
+                        "unit"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "sortDwellMinutes": {
+                      "type": [
+                        "null",
+                        "integer"
+                      ]
+                    },
+                    "declaredBy": {
+                      "type": "string"
+                    },
+                    "declaredAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "profileRevision",
+                    "timezone",
+                    "operatingHoursByDay",
+                    "holidays",
+                    "handlingTimeMinutes",
+                    "cutoffs",
+                    "throughputCap",
+                    "declaredBy",
+                    "declaredAt"
+                  ],
+                  "additionalProperties": false
+                },
+                "activatedAt": {
+                  "type": "string"
+                },
+                "suspendedAt": {
+                  "type": "string"
+                },
+                "suspendReason": {
+                  "type": "string"
+                },
+                "retiredAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "nodeId",
+                "nodeType",
+                "operator",
+                "regionId",
+                "timezone",
+                "location",
+                "capabilities",
+                "status"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "nodes"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "_meta": {
+        "com.warehouse/authority": "L1"
+      },
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "List every region of the network by id ascending (code and name). Regions are few and are not paginated; none defined is an empty list. Read-only.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "name": "list_regions",
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "regions": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "object",
+              "properties": {
+                "regionId": {
+                  "type": "string"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "regionId",
+                "code",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "regions"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "_meta": {
+        "com.warehouse/authority": "L1"
+      },
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Resolve which delivery station serves a postal prefix: the prefix (matched exactly), the deliveryStationNodeId, the station's regionId, the assignmentVersion, and — when the area's last mile is a carrier handoff — the deliveryMode (CARRIER_HANDOFF) and the declared carrier options (carrierId, handoffNodeId, costPerPackageCents, transitMinutes); an area served by the network's own route carries no mode or options. Read-only; an unassigned prefix fails with not-found.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "postalPrefix": {
+            "type": "string",
+            "description": "the postal prefix to resolve, matched exactly, e.g. 013"
+          }
+        },
+        "required": [
+          "postalPrefix"
+        ],
+        "additionalProperties": false
+      },
+      "name": "resolve_service_area",
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "postalPrefix": {
+            "type": "string"
+          },
+          "deliveryStationNodeId": {
+            "type": "string"
+          },
+          "regionId": {
+            "type": "string"
+          },
+          "assignmentVersion": {
+            "type": "integer"
+          },
+          "deliveryMode": {
+            "type": "string"
+          },
+          "carriers": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "object",
+              "properties": {
+                "carrierId": {
+                  "type": "string"
+                },
+                "handoffNodeId": {
+                  "type": "string"
+                },
+                "costPerPackageCents": {
+                  "type": "integer"
+                },
+                "transitMinutes": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "carrierId",
+                "handoffNodeId",
+                "costPerPackageCents",
+                "transitMinutes"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "postalPrefix",
+          "deliveryStationNodeId",
+          "regionId",
+          "assignmentVersion"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "resources": [],
+  "resourceTemplates": [
+    {
+      "description": "The delivery-station assignment of one postal prefix (matched exactly): deliveryStationNodeId, regionId and assignmentVersion. An unassigned prefix is an error, an empty registry is an error for every prefix.",
+      "mimeType": "application/json",
+      "name": "service area of a postal prefix",
+      "uriTemplate": "warehouse://node-topology/service-areas/{postalPrefix}"
+    }
+  ],
+  "prompts": [
+    {
+      "arguments": [
+        {
+          "name": "postalPrefix",
+          "description": "the postal prefix to resolve, matched exactly, e.g. 013",
+          "required": true
+        }
+      ],
+      "description": "Standard operating procedure for resolving which delivery station serves a postal prefix, reading that station's operational profile, and tracing the OPEN lanes that reach it.",
+      "name": "resolve_delivery_coverage"
+    }
+  ]
+}
