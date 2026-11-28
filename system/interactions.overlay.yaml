@@ -1,0 +1,217 @@
+# Interactions of node-topology (STANDARD.md Part B): every call this
+# context MAKES (technology + operation + business) and every event it
+# consumes (subscriptions).
+#
+# Outbound rest / mcp / a2a interactions: NONE. node-topology calls no sibling
+# context (CLAUDE.md, ADR 0003: it consumes no Kafka topic and calls no
+# sibling). The only invocation technology it uses is event.publish, through
+# the transactional outbox drained by the cmd/api relay, on the single topic
+# retailnetwork.node-topology.events (no analytics-only copy exists).
+#
+# Subscriptions: NONE (ADR 0003). Triggers are REST only: every publishing use
+# case is reached through cmd/api REST; the MCP tools and A2A skills of this
+# context are read-only queries and publish nothing.
+apiVersion: warehouse/interactions/v1
+application: ../application.yaml
+
+interactions:
+
+  # --- RegisterNode
+  - id: register-node-publish-node-registered
+    technology: event.publish
+    operation:
+      asset: node-topology/asyncapi
+      id: publishNodeTopologyEvents
+      effect: write
+      event: { channel: retailnetwork.node-topology.events, type: com.retailnetwork.logistics.node-topology.node.NodeRegistered }
+    business:
+      capability: topology.node-registry
+      process: node-registration
+      useCase: RegisterNode
+      triggers:
+        - { kind: api, via: rest, ref: registerNode, actor: human:network-planner }
+      purpose: Announce a new node in state PROPOSED with its type, operator, region and building location.
+      criticality: best-effort
+      onFailure: outbox-retry
+
+  # --- DeclareOperationalProfile
+  - id: declare-operational-profile-publish-node-operational-profile-declared
+    technology: event.publish
+    operation:
+      asset: node-topology/asyncapi
+      id: publishNodeTopologyEvents
+      effect: write
+      event: { channel: retailnetwork.node-topology.events, type: com.retailnetwork.logistics.node-topology.node.NodeOperationalProfileDeclared }
+    business:
+      capability: topology.node-operational-profile
+      process: operational-profile-declaration
+      useCase: DeclareOperationalProfile
+      triggers:
+        - { kind: api, via: rest, ref: declareOperationalProfile, actor: human:network-planner }
+      purpose: Announce the whole new operational profile revision of a node (hours, holidays, handling time, cutoffs, throughput cap, inbound limits).
+      criticality: best-effort
+      onFailure: outbox-retry
+
+  # --- ActivateNode
+  - id: activate-node-publish-node-activated
+    technology: event.publish
+    operation:
+      asset: node-topology/asyncapi
+      id: publishNodeTopologyEvents
+      effect: write
+      event: { channel: retailnetwork.node-topology.events, type: com.retailnetwork.logistics.node-topology.node.NodeActivated }
+    business:
+      capability: topology.node-lifecycle
+      process: node-activation
+      useCase: ActivateNode
+      triggers:
+        - { kind: api, via: rest, ref: activateNode, actor: human:network-planner }
+      purpose: Announce that a node became ACTIVE and may take demand if it has the OUTBOUND capability.
+      criticality: best-effort
+      onFailure: outbox-retry
+
+  # --- SuspendNode
+  - id: suspend-node-publish-node-suspended
+    technology: event.publish
+    operation:
+      asset: node-topology/asyncapi
+      id: publishNodeTopologyEvents
+      effect: write
+      event: { channel: retailnetwork.node-topology.events, type: com.retailnetwork.logistics.node-topology.node.NodeSuspended }
+    business:
+      capability: topology.node-lifecycle
+      process: node-suspension
+      useCase: SuspendNode
+      triggers:
+        - { kind: api, via: rest, ref: suspendNode, actor: human:network-planner }
+      purpose: Announce that an ACTIVE node became SUSPENDED, so consumers treat its lanes and service areas as unusable.
+      criticality: best-effort
+      onFailure: outbox-retry
+
+  # --- RetireNode
+  - id: retire-node-publish-node-retired
+    technology: event.publish
+    operation:
+      asset: node-topology/asyncapi
+      id: publishNodeTopologyEvents
+      effect: write
+      event: { channel: retailnetwork.node-topology.events, type: com.retailnetwork.logistics.node-topology.node.NodeRetired }
+    business:
+      capability: topology.node-lifecycle
+      process: node-retirement
+      useCase: RetireNode
+      triggers:
+        - { kind: api, via: rest, ref: retireNode, actor: human:network-planner }
+      purpose: Announce that a node became RETIRED (terminal).
+      criticality: best-effort
+      onFailure: outbox-retry
+
+  # --- OpenLane
+  - id: open-lane-publish-lane-opened
+    technology: event.publish
+    operation:
+      asset: node-topology/asyncapi
+      id: publishNodeTopologyEvents
+      effect: write
+      event: { channel: retailnetwork.node-topology.events, type: com.retailnetwork.logistics.node-topology.lane.LaneOpened }
+    business:
+      capability: topology.lane-network
+      process: lane-opening
+      useCase: OpenLane
+      triggers:
+        - { kind: api, via: rest, ref: openLane, actor: human:network-planner }
+      purpose: Announce a new directed lane between two ACTIVE nodes with its mode and nominal transit time.
+      criticality: best-effort
+      onFailure: outbox-retry
+
+  # --- CloseLane
+  - id: close-lane-publish-lane-closed
+    technology: event.publish
+    operation:
+      asset: node-topology/asyncapi
+      id: publishNodeTopologyEvents
+      effect: write
+      event: { channel: retailnetwork.node-topology.events, type: com.retailnetwork.logistics.node-topology.lane.LaneClosed }
+    business:
+      capability: topology.lane-network
+      process: lane-closure
+      useCase: CloseLane
+      triggers:
+        - { kind: api, via: rest, ref: closeLane, actor: human:network-planner }
+      purpose: Announce that a lane was closed; a new lane is opened instead of reopening.
+      criticality: best-effort
+      onFailure: outbox-retry
+
+  # --- DeclareLaneCost
+  - id: declare-lane-cost-publish-lane-cost-declared
+    technology: event.publish
+    operation:
+      asset: node-topology/asyncapi
+      id: publishNodeTopologyEvents
+      effect: write
+      event: { channel: retailnetwork.node-topology.events, type: com.retailnetwork.logistics.node-topology.lane.LaneCostDeclared }
+    business:
+      capability: topology.lane-network
+      process: lane-cost-declaration
+      useCase: DeclareLaneCost
+      triggers:
+        - { kind: api, via: rest, ref: declareLaneCost, actor: human:network-planner }
+      purpose: Announce the planner's declared marginal cost in cents of moving one package-unit across the lane.
+      criticality: best-effort
+      onFailure: outbox-retry
+
+  # --- DeclareLaneEmission
+  - id: declare-lane-emission-publish-lane-emission-declared
+    technology: event.publish
+    operation:
+      asset: node-topology/asyncapi
+      id: publishNodeTopologyEvents
+      effect: write
+      event: { channel: retailnetwork.node-topology.events, type: com.retailnetwork.logistics.node-topology.lane.LaneEmissionDeclared }
+    business:
+      capability: topology.lane-network
+      process: lane-emission-declaration
+      useCase: DeclareLaneEmission
+      triggers:
+        - { kind: api, via: rest, ref: declareLaneEmission, actor: human:network-planner }
+      purpose: Announce the planner's declared carbon emission in gCO2e of moving one package-unit across the lane.
+      criticality: best-effort
+      onFailure: outbox-retry
+
+  # --- AssignServiceArea
+  - id: assign-service-area-publish-service-area-assigned
+    technology: event.publish
+    operation:
+      asset: node-topology/asyncapi
+      id: publishNodeTopologyEvents
+      effect: write
+      event: { channel: retailnetwork.node-topology.events, type: com.retailnetwork.logistics.node-topology.servicearea.ServiceAreaAssigned }
+    business:
+      capability: topology.service-area
+      process: service-area-assignment
+      useCase: AssignServiceArea
+      triggers:
+        - { kind: api, via: rest, ref: assignServiceArea, actor: human:network-planner }
+      purpose: Announce which delivery station serves a postal prefix, under a new assignment version, with its delivery mode and carrier options.
+      criticality: best-effort
+      onFailure: outbox-retry
+
+  # --- DefineRegion
+  - id: define-region-publish-region-defined
+    technology: event.publish
+    operation:
+      asset: node-topology/asyncapi
+      id: publishNodeTopologyEvents
+      effect: write
+      event: { channel: retailnetwork.node-topology.events, type: com.retailnetwork.logistics.node-topology.region.RegionDefined }
+    business:
+      capability: topology.region
+      process: region-definition
+      useCase: DefineRegion
+      triggers:
+        - { kind: api, via: rest, ref: defineRegion, actor: human:network-planner }
+      purpose: Announce a newly defined region of the network with its unique code and name.
+      criticality: best-effort
+      onFailure: outbox-retry
+
+subscriptions: []

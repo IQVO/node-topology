@@ -1,0 +1,51 @@
+# node-topology 0.1.12 (v0.1.12, f9cf37a) - System Assets & Interaction Standard v0.4
+apiVersion: warehouse/system-assets/v1
+application: application.yaml
+release:
+  version: 0.1.12
+  tag: v0.1.12
+  commit: f9cf37a3de9424836aa89190f0240cdd38773c10
+  chart: oci://ghcr.io/iqvo/node-topology:0.1.12
+  images:
+  - ghcr.io/iqvo/warehouse-infra/node-topology:f9cf37a-arm64
+  drift:
+  - MCP initialize serverInfo node-topology-mcp@'1.0.0' != release 0.1.12 (MC-5)
+  - served A2A Agent Card version 'f9cf37a-arm64' != release 0.1.12 (SERVICE_VERSION is rendered from
+    the image tag)
+  - cluster runs chart 'node-topology-0.1.0', not the released chart node-topology-0.1.12
+assets:
+- id: node-topology/openapi
+  kind: openapi
+  path: openapi/openapi.yaml
+  spec:
+    name: openapi
+    version: 3.0.3
+  version: 0.1.0
+  exposure: kong
+- id: node-topology/asyncapi
+  kind: asyncapi
+  path: asyncapi/asyncapi.yaml
+  spec:
+    name: asyncapi
+    version: 3.0.0
+  version: 1.0.0
+  exposure: kafka
+- id: node-topology/mcp
+  kind: mcp
+  documents:
+    serverCard: mcp/server-card.json
+    primitives: mcp/primitives.json
+  spec:
+    name: mcp
+    version: '2026-07-28'
+    serverCard: sep-2127
+  version: 0.1.12
+  exposure: agent-router
+- id: node-topology/a2a
+  kind: a2a
+  path: a2a/agent-card.json
+  spec:
+    name: a2a
+    version: 1.0.0
+  version: 0.1.12
+  exposure: agent-router

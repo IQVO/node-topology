@@ -1,0 +1,789 @@
+asyncapi: 3.0.0
+
+info:
+  title: node-topology Domain Events
+  version: "1.0.0"
+  contact:
+    name: node-topology maintainers
+    url: https://github.com/IQVO/node-topology
+    email: node-topology@iqvo.example.com
+  license:
+    name: UNLICENSED
+  tags:
+    - name: node-topology
+      description: The node-topology bounded context (retail network, logistics tier).
+    - name: node
+      description: Events raised by the Node aggregate.
+    - name: lane
+      description: Events raised by the Lane aggregate.
+    - name: servicearea
+      description: Events raised by the ServiceArea aggregate.
+    - name: region
+      description: Events raised by the Region aggregate.
+  description: |
+    Event catalog for the **node-topology** bounded context of the retail
+    network (logistics tier): the authoritative registry of nodes, their
+    declared operational profiles, the directed lanes between them, the regions
+    and which delivery station serves which postal prefix (ADR 0001, ADR 0002).
+
+    **Published.** Ten events, all on the topic `retailnetwork.node-topology.events`,
+    through a **transactional outbox**: the aggregate row and its already-encoded
+    events are written in ONE database transaction and an always-on relay drains
+    them to Kafka (at-least-once; the CloudEvents `id` is stored with the outbox
+    row, so a retry republishes the same `id`). The eleven types are catalogued in
+    ADR 0004.
+
+    **Consumed.** None (ADR 0003). The context consumes no Kafka topic and calls
+    no sibling context.
+
+    **Analytics.** The model names no analytics-only event for this context, so
+    nothing is published on `retailnetwork.node-topology.analytics`.
+
+    **Envelope (mandatory).** CloudEvents 1.0, structured content mode, Kafka
+    header `content-type: application/cloudevents+json; charset=UTF-8`.
+    `specversion`, `id`, `source` (`/retailnetwork/node-topology`), `type`,
+    `subject` (the aggregate root id), `time`, `datacontenttype`
+    (`application/json`) and `dataschema`
+    (`urn:retailnetwork:node-topology:events:<EventName>:v1`) are all required.
+    Kafka key = the subject, so one aggregate's events stay ordered on one
+    partition. Type = `com.retailnetwork.logistics.node-topology.<entity>.<EventName>`
+    with entity `node`, `lane`, `servicearea` or `region`. A breaking payload
+    change is a new `.v2` type, never a mutation. Dispatch on the full `type`,
+    ignore unknown types, dedupe on `id`.
+
+    **Conventions.** `data` is camelCase; timestamps are RFC 3339 UTC; local
+    times are `HH:mm` in the declared `timezone`; optional fields are omitted
+    when unset except where a message says a field is `null`.
+
+servers:
+  production:
+    host: "{brokers}"
+    protocol: kafka
+    description: Retail-network Kafka broker (host supplied by the deployment environment via KAFKA_BROKERS).
+    variables:
+      brokers:
+        default: "kafka.retail-network.internal:9092"
+
+defaultContentType: application/cloudevents+json
+
+channels:
+  nodeTopologyEvents:
+    address: retailnetwork.node-topology.events
+    title: node-topology integration topic
+    description: |
+      This service's integration topic. Written by the outbox relay; key =
+      subject (nodeId, laneId, postalPrefix or regionId). Every message carries
+      the CloudEvents content-type header. Dispatch on the full `type`, ignore
+      unknown types, dedupe on `id`.
+    messages:
+      NodeRegistered:
+        $ref: "#/components/messages/NodeRegistered"
+      NodeOperationalProfileDeclared:
+        $ref: "#/components/messages/NodeOperationalProfileDeclared"
+      NodeActivated:
+        $ref: "#/components/messages/NodeActivated"
+      NodeSuspended:
+        $ref: "#/components/messages/NodeSuspended"
+      NodeRetired:
+        $ref: "#/components/messages/NodeRetired"
+      LaneOpened:
+        $ref: "#/components/messages/LaneOpened"
+      LaneClosed:
+        $ref: "#/components/messages/LaneClosed"
+      LaneCostDeclared:
+        $ref: "#/components/messages/LaneCostDeclared"
+      LaneEmissionDeclared:
+        $ref: "#/components/messages/LaneEmissionDeclared"
+      ServiceAreaAssigned:
+        $ref: "#/components/messages/ServiceAreaAssigned"
+      RegionDefined:
+        $ref: "#/components/messages/RegionDefined"
+
+operations:
+  publishNodeTopologyEvents:
+    action: send
+    title: Publish node-topology events
+    summary: Publish the eleven node-topology events through the transactional outbox.
+    description: |
+      The service sends every event of its four aggregates (Node, Lane,
+      ServiceArea, Region) to `retailnetwork.node-topology.events`. Consumers
+      route on the full `type`.
+    tags:
+      - name: node-topology
+    channel:
+      $ref: "#/channels/nodeTopologyEvents"
+    messages:
+      - $ref: "#/channels/nodeTopologyEvents/messages/NodeRegistered"
+      - $ref: "#/channels/nodeTopologyEvents/messages/NodeOperationalProfileDeclared"
+      - $ref: "#/channels/nodeTopologyEvents/messages/NodeActivated"
+      - $ref: "#/channels/nodeTopologyEvents/messages/NodeSuspended"
+      - $ref: "#/channels/nodeTopologyEvents/messages/NodeRetired"
+      - $ref: "#/channels/nodeTopologyEvents/messages/LaneOpened"
+      - $ref: "#/channels/nodeTopologyEvents/messages/LaneClosed"
+      - $ref: "#/channels/nodeTopologyEvents/messages/LaneCostDeclared"
+      - $ref: "#/channels/nodeTopologyEvents/messages/LaneEmissionDeclared"
+      - $ref: "#/channels/nodeTopologyEvents/messages/ServiceAreaAssigned"
+      - $ref: "#/channels/nodeTopologyEvents/messages/RegionDefined"
+
+components:
+  messages:
+    NodeRegistered:
+      name: NodeRegistered
+      title: Node registered
+      summary: A node was registered in state PROPOSED.
+      description: "`type` = `com.retailnetwork.logistics.node-topology.node.NodeRegistered`; subject and key = the nodeId. Raised by RegisterNode. Capabilities are not on the wire: derive them from `nodeType` (policy DefaultCapabilitiesByType). `subtype`, `vendorId` and `vendorNodeCode` are null when not applicable (network-operated nodes have no vendor). `servingStationNodeId` is null unless the node is a PICKUP_POINT (ADR 0017)."
+      contentType: application/cloudevents+json
+      tags:
+        - name: node
+      payload:
+        $ref: "#/components/schemas/NodeRegisteredEvent"
+      examples:
+        - name: nodeRegistered
+          summary: A node was registered in state PROPOSED.
+          payload:
+            specversion: "1.0"
+            id: "3f6c2a9e-8b1d-4c7a-9e55-0d2f6b7a1c40"
+            source: "/retailnetwork/node-topology"
+            type: "com.retailnetwork.logistics.node-topology.node.NodeRegistered"
+            subject: "node-0f3a91"
+            time: "2026-10-22T13:00:00Z"
+            datacontenttype: "application/json"
+            dataschema: "urn:retailnetwork:node-topology:events:NodeRegistered:v1"
+            data:
+              nodeId: "node-0f3a91"
+              nodeType: FULFILLMENT_CENTER
+              subtype: SORTABLE
+              operator: VENDOR
+              vendorId: "vendor-77"
+              vendorNodeCode: "SP-CAJAMAR-01"
+              regionId: "region-se"
+              timezone: "America/Sao_Paulo"
+              postalCode: "07750-000"
+              countryCode: "BR"
+
+    NodeOperationalProfileDeclared:
+      name: NodeOperationalProfileDeclared
+      title: Node operational profile declared
+      summary: A new operational profile revision was stored for a node.
+      description: "`type` = `com.retailnetwork.logistics.node-topology.node.NodeOperationalProfileDeclared`; subject and key = the nodeId. Raised by DeclareOperationalProfile. `profileRevision` strictly increases per node; consumers keep the highest. Local times are `HH:mm` in `timezone`; a weekday missing from `operatingHoursByDay` is closed; `holidays` are ISO dates closed all day. A cutoff without `days` applies to every operating day. `sortDwellMinutes` is present only for SORTATION_CENTER and AIR_HUB nodes. `inbound` is present only when the revision declares inbound limits (absent = none declared, consumers treat them as unchecked); every limit inside it is optional, weight is in grams and dimensions in millimetres."
+      contentType: application/cloudevents+json
+      tags:
+        - name: node
+      payload:
+        $ref: "#/components/schemas/NodeOperationalProfileDeclaredEvent"
+      examples:
+        - name: nodeOperationalProfileDeclared
+          summary: A new operational profile revision was stored for a node.
+          payload:
+            specversion: "1.0"
+            id: "3f6c2a9e-8b1d-4c7a-9e55-0d2f6b7a1c44"
+            source: "/retailnetwork/node-topology"
+            type: "com.retailnetwork.logistics.node-topology.node.NodeOperationalProfileDeclared"
+            subject: "node-0f3a91"
+            time: "2026-10-22T13:05:12Z"
+            datacontenttype: "application/json"
+            dataschema: "urn:retailnetwork:node-topology:events:NodeOperationalProfileDeclared:v1"
+            data:
+              nodeId: "node-0f3a91"
+              profileRevision: 3
+              timezone: "America/Sao_Paulo"
+              operatingHoursByDay:
+                monday: { start: "06:00", end: "22:00" }
+                tuesday: { start: "06:00", end: "22:00" }
+                wednesday: { start: "06:00", end: "22:00" }
+                thursday: { start: "06:00", end: "22:00" }
+                friday: { start: "06:00", end: "22:00" }
+                saturday: { start: "08:00", end: "14:00" }
+              holidays: ["2026-12-25"]
+              handlingTimeMinutes: 240
+              cutoffs:
+                - { localTime: "11:00" }
+                - { localTime: "18:00", days: [monday, tuesday, wednesday, thursday, friday], maxOrders: 1200 }
+              throughputCap: { value: 400, timeUnit: HOUR, unit: ORDER }
+              declaredBy: VENDOR
+        - name: nodeOperationalProfileDeclaredWithInbound
+          summary: A revision that declares inbound limits; seller-side consumers keep them as a local view.
+          payload:
+            specversion: "1.0"
+            id: "3f6c2a9e-8b1d-4c7a-9e55-0d2f6b7a1c46"
+            source: "/retailnetwork/node-topology"
+            type: "com.retailnetwork.logistics.node-topology.node.NodeOperationalProfileDeclared"
+            subject: "node-0f3a91"
+            time: "2026-10-22T14:20:00Z"
+            datacontenttype: "application/json"
+            dataschema: "urn:retailnetwork:node-topology:events:NodeOperationalProfileDeclared:v1"
+            data:
+              nodeId: "node-0f3a91"
+              profileRevision: 4
+              timezone: "America/Sao_Paulo"
+              operatingHoursByDay:
+                monday: { start: "06:00", end: "22:00" }
+              holidays: []
+              handlingTimeMinutes: 240
+              cutoffs:
+                - { localTime: "11:00" }
+              throughputCap: { value: 400, timeUnit: HOUR, unit: ORDER }
+              inbound:
+                maxCartonWeightG: 25000
+                maxCartonDimsMm: { l: 600, w: 400, h: 300 }
+                acceptsPallets: true
+                requiresSscc: false
+              declaredBy: VENDOR
+
+    NodeActivated:
+      name: NodeActivated
+      title: Node activated
+      summary: A node became ACTIVE (from PROPOSED or SUSPENDED).
+      description: "`type` = `com.retailnetwork.logistics.node-topology.node.NodeActivated`; subject and key = the nodeId. Raised by ActivateNode. From now on the node may take customer demand if it has the OUTBOUND capability."
+      contentType: application/cloudevents+json
+      tags:
+        - name: node
+      payload:
+        $ref: "#/components/schemas/NodeActivatedEvent"
+      examples:
+        - name: nodeActivated
+          summary: A node became ACTIVE (from PROPOSED or SUSPENDED).
+          payload:
+            specversion: "1.0"
+            id: "3f6c2a9e-8b1d-4c7a-9e55-0d2f6b7a1c45"
+            source: "/retailnetwork/node-topology"
+            type: "com.retailnetwork.logistics.node-topology.node.NodeActivated"
+            subject: "node-0f3a91"
+            time: "2026-10-22T14:00:00Z"
+            datacontenttype: "application/json"
+            dataschema: "urn:retailnetwork:node-topology:events:NodeActivated:v1"
+            data:
+              nodeId: "node-0f3a91"
+              activatedAt: "2026-10-22T14:00:00Z"
+
+    NodeSuspended:
+      name: NodeSuspended
+      title: Node suspended
+      summary: An ACTIVE node became SUSPENDED.
+      description: "`type` = `com.retailnetwork.logistics.node-topology.node.NodeSuspended`; subject and key = the nodeId. Raised by SuspendNode. Its OPEN lanes and ASSIGNED service areas are NOT closed (policy SuspendedEndpointsUnusable): consumers treat them as unusable while the node is not ACTIVE."
+      contentType: application/cloudevents+json
+      tags:
+        - name: node
+      payload:
+        $ref: "#/components/schemas/NodeSuspendedEvent"
+      examples:
+        - name: nodeSuspended
+          summary: An ACTIVE node became SUSPENDED.
+          payload:
+            specversion: "1.0"
+            id: "3f6c2a9e-8b1d-4c7a-9e55-0d2f6b7a1c46"
+            source: "/retailnetwork/node-topology"
+            type: "com.retailnetwork.logistics.node-topology.node.NodeSuspended"
+            subject: "node-0f3a91"
+            time: "2026-10-23T08:30:00Z"
+            datacontenttype: "application/json"
+            dataschema: "urn:retailnetwork:node-topology:events:NodeSuspended:v1"
+            data:
+              nodeId: "node-0f3a91"
+              reason: "carrier strike at the dock"
+              suspendedAt: "2026-10-23T08:30:00Z"
+
+    NodeRetired:
+      name: NodeRetired
+      title: Node retired
+      summary: A node became RETIRED, which is terminal.
+      description: "`type` = `com.retailnetwork.logistics.node-topology.node.NodeRetired`; subject and key = the nodeId. Raised by RetireNode. Same consumer reactions as NodeSuspended, for good. Lanes and service areas of the node are not touched."
+      contentType: application/cloudevents+json
+      tags:
+        - name: node
+      payload:
+        $ref: "#/components/schemas/NodeRetiredEvent"
+      examples:
+        - name: nodeRetired
+          summary: A node became RETIRED, which is terminal.
+          payload:
+            specversion: "1.0"
+            id: "3f6c2a9e-8b1d-4c7a-9e55-0d2f6b7a1c47"
+            source: "/retailnetwork/node-topology"
+            type: "com.retailnetwork.logistics.node-topology.node.NodeRetired"
+            subject: "node-0f3a91"
+            time: "2026-11-30T23:59:00Z"
+            datacontenttype: "application/json"
+            dataschema: "urn:retailnetwork:node-topology:events:NodeRetired:v1"
+            data:
+              nodeId: "node-0f3a91"
+              retiredAt: "2026-11-30T23:59:00Z"
+
+    LaneOpened:
+      name: LaneOpened
+      title: Lane opened
+      summary: A directed lane between two nodes was opened.
+      description: "`type` = `com.retailnetwork.logistics.node-topology.lane.LaneOpened`; subject and key = the laneId. Raised by OpenLane. Subject and Kafka key are the laneId."
+      contentType: application/cloudevents+json
+      tags:
+        - name: lane
+      payload:
+        $ref: "#/components/schemas/LaneOpenedEvent"
+      examples:
+        - name: laneOpened
+          summary: A directed lane between two nodes was opened.
+          payload:
+            specversion: "1.0"
+            id: "3f6c2a9e-8b1d-4c7a-9e55-0d2f6b7a1c48"
+            source: "/retailnetwork/node-topology"
+            type: "com.retailnetwork.logistics.node-topology.lane.LaneOpened"
+            subject: "lane-5c21d8"
+            time: "2026-10-22T15:00:00Z"
+            datacontenttype: "application/json"
+            dataschema: "urn:retailnetwork:node-topology:events:LaneOpened:v1"
+            data:
+              laneId: "lane-5c21d8"
+              originNodeId: "node-0f3a91"
+              destinationNodeId: "node-9b7e02"
+              mode: GROUND
+              nominalTransitMinutes: 180
+
+    LaneClosed:
+      name: LaneClosed
+      title: Lane closed
+      summary: A lane was closed.
+      description: "`type` = `com.retailnetwork.logistics.node-topology.lane.LaneClosed`; subject and key = the laneId. Raised by CloseLane. There is no reopen: a new lane is opened instead."
+      contentType: application/cloudevents+json
+      tags:
+        - name: lane
+      payload:
+        $ref: "#/components/schemas/LaneClosedEvent"
+      examples:
+        - name: laneClosed
+          summary: A lane was closed.
+          payload:
+            specversion: "1.0"
+            id: "3f6c2a9e-8b1d-4c7a-9e55-0d2f6b7a1c49"
+            source: "/retailnetwork/node-topology"
+            type: "com.retailnetwork.logistics.node-topology.lane.LaneClosed"
+            subject: "lane-5c21d8"
+            time: "2026-11-02T10:00:00Z"
+            datacontenttype: "application/json"
+            dataschema: "urn:retailnetwork:node-topology:events:LaneClosed:v1"
+            data:
+              laneId: "lane-5c21d8"
+              closedAt: "2026-11-02T10:00:00Z"
+
+    LaneCostDeclared:
+      name: LaneCostDeclared
+      title: Lane cost declared
+      summary: The planner declared the cost of moving one package-unit across the lane.
+      description: "`type` = `com.retailnetwork.logistics.node-topology.lane.LaneCostDeclared`; subject and key = the laneId. Raised by DeclareLaneCost, on every declaration (a newer declaration supersedes the previous value). `costPerUnitCents` is the declared marginal cost of moving ONE package-unit across the lane on one departure, integer cents, 0 to 10000000; 0 is legal (zero declared marginal cost). A lane with no declaration publishes nothing. Consumed by order-sourcing, which keeps the latest declaration per laneId and folds it into its money-denominated AssignmentCost (roadmap F7, order-sourcing ADR 0011)."
+      contentType: application/cloudevents+json
+      tags:
+        - name: lane
+      payload:
+        $ref: "#/components/schemas/LaneCostDeclaredEvent"
+      examples:
+        - name: laneCostDeclared
+          summary: The planner declared the cost of moving one package-unit across the lane.
+          payload:
+            specversion: "1.0"
+            id: "3f6c2a9e-8b1d-4c7a-9e55-0d2f6b7a1c4c"
+            source: "/retailnetwork/node-topology"
+            type: "com.retailnetwork.logistics.node-topology.lane.LaneCostDeclared"
+            subject: "lane-5c21d8"
+            time: "2026-11-05T09:30:00Z"
+            datacontenttype: "application/json"
+            dataschema: "urn:retailnetwork:node-topology:events:LaneCostDeclared:v1"
+            data:
+              laneId: "lane-5c21d8"
+              costPerUnitCents: 320
+              declaredAt: "2026-11-05T09:30:00Z"
+
+    LaneEmissionDeclared:
+      name: LaneEmissionDeclared
+      title: Lane emission declared
+      summary: The planner declared the carbon emission of moving one package-unit across the lane.
+      description: "`type` = `com.retailnetwork.logistics.node-topology.lane.LaneEmissionDeclared`; subject and key = the laneId. Raised by DeclareLaneEmission, on every declaration (a newer declaration supersedes the previous value). `gCo2ePerUnit` is the declared carbon emission of moving ONE package-unit across the lane on one departure, grams of CO2-equivalent, 0 to 10000000; 0 is legal (zero declared emission). A lane with no declaration publishes nothing. Consumed by order-sourcing, which keeps the latest declaration per laneId and records it beside the declared cents in its estimate (roadmap C9, ADR 0018); ranking is unchanged."
+      contentType: application/cloudevents+json
+      tags:
+        - name: lane
+      payload:
+        $ref: "#/components/schemas/LaneEmissionDeclaredEvent"
+      examples:
+        - name: laneEmissionDeclared
+          summary: The planner declared the carbon emission of moving one package-unit across the lane.
+          payload:
+            specversion: "1.0"
+            id: "8a4d3f1e-2c5b-4e8a-b1d7-6f9c0e3a5b7d"
+            source: "/retailnetwork/node-topology"
+            type: "com.retailnetwork.logistics.node-topology.lane.LaneEmissionDeclared"
+            subject: "lane-5c21d8"
+            time: "2026-11-14T09:30:00Z"
+            datacontenttype: "application/json"
+            dataschema: "urn:retailnetwork:node-topology:events:LaneEmissionDeclared:v1"
+            data:
+              laneId: "lane-5c21d8"
+              gCo2ePerUnit: 410
+              declaredAt: "2026-11-14T09:30:00Z"
+
+    ServiceAreaAssigned:
+      name: ServiceAreaAssigned
+      title: Service area assigned
+      summary: A postal prefix was assigned to a delivery station under a new assignment version.
+      description: "`type` = `com.retailnetwork.logistics.node-topology.servicearea.ServiceAreaAssigned`; subject and key = the postalPrefix. Raised by AssignServiceArea, on first assignment and on every reassignment. Subject and Kafka key are the postalPrefix. `assignmentVersion` strictly increases per prefix; consumers keep the highest. `regionId` is the station's region. `deliveryMode` and `carriers` are optional (ADR 0016): omitted on a NETWORK_ROUTE area, so a consumer that predates the delivery mode decodes the event with its old meaning; a CARRIER_HANDOFF area carries 1 to 4 options, each with carrierId, handoffNodeId, costPerPackageCents and transitMinutes, the handoff node an ACTIVE DELIVERY_STATION or SORTATION_CENTER."
+      contentType: application/cloudevents+json
+      tags:
+        - name: servicearea
+      payload:
+        $ref: "#/components/schemas/ServiceAreaAssignedEvent"
+      examples:
+        - name: serviceAreaAssigned
+          summary: A postal prefix was assigned to a delivery station under a new assignment version.
+          payload:
+            specversion: "1.0"
+            id: "3f6c2a9e-8b1d-4c7a-9e55-0d2f6b7a1c4a"
+            source: "/retailnetwork/node-topology"
+            type: "com.retailnetwork.logistics.node-topology.servicearea.ServiceAreaAssigned"
+            subject: "01310"
+            time: "2026-10-22T16:00:00Z"
+            datacontenttype: "application/json"
+            dataschema: "urn:retailnetwork:node-topology:events:ServiceAreaAssigned:v1"
+            data:
+              postalPrefix: "01310"
+              deliveryStationNodeId: "node-9b7e02"
+              regionId: "region-se"
+              assignmentVersion: 2
+        - name: serviceAreaAssignedCarrierHandoff
+          summary: A postal prefix was assigned for carrier handoff with two declared options (ADR 0016).
+          payload:
+            specversion: "1.0"
+            id: "7a1c4e8b-2d4f-4a63-9e55-1b0c9a4e5f21"
+            source: "/retailnetwork/node-topology"
+            type: "com.retailnetwork.logistics.node-topology.servicearea.ServiceAreaAssigned"
+            subject: "01310"
+            time: "2026-11-13T09:00:00Z"
+            datacontenttype: "application/json"
+            dataschema: "urn:retailnetwork:node-topology:events:ServiceAreaAssigned:v1"
+            data:
+              postalPrefix: "01310"
+              deliveryStationNodeId: "node-9b7e02"
+              regionId: "region-se"
+              assignmentVersion: 3
+              deliveryMode: "CARRIER_HANDOFF"
+              carriers:
+                - carrierId: "carrier-a"
+                  handoffNodeId: "node-5c21d8"
+                  costPerPackageCents: 320
+                  transitMinutes: 95
+                - carrierId: "carrier-b"
+                  handoffNodeId: "node-9b7e02"
+                  costPerPackageCents: 400
+                  transitMinutes: 60
+
+    RegionDefined:
+      name: RegionDefined
+      title: Region defined
+      summary: A region was defined.
+      description: "`type` = `com.retailnetwork.logistics.node-topology.region.RegionDefined`; subject and key = the regionId. Raised by DefineRegion. Subject and Kafka key are the regionId."
+      contentType: application/cloudevents+json
+      tags:
+        - name: region
+      payload:
+        $ref: "#/components/schemas/RegionDefinedEvent"
+      examples:
+        - name: regionDefined
+          summary: A region was defined.
+          payload:
+            specversion: "1.0"
+            id: "3f6c2a9e-8b1d-4c7a-9e55-0d2f6b7a1c4b"
+            source: "/retailnetwork/node-topology"
+            type: "com.retailnetwork.logistics.node-topology.region.RegionDefined"
+            subject: "region-se"
+            time: "2026-10-21T09:00:00Z"
+            datacontenttype: "application/json"
+            dataschema: "urn:retailnetwork:node-topology:events:RegionDefined:v1"
+            data:
+              regionId: "region-se"
+              code: "SE"
+              name: "Southeast"
+
+  schemas:
+    CloudEventEnvelope:
+      type: object
+      required: [specversion, id, source, type, subject, time, datacontenttype, dataschema, data]
+      properties:
+        specversion: { type: string, const: "1.0" }
+        id: { type: string, format: uuid }
+        source: { type: string, const: /retailnetwork/node-topology }
+        type: { type: string }
+        subject: { type: string, description: The aggregate root id (nodeId, laneId, postalPrefix or regionId). }
+        time: { type: string, format: date-time }
+        datacontenttype: { type: string, const: application/json }
+        dataschema: { type: string }
+
+    NodeType:
+      type: string
+      enum: [FULFILLMENT_CENTER, INBOUND_CROSS_DOCK, RETURNS_CENTER, SORTATION_CENTER, DELIVERY_STATION, AIR_HUB, PICKUP_POINT]
+
+    NodeSubtype:
+      type: string
+      enum: [SORTABLE, NON_SORTABLE, XL, SOFT_LINES, SUB_SAME_DAY, FRESH, MICRO]
+
+    NodeOperator:
+      type: string
+      enum: [NETWORK, VENDOR, PARTNER]
+
+    LaneMode:
+      type: string
+      enum: [GROUND, AIR]
+
+    Weekday:
+      type: string
+      enum: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
+
+    DayHours:
+      type: object
+      required: [start, end]
+      properties:
+        start: { type: string, pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$", description: Local opening time, HH:mm. }
+        end: { type: string, pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$", description: Local closing time, HH:mm. }
+
+    OperatingHoursByDay:
+      type: object
+      description: Per weekday, the local opening hours. A missing weekday is closed.
+      additionalProperties: false
+      properties:
+        monday: { $ref: "#/components/schemas/DayHours" }
+        tuesday: { $ref: "#/components/schemas/DayHours" }
+        wednesday: { $ref: "#/components/schemas/DayHours" }
+        thursday: { $ref: "#/components/schemas/DayHours" }
+        friday: { $ref: "#/components/schemas/DayHours" }
+        saturday: { $ref: "#/components/schemas/DayHours" }
+        sunday: { $ref: "#/components/schemas/DayHours" }
+
+    CutoffSlot:
+      type: object
+      required: [localTime]
+      properties:
+        localTime: { type: string, pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$", description: Local time HH:mm by which packages are ready for handover. }
+        days:
+          type: array
+          description: The weekdays the cutoff applies to. Absent means every operating day.
+          minItems: 1
+          uniqueItems: true
+          items: { $ref: "#/components/schemas/Weekday" }
+        maxOrders: { type: integer, minimum: 1 }
+
+    ThroughputCap:
+      type: object
+      required: [value, timeUnit, unit]
+      properties:
+        value: { type: integer, minimum: 1 }
+        timeUnit: { type: string, enum: [HOUR, DAY] }
+        unit: { type: string, const: ORDER }
+
+    NodeRegisteredEvent:
+      allOf:
+        - $ref: "#/components/schemas/CloudEventEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [nodeId, nodeType, subtype, operator, vendorId, vendorNodeCode, servingStationNodeId, regionId, timezone, postalCode, countryCode]
+              properties:
+                nodeId: { type: string }
+                nodeType: { $ref: "#/components/schemas/NodeType" }
+                subtype:
+                  description: A FULFILLMENT_CENTER subtype; null for every other node type.
+                  oneOf:
+                    - $ref: "#/components/schemas/NodeSubtype"
+                    - type: "null"
+                operator: { $ref: "#/components/schemas/NodeOperator" }
+                vendorId: { type: [string, "null"], description: Set when operator is VENDOR; null otherwise. }
+                vendorNodeCode: { type: [string, "null"], description: The vendor's own code of the node; set when operator is VENDOR; null otherwise. }
+                servingStationNodeId: { type: [string, "null"], description: The serving delivery station of a PICKUP_POINT; null for every other node type (ADR 0017). }
+                regionId: { type: string }
+                timezone: { type: string, description: IANA time zone of the building. }
+                postalCode: { type: string }
+                countryCode: { type: string, description: ISO 3166-1 alpha-2. }
+
+    InboundLimits:
+      type: object
+      description: Optional inbound limits of the node. Present only when declared; every field is optional, at least one is set.
+      minProperties: 1
+      properties:
+        maxCartonWeightG: { type: integer, minimum: 1, description: The heaviest carton the node accepts, in grams. }
+        maxCartonDimsMm:
+          type: object
+          description: The largest carton the node accepts, in millimetres; the three edges are always together.
+          required: [l, w, h]
+          properties:
+            l: { type: integer, minimum: 1 }
+            w: { type: integer, minimum: 1 }
+            h: { type: integer, minimum: 1 }
+        acceptsPallets: { type: boolean, description: Whether the node receives pallets. }
+        requiresSscc: { type: boolean, description: Whether every inbound carton must carry an SSCC. }
+        monthlyVolumeDm3: { type: integer, minimum: 1, description: "The inbound volume the node accepts per calendar month, in cubic decimetres (ADR 0019); absent means not declared." }
+
+    NodeOperationalProfileDeclaredEvent:
+      allOf:
+        - $ref: "#/components/schemas/CloudEventEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [nodeId, profileRevision, timezone, operatingHoursByDay, holidays, handlingTimeMinutes, cutoffs, throughputCap, declaredBy]
+              properties:
+                nodeId: { type: string }
+                profileRevision: { type: integer, minimum: 1, description: Strictly increasing per node. }
+                timezone: { type: string, description: IANA time zone the local times are in. }
+                operatingHoursByDay: { $ref: "#/components/schemas/OperatingHoursByDay" }
+                holidays:
+                  type: array
+                  description: ISO dates on which the node is closed all day.
+                  items: { type: string, format: date }
+                handlingTimeMinutes: { type: integer, minimum: 0, description: Declared time from order release to a package ready for handover. }
+                cutoffs:
+                  type: array
+                  items: { $ref: "#/components/schemas/CutoffSlot" }
+                throughputCap: { $ref: "#/components/schemas/ThroughputCap" }
+                sortDwellMinutes: { type: integer, minimum: 0, description: Omitted unless the node is a SORTATION_CENTER or an AIR_HUB. }
+                inbound: { $ref: "#/components/schemas/InboundLimits" }
+                declaredBy: { type: string, enum: [VENDOR, NETWORK_OPS] }
+
+    NodeActivatedEvent:
+      allOf:
+        - $ref: "#/components/schemas/CloudEventEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [nodeId, activatedAt]
+              properties:
+                nodeId: { type: string }
+                activatedAt: { type: string, format: date-time }
+
+    NodeSuspendedEvent:
+      allOf:
+        - $ref: "#/components/schemas/CloudEventEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [nodeId, reason, suspendedAt]
+              properties:
+                nodeId: { type: string }
+                reason: { type: string, description: Why the planner suspended the node. }
+                suspendedAt: { type: string, format: date-time }
+
+    NodeRetiredEvent:
+      allOf:
+        - $ref: "#/components/schemas/CloudEventEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [nodeId, retiredAt]
+              properties:
+                nodeId: { type: string }
+                retiredAt: { type: string, format: date-time }
+
+    LaneOpenedEvent:
+      allOf:
+        - $ref: "#/components/schemas/CloudEventEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [laneId, originNodeId, destinationNodeId, mode, nominalTransitMinutes]
+              properties:
+                laneId: { type: string }
+                originNodeId: { type: string }
+                destinationNodeId: { type: string }
+                mode: { $ref: "#/components/schemas/LaneMode" }
+                nominalTransitMinutes: { type: integer, minimum: 1 }
+
+    LaneClosedEvent:
+      allOf:
+        - $ref: "#/components/schemas/CloudEventEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [laneId, closedAt]
+              properties:
+                laneId: { type: string }
+                closedAt: { type: string, format: date-time }
+
+    LaneCostDeclaredEvent:
+      allOf:
+        - $ref: "#/components/schemas/CloudEventEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [laneId, costPerUnitCents, declaredAt]
+              properties:
+                laneId: { type: string }
+                costPerUnitCents:
+                  type: integer
+                  format: int64
+                  minimum: 0
+                  maximum: 10000000
+                  description: The planner's declared marginal cost of moving ONE package-unit across this lane on one departure, integer cents.
+                declaredAt: { type: string, format: date-time }
+
+    LaneEmissionDeclaredEvent:
+      allOf:
+        - $ref: "#/components/schemas/CloudEventEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [laneId, gCo2ePerUnit, declaredAt]
+              properties:
+                laneId: { type: string }
+                gCo2ePerUnit:
+                  type: integer
+                  format: int64
+                  minimum: 0
+                  maximum: 10000000
+                  description: The planner's declared carbon emission of moving ONE package-unit across this lane on one departure, grams of CO2-equivalent.
+                declaredAt: { type: string, format: date-time }
+
+    ServiceAreaAssignedEvent:
+      allOf:
+        - $ref: "#/components/schemas/CloudEventEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [postalPrefix, deliveryStationNodeId, regionId, assignmentVersion]
+              properties:
+                postalPrefix: { type: string }
+                deliveryStationNodeId: { type: string, description: The DELIVERY_STATION that serves the prefix. }
+                regionId: { type: string }
+                assignmentVersion: { type: integer, minimum: 1 }
+                deliveryMode:
+                  type: string
+                  enum: [NETWORK_ROUTE, CARRIER_HANDOFF]
+                  description: How the area's last mile is served (ADR 0016); omitted on a NETWORK_ROUTE area, which a consumer decodes as the mode it always assumed.
+                carriers:
+                  type: array
+                  description: The declared carrier options of a CARRIER_HANDOFF area; omitted on a NETWORK_ROUTE area.
+                  items: { $ref: "#/components/schemas/CarrierOption" }
+
+    CarrierOption:
+      type: object
+      description: One declared external carrier of a CARRIER_HANDOFF service area (ADR 0016).
+      required: [carrierId, handoffNodeId, costPerPackageCents, transitMinutes]
+      properties:
+        carrierId: { type: string, description: The carrier's own identifier, unique within the area. }
+        handoffNodeId: { type: string, description: An ACTIVE DELIVERY_STATION or SORTATION_CENTER the network hands packages over at. }
+        costPerPackageCents: { type: integer, minimum: 0, maximum: 10000000, description: The carrier's declared cost of delivering one package, integer cents. }
+        transitMinutes: { type: integer, minimum: 1, description: The carrier's declared transit from the handoff node to the doorstep, in minutes. }
+
+    RegionDefinedEvent:
+      allOf:
+        - $ref: "#/components/schemas/CloudEventEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [regionId, code, name]
+              properties:
+                regionId: { type: string }
+                code: { type: string, description: Unique short code. }
+                name: { type: string }

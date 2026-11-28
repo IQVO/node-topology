@@ -1,0 +1,37 @@
+# node-topology 0.1.12 (v0.1.12, f9cf37a) - System Assets & Interaction Standard v0.4
+apiVersion: warehouse/application/v1
+application:
+  id: node-topology
+  name: Node Topology
+  kind: bounded-context
+  version: 0.1.12
+  description: Node Topology — the physical and logical structure of the retail logistics network (nodes,
+    lanes, service areas, regions) and their operational profiles; publishes node, lane, service-area
+    and region events on retailnetwork.node-topology.events. Consumes no topic.
+  repository: https://github.com/IQVO/node-topology
+  owners:
+  - claudioed
+  lifecycle: production
+subdomain:
+  id: retail-network
+  name: Retail Network
+  summary: 'The retail fulfillment network: a separate organization owning the customer, the catalogue,
+    the delivery promise, order sourcing and the parcel network.'
+boundedContext:
+  id: node-topology
+  name: Node Topology
+  classification: Supporting
+  tier: Retail Network, logistics tier
+  purpose: 'The authoritative registry of the network''s physical shape: every node (vendor fulfillment
+    centres, cross-docks, returns centres, and the network''s own sortation centres, delivery stations
+    and air hubs), its declared operational profile, the directed lanes between nodes, the regions, and
+    which delivery station serves which postal area.'
+  publishes:
+  - retailnetwork.node-topology.events
+tags:
+- node
+- lane
+- service-area
+- region
+assets: system-assets.yaml
+interactions: interactions.yaml
